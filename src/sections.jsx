@@ -1589,11 +1589,10 @@ const Partenaires = () => {
   ];
   const equipement = [
     {
-      name: 'Fait d\'Arme',
+      name: 'Faits d\'Armes',
       logo: 'assets/Fait-d\'arme-logo.png',
-      // TODO PROD : remplacer par l'URL officielle de la boutique si différente
-      href: 'https://www.google.com/search?q=fait+d%27arme+escrime+historique',
-      alt: 'Fait d\'Arme — équipement AMHE',
+      href: 'https://faitsdarmes.com/fr/',
+      alt: 'Faits d\'Armes — équipement AMHE',
     },
     {
       name: 'Black Armoury',
