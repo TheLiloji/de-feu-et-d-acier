@@ -1,0 +1,5 @@
+name = "de-feu-et-d-acier"
+compatibility_date = "2026-05-13"
+
+[assets]
+directory = "./"
