@@ -1702,46 +1702,49 @@ const Partenaires = () => {
         }
         .partenaires-logos {
           display: flex;
-          gap: 32px;
+          gap: 48px;
           flex-wrap: wrap;
           align-items: center;
         }
-        /* Logos posés directement sur le fond, sans box. Bordure très
-           discrète pour structurer, hover ember + lift. */
+        /* Logos posés directement sur le fond. Pas de box, pas de bordure.
+           Légère désaturation au repos pour cohérence avec le ton sobre du
+           site, retour à pleine couleur + lift au hover. */
         .partenaire-logo {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          padding: 14px 20px;
+          padding: 0;
           background: transparent;
-          border: 1px solid var(--parch-faint);
-          border-radius: 2px;
-          min-height: 64px;
-          min-width: 140px;
-          transition: border-color 220ms var(--ease), transform 220ms var(--ease);
+          border: none;
+          transition: transform 220ms var(--ease), filter 220ms var(--ease);
+          filter: saturate(0.85) brightness(0.95);
         }
         .partenaire-logo:hover {
-          border-color: var(--accent);
-          transform: translateY(-2px);
+          transform: translateY(-3px);
+          filter: saturate(1) brightness(1);
         }
         .partenaire-logo img {
           display: block;
-          max-height: 48px;
+          height: auto;
+          max-height: 96px;
+          max-width: 280px;
           width: auto;
-          max-width: 200px;
           object-fit: contain;
         }
         .partenaire-logo--equip img {
-          max-height: 40px;
-          max-width: 160px;
+          max-height: 80px;
+          max-width: 220px;
         }
         @media (max-width: 900px) {
           .partenaires-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
-          .partenaires-logos { gap: 20px; }
+          .partenaires-logos { gap: 36px; }
+          .partenaire-logo img { max-height: 80px; max-width: 240px; }
+          .partenaire-logo--equip img { max-height: 64px; max-width: 180px; }
         }
         @media (max-width: 640px) {
-          .partenaire-logo { padding: 14px 18px; min-width: 0; }
-          .partenaire-logo img { max-height: 38px; max-width: 140px; }
+          .partenaires-logos { gap: 28px; }
+          .partenaire-logo img { max-height: 64px; max-width: 200px; }
+          .partenaire-logo--equip img { max-height: 56px; max-width: 160px; }
         }
       `}</style>
     </section>
