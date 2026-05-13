@@ -177,10 +177,10 @@ const Reveal = ({ children, delay = 0, style, className = '', ...props }) => {
 const Nav = ({ scrolled }) => {
   const items = [
     { label: 'Le club', href: '#club' },
+    { label: 'Encadrement', href: '#encadrement' },
     { label: 'Disciplines', href: '#disciplines' },
     { label: 'Entraînements', href: '#salle' },
     { label: 'Tournois', href: '#tournois' },
-    { label: 'Galerie', href: '#galerie' },
     { label: 'Contact', href: '#contact' },
   ];
   const [open, setOpen] = React.useState(false);
@@ -253,7 +253,7 @@ const Nav = ({ scrolled }) => {
           className="site-nav-list"
           style={{
             display: 'flex',
-            gap: 36,
+            gap: 30,
             listStyle: 'none',
             margin: 0,
             padding: 0,

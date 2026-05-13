@@ -183,7 +183,23 @@ function useTweaks(defaults) {
 // The close button posts __edit_mode_dismissed so the host's toolbar toggle
 // flips off in lockstep; the host echoes __deactivate_edit_mode back which
 // is what actually hides the panel.
+// Guard prod : le panneau de tweaks n'est visible qu'en dev (localhost / 127.0.0.1
+// / *.workers.dev) ou si l'URL contient ?tweaks=1. En prod normale, le composant
+// retourne null — le visiteur final ne voit jamais d'outil de tweak.
+const TWEAKS_ENABLED = (() => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.has('tweaks')) return qs.get('tweaks') !== '0';
+    const h = window.location.hostname || '';
+    return /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/.test(h)
+      || h.endsWith('.workers.dev')
+      || h.endsWith('.local');
+  } catch { return false; }
+})();
+
 function TweaksPanel({ title = 'Tweaks', noDeckControls = false, children }) {
+  if (!TWEAKS_ENABLED) return null;
   const [open, setOpen] = React.useState(false);
   const dragRef = React.useRef(null);
   // Auto-inject a rail toggle when a <deck-stage> is on the page. The
