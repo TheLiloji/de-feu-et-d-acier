@@ -83,7 +83,7 @@ const Hero = () => {
       style={{
         position: 'relative',
         width: '100%',
-        minHeight: '100vh',
+        minHeight: '100svh',
         overflow: 'hidden',
         background: 'var(--ink)',
         display: 'flex',
@@ -176,7 +176,7 @@ const Hero = () => {
         }}
       />
 
-      {/* Bloc central */}
+      {/* Bloc central — épuré : logo, H1 forge, H2 (Clermont-Ferrand mis en avant), CTA */}
       <div
         className="hero-stage"
         style={{
@@ -188,17 +188,18 @@ const Hero = () => {
           alignItems: 'center',
           justifyContent: 'center',
           textAlign: 'center',
-          padding: '120px 24px 40px',
+          padding: 'clamp(80px, 12vh, 140px) 24px clamp(40px, 8vh, 80px)',
+          gap: 'clamp(16px, 2.4vh, 28px)',
         }}
       >
         <Reveal delay={80}>
           <img
             src="assets/logo.png?v=2"
             alt="De Feu et d'Acier — logo"
+            className="hero-logo"
             style={{
-              width: 'clamp(78px, 9vw, 120px)',
+              width: 'clamp(64px, 8vw, 110px)',
               height: 'auto',
-              marginBottom: 24,
               background: 'transparent',
             }}
           />
@@ -209,7 +210,7 @@ const Hero = () => {
             className="display forge-title"
             style={{
               margin: 0,
-              fontSize: 'clamp(54px, 11vw, 176px)',
+              fontSize: 'clamp(48px, 10vw, 168px)',
               lineHeight: 0.88,
               letterSpacing: '-0.022em',
               fontWeight: 500,
@@ -225,188 +226,28 @@ const Hero = () => {
         </Reveal>
 
         <Reveal delay={360}>
-          <h2
-            className="hero-h2"
-            style={{
-              marginTop: 28,
-              marginBottom: 0,
-              fontFamily: 'var(--display)',
-              fontWeight: 400,
-              fontSize: 'clamp(20px, 2.4vw, 30px)',
-              lineHeight: 1.3,
-              color: 'var(--parch)',
-              letterSpacing: '-0.005em',
-              maxWidth: 820,
-            }}
-          >
-            Arts Martiaux Historiques Européens
-            {' '}
-            <span style={{ color: 'var(--accent)', fontStyle: 'italic' }}>
-              à Clermont-Ferrand
-            </span>
+          <h2 className="hero-h2">
+            <span className="hero-h2-line">Arts Martiaux Historiques Européens</span>
+            <span className="hero-h2-place">à Clermont-Ferrand</span>
           </h2>
         </Reveal>
 
-        <Reveal delay={480}>
-          <p
-            className="hero-pitch"
-            style={{
-              margin: '20px auto 0',
-              maxWidth: 700,
-              fontSize: 'clamp(15px, 1.2vw, 17px)',
-              lineHeight: 1.6,
-              color: 'var(--parch-soft)',
-            }}
-          >
-            On lit les sources, on prend la garde, on échange en assaut —
-            <span style={{ color: 'var(--parch)' }}> sous masque et protections.</span>
-            <br />
-            <span className="hero-pitch-sub">
-              Épée longue · rapière · épée de côté · messer · viking — Mardi &amp; Jeudi à Clermont-Ferrand.
-            </span>
-          </p>
-        </Reveal>
-
-        <Reveal delay={620}>
-          <div
-            className="hero-ctas"
-            style={{
-              display: 'flex',
-              gap: 14,
-              marginTop: 36,
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-            }}
-          >
-            <a href="#contact" className="btn btn--ember">
-              Faire une séance d'essai
-              <ArrowGlyph size={13} color="currentColor" />
+        <Reveal delay={560}>
+          <div className="hero-ctas">
+            <a href="#rejoindre" className="btn hero-cta-primary">
+              Venir essayer gratuitement
+              <ArrowGlyph size={11} color="currentColor" />
             </a>
-            <a href="#salle" className="btn btn--ghost">
-              Voir les entraînements
-              <ArrowGlyph size={13} color="currentColor" />
+            <a href="#creneaux" className="btn btn--secondary">
+              Voir les créneaux
+              <ArrowGlyph size={11} color="currentColor" />
             </a>
           </div>
         </Reveal>
       </div>
 
-      {/* Quick-info band ancré au bas du hero */}
-      <Reveal delay={780}>
-        <div
-          className="hero-quickinfo"
-          style={{
-            position: 'relative',
-            zIndex: 4,
-            margin: '0 auto',
-            padding: '22px 56px 80px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 24,
-            maxWidth: 1480,
-            width: '100%',
-            color: 'var(--parch)',
-          }}
-        >
-          {[
-            { l: 'Lieu', v: 'Gymnase Robert Pras', s: 'Clermont-Ferrand' },
-            { l: 'Créneaux', v: 'Mardi & Jeudi', s: '18h — 22h' },
-            { l: 'Adhésion', v: '85 € / an', s: 'saison 25-26' },
-            { l: 'Accueil', v: 'Tous niveaux', s: 'matériel prêté' },
-          ].map((it, i) => (
-            <div
-              key={it.l}
-              className="hero-quickinfo-cell"
-              style={{
-                paddingTop: 18,
-                borderTop: '1px solid rgba(236, 232, 222, 0.18)',
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: 'var(--eyebrow)',
-                  fontSize: 10.5,
-                  letterSpacing: '0.26em',
-                  textTransform: 'uppercase',
-                  color: 'var(--parch-mute)',
-                  marginBottom: 6,
-                  fontWeight: 500,
-                }}
-              >
-                {it.l}
-              </div>
-              <div
-                style={{
-                  fontFamily: 'var(--display)',
-                  fontSize: 22,
-                  lineHeight: 1.15,
-                  color: 'var(--parch)',
-                  marginBottom: 2,
-                }}
-              >
-                {it.v}
-              </div>
-              <div
-                style={{
-                  fontSize: 12.5,
-                  color: 'var(--parch-mute)',
-                  letterSpacing: '0.02em',
-                }}
-              >
-                {it.s}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Reveal>
-
-      {/* Indicateur de scroll discret */}
-      <a
-        href="#firststeps"
-        aria-label="Faire défiler"
-        className="hero-scroll"
-        style={{
-          position: 'absolute',
-          left: '50%',
-          bottom: 18,
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 10,
-          color: 'var(--parch-soft)',
-          zIndex: 4,
-          fontFamily: 'var(--eyebrow)',
-          fontSize: 9.5,
-          letterSpacing: '0.32em',
-          textTransform: 'uppercase',
-          textDecoration: 'none',
-          fontWeight: 500,
-        }}
-      >
-        <span
-          aria-hidden="true"
-          className="hero-scroll-line"
-          style={{
-            width: 1,
-            height: 30,
-            background: 'currentColor',
-            display: 'block',
-          }}
-        />
-      </a>
-
-      {/* Effet titre forge */}
+      {/* Effet titre forge + responsive hero compact */}
       <style>{`
-        .hero-pitch-sub {
-          display: inline-block;
-          margin-top: 8px;
-          font-family: var(--eyebrow);
-          font-size: 11.5px;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: var(--parch-mute);
-          font-weight: 500;
-        }
         .forge-title {
           background: linear-gradient(
             180deg,
@@ -427,35 +268,83 @@ const Hero = () => {
             drop-shadow(0 12px 30px rgba(224,85,44,0.26))
             drop-shadow(0 0 90px rgba(224,85,44,0.16));
         }
-        .hero-scroll-line { animation: scroll-tick 2.6s var(--ease) infinite; }
-        .hero-scroll:hover { color: var(--parch); }
+
+        /* H2 hero : 2 lignes, "Clermont-Ferrand" mis en avant (ember, plus gros, capitales letter-spacing) */
+        .hero-h2 {
+          margin: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          max-width: 880px;
+        }
+        .hero-h2-line {
+          font-family: var(--display);
+          font-weight: 400;
+          font-size: clamp(18px, 2.1vw, 26px);
+          line-height: 1.3;
+          color: var(--parch-soft);
+          letter-spacing: 0;
+        }
+        .hero-h2-place {
+          font-family: var(--display);
+          font-weight: 500;
+          font-style: italic;
+          font-size: clamp(28px, 3.4vw, 48px);
+          line-height: 1.1;
+          color: var(--accent);
+          letter-spacing: -0.005em;
+        }
+
+        .hero-ctas {
+          display: flex;
+          gap: 14px;
+          flex-wrap: wrap;
+          justify-content: center;
+          margin-top: clamp(8px, 1.6vh, 20px);
+        }
+        .hero-cta-primary {
+          box-shadow:
+            0 1px 0 rgba(255,255,255,0.08) inset,
+            0 10px 32px -10px rgba(224, 85, 44, 0.7),
+            0 0 0 0 rgba(224, 85, 44, 0.6);
+          animation: hero-cta-pulse 2.8s var(--ease) infinite;
+        }
+        @keyframes hero-cta-pulse {
+          0%, 100% { box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 10px 32px -10px rgba(224, 85, 44, 0.7), 0 0 0 0 rgba(224, 85, 44, 0.4); }
+          50%      { box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 10px 32px -10px rgba(224, 85, 44, 0.85), 0 0 0 8px rgba(224, 85, 44, 0); }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
-          .hero-scroll-line { animation: none; opacity: 0.5; }
+          .hero-cta-primary { animation: none !important; }
         }
-        @media (max-width: 1100px) {
-          .hero-quickinfo { padding: 22px 32px 72px !important; }
+
+        /* Responsive vertical : sur petit écran, on serre tout pour que les CTA restent visibles au-dessus du fold */
+        @media (max-height: 720px) {
+          .hero-logo { width: clamp(54px, 7vh, 90px) !important; }
         }
         @media (max-width: 900px) {
-          .hero-section { min-height: auto !important; }
           .hero-stage { padding: 96px 22px 24px !important; }
-          .hero-quickinfo {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 16px !important;
-            padding: 4px 22px 80px !important;
-          }
         }
         @media (max-width: 640px) {
-          /* Compacter le hero pour faire entrer les CTA au-dessus du fold sur smartphones */
-          .hero-stage img[alt^="De Feu"] { margin-bottom: 18px !important; }
-          .hero-h2 { font-size: 18px !important; line-height: 1.35 !important; margin-top: 22px !important; }
-          .hero-pitch { font-size: 14.5px !important; line-height: 1.55 !important; }
-          .hero-pitch-sub { font-size: 10px !important; letter-spacing: 0.14em !important; }
-          .hero-ctas { flex-direction: column !important; align-items: stretch !important; width: 100%; max-width: 320px; margin: 28px auto 0 !important; }
+          .hero-h2 { gap: 6px; }
+          .hero-h2-line { font-size: 14px; letter-spacing: 0.01em; }
+          .hero-h2-place { font-size: 26px; }
+          .hero-ctas {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            width: 100%;
+            max-width: 320px;
+            margin: 18px auto 0 !important;
+          }
           .hero-ctas .btn { justify-content: center; min-height: 48px; }
-          .hero-quickinfo-cell { padding-top: 12px !important; }
-          .hero-quickinfo-cell > div:nth-child(2) { font-size: 18px !important; line-height: 1.2 !important; }
-          .hero-quickinfo-cell > div:nth-child(3) { font-size: 11.5px !important; }
+        }
+        /* Très petit écran vertical (téléphones bas/clavier ouvert) — réduit encore le H1 */
+        @media (max-height: 600px) {
+          .hero-logo { width: 48px !important; }
+          .forge-title { font-size: clamp(38px, 8vw, 64px) !important; }
+          .hero-stage { gap: 10px !important; padding-top: 80px !important; }
         }
       `}</style>
     </section>

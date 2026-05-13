@@ -28,16 +28,18 @@ function App() {
       <ContactStyles />
       <Nav scrolled={scrolled} />
       <Hero />
-      <FirstSteps />
-      <Manifesto />
-      <Club />
-      <Encadrement />
+      {/* Nouvelle hiérarchie 2026-05 :
+          1 Disciplines · 2 Profs · 3 Club · 4 Rigueur · 5 Créneaux ·
+          6 Tournois · 7 Galerie · 8 Rejoindre · 9 FAQ */}
       <Disciplines />
+      <Encadrement />
+      <Club />
+      <Manifesto />
       <Salle />
       <Tournois />
       <Galerie />
-      <Identite />
       <Contact />
+      <Faq />
       <LegalNotes />
       <Footer />
 

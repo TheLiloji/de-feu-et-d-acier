@@ -7,7 +7,7 @@
   <title>De Feu et d'Acier — AMHE Clermont-Ferrand · Arts Martiaux Historiques Européens</title>
   <meta
     name="description"
-    content="De Feu et d'Acier, club AMHE de Clermont-Ferrand : épée longue, rapière, épée de côté, messer. Entraînements mardi et jeudi au Gymnase Robert Pras, tous niveaux. Affilié FFAMHE."
+    content="De Feu et d'Acier, club AMHE de Clermont-Ferrand : épée longue, rapière, épée-bocle, messer. Entraînements mardi et jeudi au Gymnase Robert Pras, tous niveaux. Affilié FFAMHE."
   />
   <!--
     ────────────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@
     "url": "https://defeuetdacier.fr/",
     "logo": "https://defeuetdacier.fr/assets/logo.png",
     "image": "https://defeuetdacier.fr/assets/hero-studio.avif",
-    "description": "Club d'Arts Martiaux Historiques Européens (AMHE) à Clermont-Ferrand. Épée longue, rapière, épée de côté, messer, combat viking. Affilié FFAMHE.",
+    "description": "Club d'Arts Martiaux Historiques Européens (AMHE) à Clermont-Ferrand. Épée longue, rapière, épée-bocle, messer, combat viking. Affilié FFAMHE.",
     "sport": ["Arts Martiaux Historiques Européens", "AMHE", "HEMA", "Escrime historique"],
     "areaServed": "Clermont-Ferrand",
     "memberOf": [
@@ -142,11 +142,17 @@
       body::after { opacity: 0.12; }
     }
 
-    /* Reusable typography — sober uppercase Inter */
+    /* ────────────────────────────────────────────────────────────────
+       Design system — typographie
+       • Inter      → toute l'UI (eyebrows, paragraphes, valeurs, boutons)
+       • Cormorant  → uniquement les vrais titres (h1 hero, h2 section,
+                       h3 sub-sections / staff names / first-step titles,
+                       footer marquee, "italic em" d'accent dans h2)
+       ──────────────────────────────────────────────────────────────── */
     .eyebrow {
       font-family: var(--eyebrow);
       font-size: 11px;
-      letter-spacing: 0.28em;
+      letter-spacing: 0.26em;
       text-transform: uppercase;
       color: var(--parch-mute);
       font-weight: 500;
@@ -156,19 +162,36 @@
       font-family: var(--display);
       font-weight: 400;
       letter-spacing: -0.012em;
-      line-height: 0.92;
+      line-height: 0.94;
       color: var(--parch);
       text-wrap: balance;
     }
 
+    /* Lede = paragraphe d'intro. Inter regular, plus moderne que l'ancien
+       Cormorant italique — moins "site de luxe précieux". */
     .lede {
-      font-family: var(--display);
+      font-family: var(--body);
       font-weight: 400;
-      font-style: italic;
-      font-size: 26px;
-      line-height: 1.35;
+      font-style: normal;
+      font-size: 17px;
+      line-height: 1.65;
+      color: var(--parch-soft);
+      letter-spacing: 0;
+    }
+
+    /* Helpers UI réutilisables (évite le inline scattered) */
+    .ui-value {
+      font-family: var(--body);
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0;
       color: var(--parch);
-      letter-spacing: -0.005em;
+    }
+    .ui-meta {
+      font-family: var(--body);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--parch-mute);
     }
 
     a { color: inherit; text-decoration: none; }
@@ -182,80 +205,106 @@
     ::-webkit-scrollbar-thumb { background: rgba(236, 232, 222, 0.18); border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(236, 232, 222, 0.35); }
 
-    /* Buttons — flat, sharp-edged, with a brief metallic shine-sweep on hover */
+    /* ────────────────────────────────────────────────────────────────
+       Design system — boutons
+       3 variantes, même squelette (hauteur, padding, typo, transition) :
+         .btn               → primaire ember (action principale)
+         .btn.btn--secondary → outline ghost (action secondaire)
+         .btn.btn--tertiary  → lien texte avec flèche (action mineure)
+       Toutes les variantes partagent : 44 px de hauteur min (tap target),
+       Inter 11.5 px uppercase letter-spacing 0.22em, transition 220 ms.
+       ──────────────────────────────────────────────────────────────── */
     .btn {
       position: relative;
       display: inline-flex;
       align-items: center;
-      gap: 14px;
-      padding: 16px 26px;
-      border-radius: 0;
-      font-family: var(--eyebrow);
+      justify-content: center;
+      gap: 12px;
+      min-height: 44px;
+      padding: 0 22px;
+      border-radius: 2px;
+      font-family: var(--body);
       font-size: 11.5px;
       letter-spacing: 0.22em;
       text-transform: uppercase;
+      font-weight: 600;
       cursor: pointer;
-      transition: background 220ms var(--ease), color 220ms var(--ease),
-                  border-color 220ms var(--ease), transform 220ms var(--ease);
+      transition: background 220ms var(--ease),
+                  color 220ms var(--ease),
+                  border-color 220ms var(--ease),
+                  box-shadow 220ms var(--ease);
       border: 1px solid transparent;
-      background: transparent;
-      color: var(--parch);
-      font-weight: 500;
+      background: var(--accent);
+      color: #160806;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset,
+                  0 8px 22px -10px rgba(224, 85, 44, 0.55);
       overflow: hidden;
       isolation: isolate;
+      white-space: nowrap;
     }
-    .btn::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(120deg,
-        transparent 0%,
-        transparent 35%,
-        rgba(255,255,255,0.18) 50%,
-        transparent 65%,
-        transparent 100%);
-      transform: translateX(-120%);
-      transition: transform 700ms var(--ease);
-      pointer-events: none;
-      z-index: -1;
-    }
-    .btn:hover::before { transform: translateX(120%); }
-    .btn:active { transform: translateY(1px); }
-    .btn--solid {
-      background: var(--parch);
-      color: var(--ink);
-    }
-    .btn--solid:hover {
-      background: var(--accent);
-      color: var(--parch);
-    }
-    .btn--ember {
-      background: var(--accent);
-      color: #1a0c07;
-      font-weight: 600;
-      box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset,
-                  0 10px 28px -12px rgba(224, 85, 44, 0.55);
-    }
-    .btn--ember:hover {
+    .btn:hover {
       background: var(--ember-hot);
-      color: #150806;
+      color: #140503;
     }
-    .btn--ghost {
-      border-color: rgba(236, 232, 222, 0.22);
+    .btn:active { transform: translateY(1px); }
+
+    /* Secondaire — outline, garde la même boîte */
+    .btn--secondary {
+      background: transparent;
       color: var(--parch);
+      border-color: rgba(236, 232, 222, 0.28);
+      box-shadow: none;
+      font-weight: 500;
     }
-    .btn--ghost:hover {
-      border-color: var(--parch);
+    .btn--secondary:hover {
       background: rgba(236, 232, 222, 0.04);
+      color: var(--parch);
+      border-color: var(--parch);
     }
-    .btn:focus-visible {
+
+    /* Tertiaire — lien texte uppercase + flèche. Pas de fond, juste un
+       hover qui change la couleur (pas de gap qui bouge, pas de tremblement) */
+    .btn--tertiary {
+      background: transparent;
+      color: var(--parch);
+      padding: 0;
+      min-height: 32px;
+      border-color: transparent;
+      box-shadow: none;
+      font-weight: 500;
+    }
+    .btn--tertiary:hover {
+      background: transparent;
+      color: var(--accent);
+    }
+
+    /* Focus visible — un seul style sur tous les interactifs */
+    .btn:focus-visible,
+    a:focus-visible,
+    button:focus-visible,
+    [tabindex]:focus-visible {
       outline: 2px solid var(--accent);
       outline-offset: 3px;
-    }
-    a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 4px;
       border-radius: 2px;
+    }
+
+    /* Aliases conservés pour limiter la casse — pointent vers le système */
+    .btn--ember { /* alias historique → primaire */ }
+    .btn--solid { /* alias historique → primaire */
+      background: var(--accent);
+      color: #160806;
+    }
+    .btn--ghost { /* alias historique → secondaire */
+      background: transparent;
+      color: var(--parch);
+      border-color: rgba(236, 232, 222, 0.28);
+      box-shadow: none;
+      font-weight: 500;
+    }
+    .btn--ghost:hover {
+      background: rgba(236, 232, 222, 0.04);
+      border-color: var(--parch);
+      color: var(--parch);
     }
 
     /* Animation: fade up on scroll */
@@ -296,11 +345,12 @@
       .lede { font-size: 20px !important; }
     }
 
-    /* Underline link */
+    /* Underline link — underline qui apparaît au hover (modern sober) */
     .ulink {
       position: relative;
       padding-bottom: 2px;
       display: inline-block;
+      transition: color 200ms var(--ease);
     }
     .ulink::after {
       content: '';
@@ -308,10 +358,12 @@
       left: 0; right: 0; bottom: 0;
       height: 1px;
       background: currentColor;
+      transform: scaleX(0);
       transform-origin: left;
-      transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+      transition: transform 220ms var(--ease);
     }
-    .ulink:hover::after { transform: scaleX(0); transform-origin: right; }
+    .ulink:hover { color: var(--accent); }
+    .ulink:hover::after { transform: scaleX(1); }
 
     /* Image placeholder fallback while loading */
     img { display: block; max-width: 100%; }
