@@ -1706,24 +1706,23 @@ const Partenaires = () => {
           flex-wrap: wrap;
           align-items: center;
         }
-        /* Chaque logo dans une box discrète, fond légèrement plus clair pour
-           lisibilité des logos couleur sur fond sombre. Hover : box ember. */
+        /* Logos posés directement sur le fond, sans box. Bordure très
+           discrète pour structurer, hover ember + lift. */
         .partenaire-logo {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          padding: 18px 24px;
-          background: rgba(236, 232, 222, 0.92);
-          border: 1px solid var(--parch-line);
-          border-radius: 3px;
-          min-height: 72px;
+          padding: 14px 20px;
+          background: transparent;
+          border: 1px solid var(--parch-faint);
+          border-radius: 2px;
+          min-height: 64px;
           min-width: 140px;
-          transition: border-color 220ms var(--ease), transform 220ms var(--ease), background 220ms var(--ease);
+          transition: border-color 220ms var(--ease), transform 220ms var(--ease);
         }
         .partenaire-logo:hover {
           border-color: var(--accent);
           transform: translateY(-2px);
-          background: rgba(236, 232, 222, 1);
         }
         .partenaire-logo img {
           display: block;
