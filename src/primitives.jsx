@@ -86,26 +86,6 @@ const SwordGlyph = ({ size = 36, color = 'currentColor' }) => (
   </svg>
 );
 
-// Diamond logo mark — recreated geometrically to use as a small brand chip
-const DfdaMark = ({ size = 56, color = 'var(--parch)' }) => (
-  <svg width={size} height={size * 1.15} viewBox="0 0 56 64" fill="none">
-    {/* Upper triangle */}
-    <path
-      d="M2 30 L28 4 L54 30 L28 56 L2 30 Z"
-      stroke={color}
-      strokeWidth="1.3"
-      fill="none"
-    />
-    <line x1="2" y1="30" x2="54" y2="30" stroke={color} strokeWidth="1" opacity="0.5" />
-    {/* sword */}
-    <line x1="28" y1="2" x2="28" y2="58" stroke={color} strokeWidth="1.3" />
-    <line x1="22" y1="14" x2="34" y2="14" stroke={color} strokeWidth="1.3" />
-    <circle cx="28" cy="5" r="1.8" stroke={color} strokeWidth="1.2" fill="none" />
-    {/* ember triangle lower fill */}
-    <path d="M5 31 L28 54 L51 31 Z" fill="var(--accent)" opacity="0.15" />
-  </svg>
-);
-
 // Subtle image with overlay support
 const Photo = ({ src, alt = '', focal = '50% 50%', style, children, ratio }) => (
   <div
@@ -230,7 +210,14 @@ const Nav = ({ scrolled }) => {
       >
         {/* Zone gauche — marque */}
         <a className="site-nav-brand" href="#top" onClick={() => setOpen(false)}>
-          <DfdaMark size={28} color="var(--parch)" />
+          <img
+            src="assets/logo.png?v=2"
+            alt=""
+            aria-hidden="true"
+            width="28"
+            height="28"
+            style={{ display: 'block', objectFit: 'contain' }}
+          />
           <span className="site-nav-title">De Feu et d'Acier</span>
         </a>
 
@@ -489,7 +476,6 @@ Object.assign(window, {
   SectionLabel,
   ArrowGlyph,
   SwordGlyph,
-  DfdaMark,
   Photo,
   Reveal,
   useReveal,
