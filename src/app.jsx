@@ -40,6 +40,7 @@ function App() {
       <Galerie />
       <Contact />
       <Faq />
+      <Partenaires />
       <LegalNotes />
       <Footer />
 

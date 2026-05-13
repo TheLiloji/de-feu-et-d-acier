@@ -1573,6 +1573,182 @@ const Galerie = () => (
   </section>
 );
 
+// ───────────────────────────────────────────────────────────────────
+// PARTENAIRES — bandeau placé entre FAQ et bas de page.
+// 2 mini-blocs : Affiliations (FFAMHE) | Équipement (Fait d'Arme,
+// Black Armoury). Logos en couleur, hover discret, liens externes.
+// ───────────────────────────────────────────────────────────────────
+const Partenaires = () => {
+  const affiliations = [
+    {
+      name: 'FFAMHE',
+      logo: 'assets/logo_signature_FFAMHE.png',
+      href: 'https://ffamhe.fr',
+      alt: 'Fédération Française des Arts Martiaux Historiques Européens',
+    },
+  ];
+  const equipement = [
+    {
+      name: 'Fait d\'Arme',
+      logo: 'assets/Fait-d\'arme-logo.png',
+      // TODO PROD : remplacer par l'URL officielle de la boutique si différente
+      href: 'https://www.google.com/search?q=fait+d%27arme+escrime+historique',
+      alt: 'Fait d\'Arme — équipement AMHE',
+    },
+    {
+      name: 'Black Armoury',
+      logo: 'assets/black-armoury-logo.jpg',
+      href: 'https://blackarmoury.com',
+      alt: 'Black Armoury — équipement HEMA',
+    },
+  ];
+
+  return (
+    <section
+      id="partenaires"
+      aria-labelledby="partenaires-title"
+      style={{
+        position: 'relative',
+        padding: '100px 0 110px',
+        background: 'var(--coal)',
+        borderTop: '1px solid var(--parch-line)',
+      }}
+    >
+      <div className="container">
+        <Reveal>
+          <div className="partenaires-head">
+            <div className="eyebrow">Partenaires & affiliations</div>
+            <h2 id="partenaires-title" className="partenaires-title">
+              Ils nous accompagnent.
+            </h2>
+          </div>
+        </Reveal>
+
+        <div className="partenaires-grid">
+          <Reveal delay={120}>
+            <div className="partenaires-col">
+              <div className="partenaires-col-l">Affiliation</div>
+              <div className="partenaires-logos">
+                {affiliations.map((p) => (
+                  <a
+                    key={p.name}
+                    href={p.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="partenaire-logo"
+                    aria-label={p.alt}
+                    title={p.name}
+                  >
+                    <img src={p.logo} alt={p.alt} loading="lazy" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={200}>
+            <div className="partenaires-col">
+              <div className="partenaires-col-l">Équipement</div>
+              <div className="partenaires-logos">
+                {equipement.map((p) => (
+                  <a
+                    key={p.name}
+                    href={p.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="partenaire-logo partenaire-logo--equip"
+                    aria-label={p.alt}
+                    title={p.name}
+                  >
+                    <img src={p.logo} alt={p.alt} loading="lazy" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </div>
+
+      <style>{`
+        .partenaires-head { margin-bottom: 56px; }
+        .partenaires-title {
+          margin: 14px 0 0;
+          font-family: var(--display);
+          font-size: clamp(36px, 4vw, 56px);
+          line-height: 1.05;
+          color: var(--parch);
+          font-weight: 500;
+        }
+        .partenaires-grid {
+          display: grid;
+          grid-template-columns: 1fr 1.6fr;
+          gap: 56px;
+          align-items: start;
+          padding-top: 40px;
+          border-top: 1px solid var(--parch-line);
+        }
+        .partenaires-col {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+        .partenaires-col-l {
+          font-family: var(--eyebrow);
+          font-size: 10.5px;
+          letter-spacing: 0.28em;
+          text-transform: uppercase;
+          color: var(--accent);
+          font-weight: 600;
+        }
+        .partenaires-logos {
+          display: flex;
+          gap: 32px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        /* Chaque logo dans une box discrète, fond légèrement plus clair pour
+           lisibilité des logos couleur sur fond sombre. Hover : box ember. */
+        .partenaire-logo {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 18px 24px;
+          background: rgba(236, 232, 222, 0.92);
+          border: 1px solid var(--parch-line);
+          border-radius: 3px;
+          min-height: 72px;
+          min-width: 140px;
+          transition: border-color 220ms var(--ease), transform 220ms var(--ease), background 220ms var(--ease);
+        }
+        .partenaire-logo:hover {
+          border-color: var(--accent);
+          transform: translateY(-2px);
+          background: rgba(236, 232, 222, 1);
+        }
+        .partenaire-logo img {
+          display: block;
+          max-height: 48px;
+          width: auto;
+          max-width: 200px;
+          object-fit: contain;
+        }
+        .partenaire-logo--equip img {
+          max-height: 40px;
+          max-width: 160px;
+        }
+        @media (max-width: 900px) {
+          .partenaires-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .partenaires-logos { gap: 20px; }
+        }
+        @media (max-width: 640px) {
+          .partenaire-logo { padding: 14px 18px; min-width: 0; }
+          .partenaire-logo img { max-height: 38px; max-width: 140px; }
+        }
+      `}</style>
+    </section>
+  );
+};
+
 Object.assign(window, {
   SectionsStyles,
   Manifesto,
@@ -1583,4 +1759,5 @@ Object.assign(window, {
   Faq,
   Tournois,
   Galerie,
+  Partenaires,
 });

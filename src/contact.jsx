@@ -410,9 +410,10 @@ const Contact = () => {
 };
 
 // ───────────────────────────────────────────────────────────────────
-// LEGAL NOTES — mentions légales + politique de confidentialité (RGPD)
-// Deux <details> natifs, accessibles clavier/lecteur d'écran. Ouverture
-// automatique quand le hash de l'URL pointe vers une des deux ancres.
+// LEGAL MODAL — mentions légales + RGPD en overlay déclenché depuis le
+// footer. L'état est synchronisé avec le hash de l'URL pour que les
+// liens #mentions-legales et #rgpd restent fonctionnels (signets,
+// partage de lien direct, retour arrière navigateur).
 // ───────────────────────────────────────────────────────────────────
 const LegalNotes = () => {
   const [openId, setOpenId] = React.useState(() => {
@@ -421,32 +422,79 @@ const LegalNotes = () => {
     return h === 'mentions-legales' || h === 'rgpd' ? h : null;
   });
 
+  // Sync URL hash → state
   React.useEffect(() => {
     const onHash = () => {
       const h = window.location.hash.replace('#', '');
       if (h === 'mentions-legales' || h === 'rgpd') setOpenId(h);
+      else if (openId) setOpenId(null);
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
-  }, []);
+  }, [openId]);
+
+  // Lock body scroll + ESC pour fermer
+  React.useEffect(() => {
+    if (!openId) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => {
+      if (e.key === 'Escape') close();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [openId]);
+
+  const close = () => {
+    setOpenId(null);
+    // Retire le hash sans relancer le hashchange listener
+    if (window.location.hash) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  };
+
+  const onBackdropClick = (e) => {
+    if (e.target === e.currentTarget) close();
+  };
+
+  if (!openId) return null;
+
+  const isMentions = openId === 'mentions-legales';
 
   return (
-    <section
-      aria-label="Informations légales"
-      style={{
-        padding: '72px 0 24px',
-        background: 'var(--ink)',
-        borderTop: '1px solid var(--parch-line)',
-      }}
+    <div
+      className="legal-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="legal-modal-title"
+      onClick={onBackdropClick}
     >
-      <div className="container">
-        <div className="legal-grid">
-          <details id="mentions-legales" open={openId === 'mentions-legales'} className="legal-block">
-            <summary>
-              <span className="legal-label">Mentions légales</span>
-              <span aria-hidden="true" className="legal-chevron" />
-            </summary>
-            <div className="legal-body">
+      <div className="legal-modal-panel" role="document">
+        <div className="legal-modal-head">
+          <div>
+            <div className="legal-modal-eyebrow">Informations légales</div>
+            <h2 id="legal-modal-title" className="legal-modal-title">
+              {isMentions ? 'Mentions légales' : 'Confidentialité & RGPD'}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={close}
+            className="legal-modal-close"
+            aria-label="Fermer"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="square">
+              <path d="M6 6L18 18M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="legal-modal-body">
+          {isMentions ? (
+            <>
               <p>
                 Site édité par la section AMHE « De Feu et d'Acier » de l'USAM
                 Clermont-Ferrand, association loi 1901 affiliée à la FFAMHE.
@@ -470,15 +518,9 @@ const LegalNotes = () => {
                 du club ou de leurs auteurs respectifs. Toute reproduction
                 non autorisée est interdite.
               </p>
-            </div>
-          </details>
-
-          <details id="rgpd" open={openId === 'rgpd'} className="legal-block">
-            <summary>
-              <span className="legal-label">Confidentialité &amp; données (RGPD)</span>
-              <span aria-hidden="true" className="legal-chevron" />
-            </summary>
-            <div className="legal-body">
+            </>
+          ) : (
+            <>
               <p>
                 Ce site ne dépose <strong>aucun cookie</strong>, n'utilise{' '}
                 <strong>aucun outil d'analyse</strong> et ne stocke aucune
@@ -501,11 +543,25 @@ const LegalNotes = () => {
                 concernent. Pour exercer ces droits, contactez la présidente
                 de section à l'adresse ci-dessus.
               </p>
-            </div>
-          </details>
+            </>
+          )}
+
+          <div className="legal-modal-switch">
+            {isMentions ? (
+              <a href="#rgpd" className="legal-modal-switch-link">
+                Voir la politique de confidentialité
+                <ArrowGlyph size={11} color="currentColor" />
+              </a>
+            ) : (
+              <a href="#mentions-legales" className="legal-modal-switch-link">
+                Voir les mentions légales
+                <ArrowGlyph size={11} color="currentColor" />
+              </a>
+            )}
+          </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 };
 
@@ -539,7 +595,13 @@ const Footer = () => (
 
       <div className="footer-grid">
         <div>
-          <DfdaMark size={48} color="var(--parch)" />
+          <img
+            src="assets/logo.png?v=2"
+            alt="De Feu et d'Acier"
+            width="56"
+            height="56"
+            style={{ display: 'block', objectFit: 'contain' }}
+          />
           <p
             style={{
               margin: '20px 0 0',
@@ -907,58 +969,107 @@ const ContactStyles = () => (
       .footer-marquee { font-size: clamp(44px, 13vw, 84px); margin-bottom: 44px; }
     }
 
-    /* Legal notes — deux details collapsibles côte-à-côte */
-    .legal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-    .legal-block {
-      border: 1px solid var(--parch-line);
-      border-radius: 2px;
-      background: linear-gradient(180deg, rgba(236,232,222,0.022), rgba(236,232,222,0.006));
-      overflow: hidden;
-    }
-    .legal-block > summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 18px 22px;
+    /* ── Legal modal (overlay) ────────────────────────────────────── */
+    .legal-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(8, 7, 6, 0.78);
+      backdrop-filter: blur(8px) saturate(120%);
+      -webkit-backdrop-filter: blur(8px) saturate(120%);
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      user-select: none;
+      justify-content: center;
+      padding: 48px 24px;
+      animation: legal-modal-fade 200ms var(--ease);
     }
-    .legal-block > summary::-webkit-details-marker { display: none; }
-    .legal-label {
+    @keyframes legal-modal-fade {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .legal-modal-panel {
+      position: relative;
+      background: var(--coal);
+      border: 1px solid var(--parch-line);
+      border-radius: 3px;
+      max-width: 720px;
+      width: 100%;
+      max-height: calc(100vh - 96px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow:
+        0 30px 80px -20px rgba(0,0,0,0.6),
+        0 0 0 1px rgba(236,232,222,0.04) inset;
+      animation: legal-modal-rise 280ms var(--ease);
+    }
+    @keyframes legal-modal-rise {
+      from { opacity: 0; transform: translateY(16px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .legal-modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 28px 32px 22px;
+      border-bottom: 1px solid var(--parch-line);
+    }
+    .legal-modal-eyebrow {
       font-family: var(--eyebrow);
-      font-size: 11px;
-      letter-spacing: 0.26em;
+      font-size: 10.5px;
+      letter-spacing: 0.28em;
       text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .legal-modal-title {
+      margin: 0;
+      font-family: var(--display);
+      font-size: clamp(22px, 2.6vw, 30px);
+      line-height: 1.15;
       color: var(--parch);
       font-weight: 500;
     }
-    .legal-chevron {
-      width: 9px; height: 9px;
-      border-right: 1.5px solid var(--parch-mute);
-      border-bottom: 1.5px solid var(--parch-mute);
-      transform: rotate(45deg);
-      transition: transform 200ms var(--ease);
-    }
-    .legal-block[open] > summary .legal-chevron { transform: rotate(-135deg); }
-    .legal-block[open] > summary .legal-label { color: var(--accent); }
-    .legal-body {
-      padding: 4px 22px 22px;
-      border-top: 1px solid var(--parch-line);
-      font-size: 13.5px;
-      line-height: 1.65;
+    .legal-modal-close {
+      background: transparent;
+      border: 1px solid var(--parch-line);
       color: var(--parch-soft);
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border-radius: 2px;
+      transition: border-color 200ms var(--ease), color 200ms var(--ease), background 200ms var(--ease);
     }
-    .legal-body p { margin: 14px 0 0; }
-    .legal-body a { color: var(--parch); border-bottom: 1px solid var(--parch-line); }
-    .legal-body a:hover { color: var(--accent); border-bottom-color: var(--accent); }
-    .legal-mute { color: var(--parch-mute) !important; font-size: 12.5px !important; }
+    .legal-modal-close:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(224,85,44,0.06);
+    }
+    .legal-modal-body {
+      padding: 24px 32px 32px;
+      font-family: var(--body);
+      font-size: 14.5px;
+      line-height: 1.7;
+      color: var(--parch-soft);
+      overflow-y: auto;
+    }
+    .legal-modal-body p { margin: 14px 0 0; }
+    .legal-modal-body p:first-of-type { margin-top: 0; }
+    .legal-modal-body a { color: var(--parch); border-bottom: 1px solid var(--parch-line); }
+    .legal-modal-body a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+    .legal-mute { color: var(--parch-mute) !important; font-size: 13px !important; }
     .legal-dl {
-      margin: 16px 0 0;
+      margin: 18px 0 0;
       display: grid;
       grid-template-columns: 180px 1fr;
-      gap: 4px 18px;
+      gap: 6px 18px;
     }
     .legal-dl dt {
       font-family: var(--eyebrow);
@@ -970,8 +1081,30 @@ const ContactStyles = () => (
       padding-top: 4px;
     }
     .legal-dl dd { margin: 0; color: var(--parch-soft); padding: 4px 0; }
-    @media (max-width: 900px) {
-      .legal-grid { grid-template-columns: 1fr; }
+    .legal-modal-switch {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--parch-line);
+    }
+    .legal-modal-switch-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--eyebrow);
+      font-size: 10.5px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 500;
+      padding-bottom: 2px;
+      border-bottom: 1px solid transparent;
+      transition: border-color 200ms var(--ease);
+    }
+    .legal-modal-switch-link:hover { border-bottom-color: var(--accent); }
+    @media (max-width: 640px) {
+      .legal-modal { padding: 24px 16px; }
+      .legal-modal-head { padding: 22px 22px 18px; }
+      .legal-modal-body { padding: 20px 22px 26px; }
       .legal-dl { grid-template-columns: 1fr; gap: 2px 0; }
       .legal-dl dt { padding-top: 10px; }
     }
