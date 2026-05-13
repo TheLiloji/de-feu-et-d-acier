@@ -44,13 +44,14 @@ const Field = ({ label, placeholder, multiline = false, type = 'text', name, val
             className="forge-field"
             style={{
               width: '100%',
-              padding: '16px 0',
+              padding: '14px 0',
               background: 'transparent',
               border: 'none',
               borderBottom: '1px solid var(--parch-line)',
               color: 'var(--parch)',
-              fontFamily: 'var(--display)',
-              fontSize: 22,
+              fontFamily: 'var(--body)',
+              fontSize: 16,
+              lineHeight: 1.55,
               fontWeight: 400,
               outline: 'none',
               resize: 'vertical',
@@ -69,13 +70,14 @@ const Field = ({ label, placeholder, multiline = false, type = 'text', name, val
             className="forge-field"
             style={{
               width: '100%',
-              padding: '16px 0',
+              padding: '14px 0',
               background: 'transparent',
               border: 'none',
               borderBottom: '1px solid var(--parch-line)',
               color: 'var(--parch)',
-              fontFamily: 'var(--display)',
-              fontSize: 24,
+              fontFamily: 'var(--body)',
+              fontSize: 17,
+              lineHeight: 1.4,
               fontWeight: 400,
               outline: 'none',
             }}
@@ -115,8 +117,8 @@ const Contact = () => {
   };
   return (
     <section
-      id="contact"
-      data-screen-label="10 Contact"
+      id="rejoindre"
+      data-screen-label="09 Rejoindre"
       style={{
         position: 'relative',
         padding: '160px 0 100px',
@@ -126,7 +128,7 @@ const Contact = () => {
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={9} name="Rejoindre le club" />
+          <SectionLabel number={8} name="Rejoindre le club" />
         </Reveal>
 
         <Reveal>
@@ -194,7 +196,7 @@ const Contact = () => {
         </Reveal>
 
         <div className="contact-grid">
-          {/* Left: practical info */}
+          {/* Left: prix + équipement + infos pratiques */}
           <Reveal>
             <div
               style={{
@@ -203,61 +205,44 @@ const Contact = () => {
                 gap: 56,
               }}
             >
-              <div>
-                <Eyebrow>Première séance</Eyebrow>
-                <p
-                  style={{
-                    margin: '20px 0 0',
-                    fontFamily: 'var(--display)',
-                    fontStyle: 'italic',
-                    fontSize: 24,
-                    lineHeight: 1.4,
-                    color: 'var(--parch)',
-                  }}
-                >
-                  Venez en tenue de sport, chaussures propres pour le
-                  gymnase et bouteille d'eau. Le matériel d'initiation
-                  peut être prêté. Contactez-nous avant de venir pour
-                  qu'on vous attende.
+              {/* PRIX — gros chiffre 85€ pour capter l'œil immédiatement */}
+              <div className="rejoindre-price">
+                <div className="rejoindre-price-eyebrow">Adhésion · saison 25-26</div>
+                <div className="rejoindre-price-figure">
+                  <span className="rejoindre-price-amount">85</span>
+                  <span className="rejoindre-price-currency">€</span>
+                  <span className="rejoindre-price-per">par an</span>
+                </div>
+                <p className="rejoindre-price-headline">
+                  Première séance gratuite. Rejoindre en cours d'année est possible.
                 </p>
               </div>
 
-              <div className="contact-info-pair">
-                {[
-                  { l: 'Adhésion 2025-2026', v: '85 €', s: 'inscription via HelloAsso' },
-                  { l: 'Saison', v: 'Sept. → Août', s: 'rejoindre en cours d\'année possible' },
-                ].map((c, idx) => (
-                  <div key={c.l}>
-                    <div
-                      style={{
-                        fontFamily: 'var(--eyebrow)',
-                        fontSize: 10,
-                        letterSpacing: '0.32em',
-                        color: 'var(--parch-mute)',
-                        textTransform: 'uppercase',
-                        marginBottom: 14,
-                      }}
-                    >
-                      {c.l}
-                    </div>
-                    <div
-                      className="display"
-                      style={{ fontSize: 56, lineHeight: 1, marginBottom: 8 }}
-                    >
-                      {c.v}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: 'var(--parch-mute)',
-                      }}
-                    >
-                      {c.s}
-                    </div>
-                  </div>
-                ))}
+              {/* ÉQUIPEMENT — 2 listes : prêté / à acheter */}
+              <div className="rejoindre-equip">
+                <div className="rejoindre-equip-col">
+                  <div className="rejoindre-equip-l">Prêté par le club</div>
+                  <ul className="rejoindre-equip-list">
+                    <li>Masque d'escrime</li>
+                    <li>Gants</li>
+                    <li>Arme d'entraînement</li>
+                    <li>Protections complémentaires</li>
+                  </ul>
+                </div>
+                <div className="rejoindre-equip-col rejoindre-equip-col--later">
+                  <div className="rejoindre-equip-l">À prévoir après 1-2 mois</div>
+                  <ul className="rejoindre-equip-list">
+                    <li>Votre masque personnel</li>
+                    <li>Vos gants personnels</li>
+                  </ul>
+                  <p className="rejoindre-equip-note">
+                    Si vous décidez de continuer. Le reste (arme,
+                    protections) reste fourni par le club.
+                  </p>
+                </div>
               </div>
 
+              {/* INFOS PRATIQUES compactes */}
               <div
                 style={{
                   display: 'grid',
@@ -312,9 +297,9 @@ const Contact = () => {
                     </div>
                     <div
                       style={{
-                        fontFamily: 'var(--display)',
-                        fontSize: 19,
-                        lineHeight: 1.35,
+                        fontFamily: 'var(--body)',
+                        fontSize: 15,
+                        lineHeight: 1.55,
                         color: 'var(--parch)',
                         whiteSpace: 'pre-line',
                       }}
@@ -355,20 +340,20 @@ const Contact = () => {
                 top: 120,
               }}
             >
-              <div
+              <p
                 style={{
-                  fontFamily: 'var(--display)',
-                  fontStyle: 'italic',
-                  fontSize: 26,
-                  lineHeight: 1.45,
-                  color: 'var(--parch)',
-                  marginBottom: 12,
+                  margin: 0,
+                  fontFamily: 'var(--body)',
+                  fontSize: 17,
+                  lineHeight: 1.6,
+                  color: 'var(--parch-soft)',
+                  marginBottom: 8,
                   maxWidth: 480,
                 }}
               >
                 Écrivez-nous pour préparer votre venue, ou retrouvez-nous
                 sur la page Facebook du club.
-              </div>
+              </p>
               <div className="contact-form-row">
                 <Field label="Nom" placeholder="Prénom Nom" name="name" value={form.name} onChange={onField('name')} required />
                 <Field label="Email" placeholder="vous@email.fr" type="email" name="email" value={form.email} onChange={onField('email')} required />
@@ -411,9 +396,9 @@ const Contact = () => {
                   Le bouton ouvre votre messagerie avec le message
                   pré-rempli. Pas de stockage de données côté site.
                 </div>
-                <button type="submit" className="btn btn--ember">
+                <button type="submit" className="btn">
                   {submitted ? 'Message préparé.' : 'Envoyer le message'}
-                  <ArrowGlyph size={13} color="currentColor" />
+                  <ArrowGlyph size={11} color="currentColor" />
                 </button>
               </div>
             </form>
@@ -573,8 +558,9 @@ const Footer = () => (
           {
             label: 'Le club',
             items: [
-              ['Manifeste', '#manifesto'],
+              ['La rigueur', '#rigueur'],
               ['Disciplines', '#disciplines'],
+              ['FAQ', '#faq'],
               ['Tournois', '#tournois'],
               ['Galerie', '#galerie'],
             ],
@@ -582,9 +568,9 @@ const Footer = () => (
           {
             label: 'Pratique',
             items: [
-              ['Salle d\'armes', '#salle'],
+              ['Créneaux et lieux', '#creneaux'],
               ['Adhésion', 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026'],
-              ['Première séance', '#contact'],
+              ['Première séance', '#rejoindre'],
               ['HelloAsso', 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand'],
             ],
           },
@@ -631,8 +617,8 @@ const Footer = () => (
                       className="ulink"
                       {...(ext ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                       style={{
-                        fontFamily: 'var(--display)',
-                        fontSize: 19,
+                        fontFamily: 'var(--body)',
+                        fontSize: 14.5,
                         color: 'var(--parch)',
                       }}
                     >
@@ -644,28 +630,6 @@ const Footer = () => (
             </ul>
           </div>
         ))}
-      </div>
-
-      {/* Partenaires / affiliations */}
-      <div className="footer-partners">
-        <div className="footer-partners-label">Affiliations</div>
-        <div className="footer-partners-list">
-          {[
-            ['FFAMHE', 'https://ffamhe.fr'],
-            ['USAM Clermont-Ferrand', 'https://usam-clermont-ferrand.com/amhe-arts-martiaux-historiques-europeens'],
-            ['HEMA Ratings', 'https://hemaratings.com/clubs/details/1155/'],
-          ].map(([l, h]) => (
-            <a
-              key={l}
-              href={h}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="footer-partner"
-            >
-              {l}
-            </a>
-          ))}
-        </div>
       </div>
 
       <div
@@ -692,11 +656,130 @@ const Footer = () => (
 // Inject form-specific styles once
 const ContactStyles = () => (
   <style>{`
+    /* ── Section Rejoindre : prix + équipement ─────────────────────── */
+    .rejoindre-price {
+      padding: 32px 0 28px;
+      border-top: 2px solid var(--accent);
+      border-bottom: 1px solid var(--parch-line);
+    }
+    .rejoindre-price-eyebrow {
+      font-family: var(--eyebrow);
+      font-size: 10.5px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+    .rejoindre-price-figure {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      font-family: var(--display);
+      font-variant-numeric: tabular-nums;
+      line-height: 0.92;
+      margin-bottom: 14px;
+    }
+    .rejoindre-price-amount {
+      font-size: clamp(96px, 11vw, 168px);
+      font-weight: 500;
+      letter-spacing: -0.025em;
+      color: var(--parch);
+    }
+    .rejoindre-price-currency {
+      font-size: clamp(40px, 4.4vw, 64px);
+      font-weight: 400;
+      color: var(--accent);
+    }
+    .rejoindre-price-per {
+      font-family: var(--eyebrow);
+      font-size: 11px;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: var(--parch-mute);
+      font-weight: 500;
+      margin-left: auto;
+      padding-bottom: 8px;
+    }
+    .rejoindre-price-headline {
+      margin: 0;
+      font-family: var(--display);
+      font-style: italic;
+      font-size: clamp(18px, 1.6vw, 22px);
+      line-height: 1.4;
+      color: var(--parch-soft);
+      max-width: 480px;
+    }
+
+    .rejoindre-equip {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+    }
+    .rejoindre-equip-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 22px 24px;
+      border: 1px solid var(--parch-line);
+      border-radius: 2px;
+      background: linear-gradient(180deg, rgba(236,232,222,0.022), rgba(236,232,222,0.006));
+    }
+    .rejoindre-equip-col--later {
+      background: linear-gradient(180deg, rgba(224,85,44,0.04), rgba(224,85,44,0.008));
+      border-color: rgba(224,85,44,0.22);
+    }
+    .rejoindre-equip-l {
+      font-family: var(--eyebrow);
+      font-size: 10.5px;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: var(--parch-mute);
+      font-weight: 600;
+    }
+    .rejoindre-equip-col--later .rejoindre-equip-l { color: var(--accent); }
+    .rejoindre-equip-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .rejoindre-equip-list li {
+      font-family: var(--body);
+      font-size: 14.5px;
+      line-height: 1.5;
+      color: var(--parch);
+      padding-left: 18px;
+      position: relative;
+    }
+    .rejoindre-equip-list li::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0.7em;
+      width: 6px; height: 1px;
+      background: var(--accent);
+    }
+    .rejoindre-equip-note {
+      margin: 6px 0 0;
+      font-family: var(--body);
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--parch-mute);
+      font-style: italic;
+    }
+
+    @media (max-width: 640px) {
+      .rejoindre-price-figure { flex-wrap: wrap; gap: 8px 14px; }
+      .rejoindre-price-per { margin-left: 0; padding-bottom: 0; }
+      .rejoindre-equip { grid-template-columns: 1fr; gap: 16px; }
+    }
+
     .forge-field::placeholder {
       color: var(--parch-mute);
       opacity: 0.55;
-      font-style: italic;
-      font-family: var(--display);
+      font-family: var(--body);
     }
     .forge-field:focus { caret-color: var(--accent); }
 
@@ -750,10 +833,12 @@ const ContactStyles = () => (
     }
     .contact-quick-btn--ember .contact-quick-l { color: var(--parch); }
     .contact-quick-v {
-      font-family: var(--display);
-      font-size: 18px;
+      font-family: var(--body);
+      font-size: 16px;
+      font-weight: 500;
       color: var(--parch);
       font-variant-numeric: tabular-nums;
+      letter-spacing: 0;
     }
 
     @media (max-width: 900px) {
@@ -821,38 +906,6 @@ const ContactStyles = () => (
     @media (max-width: 640px) {
       .footer-marquee { font-size: clamp(44px, 13vw, 84px); margin-bottom: 44px; }
     }
-
-    /* Affiliations strip */
-    .footer-partners {
-      display: flex;
-      align-items: center;
-      gap: 28px;
-      flex-wrap: wrap;
-      padding: 28px 0;
-      margin-bottom: 8px;
-      border-top: 1px solid var(--parch-line);
-    }
-    .footer-partners-label {
-      font-family: var(--eyebrow);
-      font-size: 10px;
-      letter-spacing: 0.26em;
-      text-transform: uppercase;
-      color: var(--parch-mute);
-      font-weight: 500;
-    }
-    .footer-partners-list { display: flex; gap: 28px; flex-wrap: wrap; }
-    .footer-partner {
-      font-family: var(--eyebrow);
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--parch-soft);
-      font-weight: 500;
-      padding-bottom: 2px;
-      border-bottom: 1px solid transparent;
-      transition: color 200ms var(--ease), border-color 200ms var(--ease);
-    }
-    .footer-partner:hover { color: var(--accent); border-bottom-color: var(--accent); }
 
     /* Legal notes — deux details collapsibles côte-à-côte */
     .legal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }

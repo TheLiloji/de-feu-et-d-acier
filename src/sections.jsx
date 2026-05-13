@@ -15,32 +15,16 @@ const SectionsStyles = () => (
     .editorial-split.center { align-items: center; }
     .editorial-split.bottom { align-items: end; }
 
-    /* Pillars (Club 3-col) — acier + braise au hover */
+    /* Pillars (Club 3-col) — sobre, sans effet ember dédié (pas interactif) */
     .pillars { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--parch-line); border-bottom: 1px solid var(--parch-line); }
     .pillar {
-      position: relative;
       padding: 52px 44px;
       display: flex;
       flex-direction: column;
       gap: 18px;
       border-left: 1px solid var(--parch-line);
-      transition: background 320ms var(--ease);
     }
     .pillar:first-child { border-left: none; }
-    .pillar::after {
-      content: '';
-      position: absolute;
-      left: 44px;
-      bottom: 0;
-      width: 36px;
-      height: 1px;
-      background: var(--accent);
-      transform: scaleX(0);
-      transform-origin: left;
-      transition: transform 360ms var(--ease);
-    }
-    .pillar:hover { background: linear-gradient(180deg, rgba(224,85,44,0.025), transparent 70%); }
-    .pillar:hover::after { transform: scaleX(1); }
 
     /* Disciplines card strip */
     .disc-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; width: 100%; height: 620px; border-top: 1px solid var(--parch-line); }
@@ -67,24 +51,18 @@ const SectionsStyles = () => (
       pointer-events: none;
     }
     .disc-card[aria-pressed="true"]::after { opacity: 0.9; }
-
-    /* Schedule table — left ember bar appears on hover */
-    .salle-table-row { display: grid; grid-template-columns: 80px 200px 1.4fr 1fr 1.3fr 60px; padding: 26px 0; align-items: center; gap: 24px; border-bottom: 1px solid var(--parch-line); position: relative; transition: background 200ms var(--ease); }
-    .salle-table-row::before {
-      content: '';
-      position: absolute;
-      left: -12px; top: 50%;
-      width: 2px; height: 0;
-      background: var(--accent);
-      transform: translateY(-50%);
-      transition: height 260ms var(--ease);
-      pointer-events: none;
+    /* Mobile : descriptif toujours visible, l'utilisateur scrolle latéralement
+       et n'a pas le hover desktop pour révéler le texte. */
+    @media (hover: none) {
+      .disc-card .disc-desc {
+        max-height: 200px !important;
+        opacity: 1 !important;
+      }
     }
-    .salle-table-row:hover::before { height: 26px; }
-    .salle-table-header { display: grid; grid-template-columns: 80px 200px 1.4fr 1fr 1.3fr 60px; padding: 18px 0; border-bottom: 1px solid var(--parch-line); align-items: center; gap: 24px; }
 
-    /* Events */
-    .event-row { display: grid; grid-template-columns: 180px 1fr auto; gap: 40px; padding: 40px 0; border-bottom: 1px solid var(--parch-line); align-items: start; position: relative; }
+    /* Schedule table — hover discret (juste un wash) */
+    .salle-table-row { display: grid; grid-template-columns: 80px 220px 1.6fr 1fr; padding: 26px 0; align-items: center; gap: 24px; border-bottom: 1px solid var(--parch-line); transition: background 200ms var(--ease); }
+    .salle-table-header { display: grid; grid-template-columns: 80px 220px 1.6fr 1fr; padding: 18px 0; border-bottom: 1px solid var(--parch-line); align-items: center; gap: 24px; }
 
     /* Tournois split */
     .tournois-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 56px; align-items: start; }
@@ -111,6 +89,11 @@ const SectionsStyles = () => (
     }
     .galerie-tile:hover::after { opacity: 1; }
     .galerie-tile:hover .caption { opacity: 1; transform: translateY(0); }
+    /* Tactile : pas de hover, on affiche caption + voile en permanence */
+    @media (hover: none) {
+      .galerie-tile::after { opacity: 1 !important; }
+      .galerie-tile .caption { opacity: 1 !important; transform: translateY(0) !important; }
+    }
 
     /* Section title + lede 2-col header */
     .section-head { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: end; margin-bottom: 80px; }
@@ -123,12 +106,8 @@ const SectionsStyles = () => (
 
     /* Contact */
     .contact-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 100px; align-items: start; }
-    .contact-info-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; padding-top: 36px; border-top: 1px solid var(--parch-line); }
     .contact-info-row { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: baseline; padding-bottom: 18px; border-bottom: 1px solid var(--parch-line); }
     .contact-form-row { display: flex; gap: 32px; }
-
-    /* Marginalia (manifesto) */
-    .marginalia { display: grid; grid-template-columns: auto 1fr; row-gap: 22px; column-gap: 40px; padding-top: 32px; border-top: 1px solid var(--parch-line); max-width: 600px; }
 
     /* ── Responsive: 1100px and below ── */
     @media (max-width: 1100px) {
@@ -140,8 +119,6 @@ const SectionsStyles = () => (
     /* ── Tablet: 900px and below ── */
     @media (max-width: 900px) {
       section { padding: 100px 0 110px !important; }
-      /* FirstSteps reste compact (utility band, pas une section "récit") */
-      section#firststeps { padding: 56px 0 60px !important; }
       .editorial-split { grid-template-columns: 1fr !important; gap: 40px !important; align-items: start !important; }
       .editorial-split .lede-col, .editorial-split img { justify-self: start !important; }
       .section-head { grid-template-columns: 1fr !important; gap: 28px !important; margin-bottom: 56px !important; align-items: start !important; }
@@ -149,16 +126,14 @@ const SectionsStyles = () => (
       .pillars { grid-template-columns: 1fr !important; }
       .pillar { border-left: none !important; border-top: 1px solid var(--parch-line); padding: 36px 0 !important; }
       .pillar:first-child { border-top: none; }
-      .marginalia { grid-template-columns: 1fr !important; column-gap: 0 !important; row-gap: 6px !important; }
-      .marginalia > div:nth-child(even) { padding-bottom: 14px; border-bottom: 1px dashed var(--parch-faint); margin-bottom: 6px; }
       .tournois-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+      .tournois-facts li { grid-template-columns: 160px 1fr !important; }
       .galerie-grid { grid-template-columns: repeat(6, 1fr) !important; grid-auto-rows: 140px !important; }
       .galerie-tile-l { grid-column: span 6 !important; grid-row: span 2 !important; }
       .galerie-tile-m { grid-column: span 3 !important; grid-row: span 2 !important; }
       .galerie-tile-s { grid-column: span 3 !important; grid-row: span 2 !important; }
       .contact-grid { grid-template-columns: 1fr !important; gap: 64px !important; }
       .contact-form-row { flex-direction: column; gap: 28px; }
-      .contact-info-pair { grid-template-columns: 1fr !important; }
       .contact-info-row { grid-template-columns: 1fr !important; gap: 6px; }
       .footer-grid { grid-template-columns: 1fr 1fr !important; gap: 40px !important; }
       .footer-grid > div:first-child { grid-column: 1 / -1; }
@@ -168,10 +143,6 @@ const SectionsStyles = () => (
       /* Salle table → cards */
       .salle-table-header { display: none !important; }
       .salle-table-row { grid-template-columns: 1fr !important; gap: 6px !important; padding: 22px 0 !important; }
-      .salle-table-row > div:nth-child(6) { display: none !important; }
-      .salle-table-row > div:nth-child(4) { order: 5; }
-      .event-row { grid-template-columns: 1fr !important; gap: 16px !important; padding: 32px 0 !important; }
-      .event-row > div:last-child { flex-direction: row !important; align-items: center !important; gap: 16px !important; }
     }
 
     /* ── Phone: 640px and below ── */
@@ -180,232 +151,10 @@ const SectionsStyles = () => (
       .footer-grid > div:first-child { grid-column: auto; }
       section h2.display { font-size: clamp(40px, 11vw, 64px) !important; }
       .galerie-grid { grid-auto-rows: 120px !important; }
-      .identite-container { padding: 100px 22px !important; }
-    }
-    @media (max-width: 900px) {
-      .identite-container { padding: 110px 22px !important; }
-    }
-
-    /* Subtle horizon ember glow at base of Identite — like the night above a forge city */
-    .identite-horizon {
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      height: 90px;
-      background: radial-gradient(60% 100% at 50% 100%, rgba(200,64,48,0.18), transparent 70%);
-      pointer-events: none;
     }
   `}</style>
 );
 
-// ───────────────────────────────────────────────────────────────────
-// FIRST STEPS — bande pratique juste après le hero
-// Trois étapes simples : Contact → Première séance → Adhésion
-// ───────────────────────────────────────────────────────────────────
-const FirstSteps = () => (
-  <section
-    id="firststeps"
-    aria-label="Comment essayer le club"
-    style={{
-      position: 'relative',
-      padding: '72px 0 72px',
-      background: 'var(--coal)',
-      borderTop: '1px solid var(--parch-line)',
-      borderBottom: '1px solid var(--parch-line)',
-    }}
-  >
-    <div className="container">
-      <div
-        className="first-steps-grid"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1.05fr 1fr 1fr 1fr',
-          gap: 36,
-          alignItems: 'start',
-        }}
-      >
-        <Reveal>
-          <div>
-            <Eyebrow>Comment essayer</Eyebrow>
-            <h3
-              className="display"
-              style={{
-                margin: '14px 0 12px',
-                fontSize: 'clamp(28px, 2.6vw, 38px)',
-                lineHeight: 1.05,
-                fontWeight: 400,
-              }}
-            >
-              Trois étapes,
-              {' '}
-              <em style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent)' }}>
-                pas plus.
-              </em>
-            </h3>
-            <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.65, color: 'var(--parch-mute)', maxWidth: 340 }}>
-              On vous attend, on vous prête le matériel, et vous décidez après si vous restez.
-            </p>
-          </div>
-        </Reveal>
-
-        {[
-          {
-            n: '01',
-            title: 'Contactez le club',
-            body: 'Un message, un mail ou un appel pour caler une première séance — on vous dit quand venir.',
-            primary: { href: 'mailto:c.sillac@protonmail.com', label: 'Écrire un mail' },
-            secondary: { href: 'tel:+33631585460', label: '06 31 58 54 60' },
-          },
-          {
-            n: '02',
-            title: 'Venez essayer',
-            body: 'Tenue de sport, chaussures propres, bouteille d\'eau. On prête masque, gants et arme d\'entraînement.',
-            primary: { href: '#salle', label: 'Voir les créneaux' },
-            secondary: { href: '#disciplines', label: 'Les disciplines' },
-          },
-          {
-            n: '03',
-            title: 'Inscrivez-vous',
-            body: 'Si ça vous plaît, adhésion 85 € pour la saison via HelloAsso. Rejoindre en cours d\'année est possible.',
-            primary: {
-              href: 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026',
-              label: 'Adhérer en ligne',
-              external: true,
-            },
-          },
-        ].map((s, i) => (
-          <Reveal key={s.n} delay={120 + i * 80}>
-            <div className="first-step-card">
-              <div className="first-step-num">
-                <span>{s.n}</span>
-                <span className="first-step-rule" aria-hidden="true" />
-              </div>
-              <div className="first-step-title">{s.title}</div>
-              <p className="first-step-body">{s.body}</p>
-              <div className="first-step-actions">
-                <a
-                  href={s.primary.href}
-                  {...(s.primary.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                  className="first-step-link first-step-link--primary"
-                >
-                  {s.primary.label}
-                  <ArrowGlyph size={11} color="currentColor" />
-                </a>
-                {s.secondary && (
-                  <a
-                    href={s.secondary.href}
-                    className="first-step-link first-step-link--mute"
-                  >
-                    {s.secondary.label}
-                  </a>
-                )}
-              </div>
-            </div>
-          </Reveal>
-        ))}
-      </div>
-      <style>{`
-        .first-step-card {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-          padding: 30px 28px 26px;
-          background: linear-gradient(180deg, rgba(236,232,222,0.028), rgba(236,232,222,0.008));
-          border: 1px solid var(--parch-line);
-          border-radius: 2px;
-          height: 100%;
-          overflow: hidden;
-          transition: border-color 260ms var(--ease), transform 260ms var(--ease), background 260ms var(--ease);
-        }
-        /* Liseré ember subtil en haut, animation au hover */
-        .first-step-card::before {
-          content: '';
-          position: absolute;
-          left: 0; right: 0; top: 0;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, var(--accent), transparent);
-          opacity: 0.25;
-          transform: scaleX(0.4);
-          transform-origin: left;
-          transition: transform 420ms var(--ease), opacity 260ms var(--ease);
-        }
-        .first-step-card:hover {
-          border-color: rgba(236,232,222,0.30);
-          transform: translateY(-2px);
-          background: linear-gradient(180deg, rgba(224,85,44,0.05), rgba(236,232,222,0.012));
-        }
-        .first-step-card:hover::before { transform: scaleX(1); opacity: 0.7; }
-
-        .first-step-num {
-          display: inline-flex;
-          align-items: center;
-          gap: 14px;
-          font-family: var(--eyebrow);
-          font-size: 10.5px;
-          letter-spacing: 0.30em;
-          color: var(--accent);
-          font-weight: 600;
-        }
-        .first-step-rule {
-          display: inline-block;
-          width: 28px;
-          height: 1px;
-          background: var(--accent);
-          opacity: 0.6;
-        }
-        .first-step-title {
-          font-family: var(--display);
-          font-size: 28px;
-          line-height: 1.12;
-          color: var(--parch);
-          font-weight: 500;
-        }
-        .first-step-body {
-          margin: 0;
-          font-size: 14px;
-          line-height: 1.65;
-          color: var(--parch-mute);
-          flex: 1;
-        }
-        .first-step-actions {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          margin-top: 8px;
-        }
-        .first-step-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          font-family: var(--eyebrow);
-          font-size: 10.5px;
-          letter-spacing: 0.22em;
-          text-transform: uppercase;
-          font-weight: 500;
-          min-height: 32px;
-          transition: color 200ms var(--ease), gap 200ms var(--ease);
-        }
-        .first-step-link--primary { color: var(--parch); }
-        .first-step-link--primary:hover { color: var(--accent); gap: 14px; }
-        .first-step-link--mute {
-          color: var(--parch-mute);
-          font-variant-numeric: tabular-nums;
-        }
-        .first-step-link--mute:hover { color: var(--accent); }
-
-        @media (max-width: 1100px) {
-          .first-steps-grid { grid-template-columns: 1fr 1fr !important; gap: 24px !important; }
-        }
-        @media (max-width: 640px) {
-          .first-steps-grid { grid-template-columns: 1fr !important; }
-          .first-step-card { padding: 26px 22px 22px; }
-          .first-step-title { font-size: 24px; }
-          .first-step-link { min-height: 44px; font-size: 11.5px; }
-        }
-      `}</style>
-    </div>
-  </section>
-);
 
 // ───────────────────────────────────────────────────────────────────
 // MANIFESTO — treatise drawing right, large pull-quote left.
@@ -413,8 +162,8 @@ const FirstSteps = () => (
 // ───────────────────────────────────────────────────────────────────
 const Manifesto = () => (
   <section
-    id="manifesto"
-    data-screen-label="02 Manifeste"
+    id="rigueur"
+    data-screen-label="05 La rigueur"
     style={{
       position: 'relative',
       padding: '160px 0 180px',
@@ -423,7 +172,7 @@ const Manifesto = () => (
   >
     <div className="container">
       <Reveal>
-        <SectionLabel number={1} name="Manifeste" />
+        <SectionLabel number={4} name="La rigueur" />
       </Reveal>
 
       <div className="editorial-split split-12-085">
@@ -478,44 +227,6 @@ const Manifesto = () => (
               questionne, et qu'on éprouve sur le tapis.
             </p>
           </Reveal>
-
-          {/* Marginalia — disciplines pratiquées au club */}
-          <Reveal delay={260}>
-            <div className="marginalia">
-              {[
-                ['Mardi',  'Épée longue · rapière · messer · viking'],
-                ['Jeudi',  'Épée longue · épée de côté'],
-                ['Libre',  'Pratique sans encadrant le jeudi soir'],
-                ['Saison', 'Tournois FFAMHE & rencontres interclubs'],
-              ].map(([year, title]) => (
-                <React.Fragment key={year}>
-                  <div
-                    style={{
-                      fontFamily: 'var(--eyebrow)',
-                      fontSize: 10.5,
-                      letterSpacing: '0.28em',
-                      color: 'var(--accent)',
-                      textTransform: 'uppercase',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    {year}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--display)',
-                      fontStyle: 'italic',
-                      fontSize: 19,
-                      color: 'var(--parch)',
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    {title}
-                  </div>
-                </React.Fragment>
-              ))}
-            </div>
-          </Reveal>
         </div>
 
         {/* Right column — treatise drawing, sober frame */}
@@ -552,10 +263,9 @@ const Manifesto = () => (
               style={{
                 margin: 0,
                 padding: '18px 22px 20px',
-                fontFamily: 'var(--display)',
-                fontStyle: 'italic',
-                fontSize: 14.5,
-                lineHeight: 1.5,
+                fontFamily: 'var(--body)',
+                fontSize: 13.5,
+                lineHeight: 1.55,
                 color: 'var(--parch-mute)',
                 borderTop: '1px solid var(--parch-line)',
               }}
@@ -577,7 +287,7 @@ const Manifesto = () => (
 const Club = () => (
   <section
     id="club"
-    data-screen-label="03 Le Club"
+    data-screen-label="04 Le club"
     style={{
       position: 'relative',
       padding: '160px 0 180px',
@@ -587,7 +297,7 @@ const Club = () => (
   >
     <div className="container">
       <Reveal>
-        <SectionLabel number={2} name="Le Club" />
+        <SectionLabel number={3} name="Le club" />
       </Reveal>
 
       <div className="editorial-split split-085-115 center" style={{ marginBottom: 100 }}>
@@ -717,42 +427,54 @@ const Club = () => (
 );
 
 // ───────────────────────────────────────────────────────────────────
-// ENCADREMENT — qui vous accueille, ton humain, placeholders propres
+// ENCADREMENT — 3 instructeurs, hiérarchie visuelle scannable.
+// Format : eyebrow (spécialité) · nom display · accroche punch · bio courte.
+// Pas de portrait pseudo-photo (cf. retours UX : faisait "club qui n'assume pas").
 // ───────────────────────────────────────────────────────────────────
 const Encadrement = () => {
   const people = [
     {
-      initials: 'GT',
-      name: 'Gabriel Tardio',
-      role: 'Encadrant',
-      body: 'Gabriel mène les séances : drills techniques, lecture des traités, mise en assaut. Il prend le temps avec les débutants — comprendre le geste avant de l\'enchaîner.',
+      eyebrow: 'Rapière',
+      name: 'Marie Poignant',
+      photo: 'assets/Marie.png',
+      focal: '50% 30%',
+      punch: 'Rapière française & italienne · bolonaise',
+      body: 'Instructrice rapière. Travaille les traditions française et italienne, l\'escrime bolonaise et les systèmes main gauche (cape, dague, bocle). Pratique AMHE depuis 2013.',
     },
     {
-      initials: 'CS',
-      name: 'Clémence Sillac',
-      role: 'Présidente de section',
-      body: 'Clémence gère la vie associative, les inscriptions et l\'accueil. C\'est la première personne à qui écrire si vous voulez venir essayer.',
-      contact: [
-        { l: 'mail', href: 'mailto:c.sillac@protonmail.com', v: 'c.sillac@protonmail.com' },
-        { l: 'tél', href: 'tel:+33631585460', v: '06 31 58 54 60' },
-      ],
+      eyebrow: 'Épée longue',
+      name: 'Gabriel Tardio',
+      photo: 'assets/Gabriel.jpg',
+      focal: '50% 30%',
+      punch: 'Top 1 % mondial · épée longue acier',
+      body: 'Référent principal du club. Compétiteur reconnu du circuit AMHE, classé dans le top 1 % mondial en épée longue acier sur HEMA Ratings. Pratique exigeante, structurée, tournée vers l\'efficacité en assaut.',
+      link: { href: 'https://hemaratings.com/fighters/details/5716/', label: 'Profil HEMA Ratings' },
+      featured: true,
+    },
+    {
+      eyebrow: 'Messer · viking · bocle',
+      name: 'Ludwig Fort',
+      photo: 'assets/Ludwig.jpeg',
+      focal: '50% 30%',
+      punch: 'Armes courtes & bouclier',
+      body: 'Encadre les pratiques messer, combat viking et épée-bocle. Apporte une approche orientée armes courtes, bouclier et systèmes asymétriques — les disciplines moins courues du répertoire AMHE.',
     },
   ];
 
   return (
     <section
-      id="encadrement"
-      data-screen-label="04 Encadrement"
+      id="profs"
+      data-screen-label="03 Profs"
       style={{
         position: 'relative',
-        padding: '160px 0 180px',
+        padding: '140px 0 160px',
         background: 'var(--ink)',
         borderTop: '1px solid var(--parch-line)',
       }}
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={3} name="Encadrement" />
+          <SectionLabel number={2} name="Les profs" />
         </Reveal>
 
         <div className="section-head">
@@ -760,15 +482,15 @@ const Encadrement = () => {
             <h2
               className="display"
               style={{
-                fontSize: 'clamp(48px, 5.2vw, 84px)',
-                lineHeight: 0.96,
+                fontSize: 'clamp(44px, 4.8vw, 76px)',
+                lineHeight: 0.98,
                 margin: 0,
               }}
             >
-              On vous attend,
+              Trois encadrants,
               <br />
               <em style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent)' }}>
-                on vous prête le masque.
+                trois écoles.
               </em>
             </h2>
           </Reveal>
@@ -782,110 +504,124 @@ const Encadrement = () => {
                 color: 'var(--parch-mute)',
               }}
             >
-              Une petite équipe accueille débutants et confirmés. Pas de
-              hiérarchie martiale : on s'entraide, on corrige, on prend
-              le temps de bien faire les choses.
+              Chaque arme a son référent. Tous transmettent à leur rythme,
+              avec le temps qu'il faut pour comprendre le geste avant de
+              l'enchaîner.
             </p>
           </Reveal>
         </div>
 
-        <div className="staff-grid">
+        <div className="prof-grid">
           {people.map((p, i) => (
-            <Reveal key={p.name} delay={120 + i * 100}>
-              <article className="staff-card">
-                <div className="staff-portrait" aria-hidden="true">
-                  <span className="staff-portrait-mono">{p.initials}</span>
-                  <span className="staff-portrait-grain" />
+            <Reveal key={p.name} delay={120 + i * 80}>
+              <article className={`prof-card${p.featured ? ' prof-card--featured' : ''}`}>
+                <div className="prof-photo">
+                  <img
+                    src={p.photo}
+                    alt={`Portrait de ${p.name}`}
+                    loading="lazy"
+                    decoding="async"
+                    style={{ objectPosition: p.focal }}
+                  />
                 </div>
-                <div className="staff-info">
-                  <div className="staff-role">{p.role}</div>
-                  <h3 className="staff-name">{p.name}</h3>
-                  <p className="staff-body">{p.body}</p>
-                  {p.contact && (
-                    <ul className="staff-contact">
-                      {p.contact.map((c) => (
-                        <li key={c.l}>
-                          <span className="staff-contact-l">{c.l}</span>
-                          <a href={c.href} className="staff-contact-v">{c.v}</a>
-                        </li>
-                      ))}
-                    </ul>
+                <div className="prof-content">
+                  <div className="prof-eyebrow">{p.eyebrow}</div>
+                  <h3 className="prof-name">{p.name}</h3>
+                  <div className="prof-punch">{p.punch}</div>
+                  <p className="prof-body">{p.body}</p>
+                  {p.link && (
+                    <a
+                      href={p.link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="prof-link"
+                    >
+                      {p.link.label}
+                      <ArrowGlyph size={10} color="currentColor" />
+                    </a>
                   )}
                 </div>
               </article>
             </Reveal>
           ))}
         </div>
-
-        <Reveal delay={320}>
-          <p className="staff-note">
-            Photos à venir — le club vit en salle, pas devant un objectif.
-          </p>
-        </Reveal>
       </div>
 
       <style>{`
-        .staff-grid {
+        .prof-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 32px;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 24px;
         }
-        .staff-card {
-          display: grid;
-          grid-template-columns: 180px 1fr;
-          gap: 32px;
-          align-items: start;
-          padding: 28px;
-          background: linear-gradient(180deg, rgba(236,232,222,0.025), rgba(236,232,222,0.008));
+        .prof-card {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+          padding: 0;
           border: 1px solid var(--parch-line);
           border-radius: 2px;
+          background: linear-gradient(180deg, rgba(236,232,222,0.025), rgba(236,232,222,0.005));
+          height: 100%;
+          position: relative;
+          overflow: hidden;
           transition: border-color 240ms var(--ease), background 240ms var(--ease);
         }
-        .staff-card:hover {
+        .prof-card:hover {
           border-color: rgba(236,232,222,0.22);
-          background: linear-gradient(180deg, rgba(224,85,44,0.035), rgba(236,232,222,0.01));
+          background: linear-gradient(180deg, rgba(224,85,44,0.04), rgba(236,232,222,0.012));
         }
-        .staff-portrait {
+        /* Card featured (Gabriel — référent principal) : liseré ember en haut */
+        .prof-card--featured {
+          background: linear-gradient(180deg, rgba(224,85,44,0.05), rgba(236,232,222,0.01));
+          border-color: rgba(224,85,44,0.32);
+        }
+        .prof-card--featured::before {
+          content: '';
+          position: absolute;
+          left: -1px; right: -1px; top: -1px;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--ember-hot) 70%, transparent);
+          z-index: 2;
+        }
+        /* Photo 1:1 en haut, filtre cohérent avec la galerie (légère désaturation) */
+        .prof-photo {
           position: relative;
           width: 100%;
           aspect-ratio: 1 / 1;
-          background:
-            radial-gradient(80% 80% at 30% 25%, rgba(236,232,222,0.06), transparent 60%),
-            radial-gradient(70% 70% at 70% 80%, rgba(224,85,44,0.12), transparent 60%),
-            linear-gradient(160deg, #1d1a16 0%, #14110e 60%, #0e0c0a 100%);
-          border: 1px solid var(--parch-line);
           overflow: hidden;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          background: var(--coal);
+          border-bottom: 1px solid var(--parch-line);
         }
-        .staff-portrait-mono {
-          position: relative;
-          z-index: 2;
-          font-family: var(--display);
-          font-style: italic;
-          font-weight: 400;
-          font-size: 64px;
-          line-height: 1;
-          color: var(--parch);
-          letter-spacing: -0.02em;
-          background: linear-gradient(180deg, #ece8de 0%, #c7b893 55%, #8a6a4e 100%);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-          color: transparent;
-          filter: drop-shadow(0 1px 0 rgba(0,0,0,0.45));
-        }
-        .staff-portrait-grain {
+        .prof-photo img {
           position: absolute;
           inset: 0;
-          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.5  0 0 0 0 0.4  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
-          opacity: 0.18;
-          mix-blend-mode: overlay;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          filter: saturate(0.85) contrast(1.04) brightness(0.95);
+          transition: filter 400ms var(--ease), transform 700ms var(--ease);
+        }
+        .prof-card:hover .prof-photo img {
+          filter: saturate(1) contrast(1.06) brightness(1);
+          transform: scale(1.03);
+        }
+        /* Voile sombre en bas de la photo pour rattacher visuellement au texte */
+        .prof-photo::after {
+          content: '';
+          position: absolute;
+          left: 0; right: 0; bottom: 0;
+          height: 35%;
+          background: linear-gradient(180deg, transparent, rgba(10,9,8,0.55));
           pointer-events: none;
         }
-        .staff-info { display: flex; flex-direction: column; gap: 12px; }
-        .staff-role {
+        .prof-content {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          padding: 26px 26px 24px;
+          flex: 1;
+        }
+        .prof-eyebrow {
           font-family: var(--eyebrow);
           font-size: 10.5px;
           letter-spacing: 0.28em;
@@ -893,77 +629,58 @@ const Encadrement = () => {
           color: var(--accent);
           font-weight: 600;
         }
-        .staff-name {
+        .prof-name {
           margin: 0;
           font-family: var(--display);
-          font-size: 30px;
-          line-height: 1.1;
-          color: var(--parch);
+          font-size: clamp(28px, 2.4vw, 36px);
+          line-height: 1.05;
           font-weight: 500;
+          color: var(--parch);
         }
-        .staff-body {
+        .prof-punch {
+          font-family: var(--body);
+          font-size: 13.5px;
+          line-height: 1.4;
+          color: var(--parch-soft);
+          font-weight: 500;
+          padding-bottom: 14px;
+          border-bottom: 1px solid var(--parch-line);
+        }
+        .prof-card--featured .prof-punch {
+          color: var(--parch);
+        }
+        .prof-body {
           margin: 0;
-          font-size: 14.5px;
+          font-family: var(--body);
+          font-size: 14px;
           line-height: 1.65;
           color: var(--parch-mute);
+          flex: 1;
         }
-        .staff-contact {
-          margin: 6px 0 0;
-          padding: 0;
-          list-style: none;
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        .staff-contact li {
+        .prof-link {
           display: inline-flex;
-          align-items: baseline;
-          gap: 14px;
-        }
-        .staff-contact-l {
+          align-items: center;
+          gap: 10px;
+          margin-top: 8px;
           font-family: var(--eyebrow);
-          font-size: 10px;
-          letter-spacing: 0.26em;
+          font-size: 10.5px;
+          letter-spacing: 0.22em;
           text-transform: uppercase;
-          color: var(--parch-mute);
-          min-width: 36px;
           font-weight: 500;
-        }
-        .staff-contact-v {
-          font-family: var(--display);
-          font-size: 17px;
-          color: var(--parch);
-          border-bottom: 1px solid transparent;
-          transition: color 200ms var(--ease), border-color 200ms var(--ease);
-        }
-        .staff-contact-v:hover {
           color: var(--accent);
-          border-bottom-color: var(--accent);
+          padding-bottom: 2px;
+          border-bottom: 1px solid transparent;
+          transition: border-color 200ms var(--ease);
+          align-self: flex-start;
         }
-        .staff-note {
-          margin: 56px 0 0;
-          font-family: var(--display);
-          font-style: italic;
-          font-size: 15px;
-          color: var(--parch-mute);
-          text-align: center;
-        }
+        .prof-link:hover { border-bottom-color: var(--accent); }
 
         @media (max-width: 1100px) {
-          .staff-grid { gap: 24px; }
-          .staff-card { grid-template-columns: 140px 1fr; gap: 24px; padding: 24px; }
-          .staff-portrait-mono { font-size: 52px; }
-          .staff-name { font-size: 26px; }
+          .prof-grid { gap: 18px; }
+          .prof-card { padding: 26px 22px 22px; }
         }
         @media (max-width: 900px) {
-          .staff-grid { grid-template-columns: 1fr !important; }
-          .staff-card { grid-template-columns: 120px 1fr; gap: 20px; padding: 22px; }
-          .staff-portrait-mono { font-size: 44px; }
-        }
-        @media (max-width: 480px) {
-          .staff-card { grid-template-columns: 1fr; }
-          .staff-portrait { aspect-ratio: 1.6 / 1; }
-          .staff-portrait-mono { font-size: 48px; }
+          .prof-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
         }
       `}</style>
     </section>
@@ -984,8 +701,8 @@ const Disciplines = () => {
       sub: 'Arme emblématique des AMHE',
       era: 'Médiévale',
       desc: 'Pratiquée à deux mains, l\'épée longue est l\'arme emblématique des AMHE médiévales. Travail de garde, de pointe et d\'entrée au corps.',
-      img: 'assets/duel-reflection.webp',
-      focal: '60% 50%',
+      img: 'assets/duel-blue.webp',
+      focal: '50% 40%',
     },
     {
       id: 'rapiere',
@@ -994,8 +711,8 @@ const Disciplines = () => {
       sub: 'Escrime de la Renaissance',
       era: 'Renaissance',
       desc: 'Arme plus tardive, liée à l\'escrime de la Renaissance et de l\'époque moderne. Jeu de pointe fin, distance, et déplacement précis.',
-      img: 'assets/duel-blue.webp',
-      focal: '65% 50%',
+      img: 'assets/Rapière.jpg',
+      focal: '50% 40%',
     },
     {
       id: 'messer',
@@ -1004,18 +721,18 @@ const Disciplines = () => {
       sub: 'Grand couteau de combat',
       era: 'Médiévale',
       desc: 'Arme médiévale germanique, proche d\'un grand couteau de combat à un tranchant. Système populaire mêlant escrime et lutte rapprochée.',
-      img: 'assets/kit-still-life.webp',
-      focal: '60% 50%',
+      img: 'assets/Messer.avif',
+      focal: '50% 40%',
     },
     {
-      id: 'cote',
+      id: 'bocle',
       n: '04',
-      name: 'Épée de côté',
-      sub: 'Du Moyen Âge à la Renaissance',
-      era: 'Transition',
-      desc: 'Arme de transition entre le Moyen Âge tardif et la Renaissance. À une main, polyvalente, elle annonce les escrimes de l\'âge moderne.',
-      img: 'assets/sparring.jpg',
-      focal: '50% 30%',
+      name: 'Épée-bocle',
+      sub: 'Épée à une main & petit bouclier',
+      era: 'Médiévale',
+      desc: 'Combinaison d\'une épée à une main et d\'un petit bouclier rond (bocle). Tradition médiévale du combat rapproché, mêlant frappe, parade et liaisons au bouclier.',
+      img: 'assets/Epee-bocle.png',
+      focal: '50% 40%',
     },
     {
       id: 'viking',
@@ -1024,15 +741,14 @@ const Disciplines = () => {
       sub: 'Bouclier & arme courte',
       era: 'Haut Moyen Âge',
       desc: 'Pratique inspirée des traditions martiales anciennes, avec bouclier et armes adaptées selon les sources. Jeu de pression, contact, contrôle.',
-      img: null,
+      img: 'assets/Viking.webp',
       focal: '50% 40%',
-      placeholder: true,
     },
   ];
   return (
     <section
       id="disciplines"
-      data-screen-label="05 Disciplines"
+      data-screen-label="02 Disciplines"
       style={{
         position: 'relative',
         padding: '160px 0 0',
@@ -1042,7 +758,7 @@ const Disciplines = () => {
     >
       <div className="container" style={{ marginBottom: 64 }}>
         <Reveal>
-          <SectionLabel number={4} name="Les disciplines" />
+          <SectionLabel number={1} name="Les disciplines" />
         </Reveal>
 
         <div className="section-head" style={{ marginBottom: 0 }}>
@@ -1101,38 +817,23 @@ const Disciplines = () => {
               role="button"
               aria-pressed={isActive}
             >
-              {d.img ? (
-                <img
-                  src={d.img}
-                  alt={d.name}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    objectPosition: d.focal,
-                    filter: isActive
-                      ? 'grayscale(0) contrast(1.06) brightness(0.92)'
-                      : 'grayscale(0.85) contrast(1.0) brightness(0.55)',
-                    transition: 'filter 320ms, transform 600ms cubic-bezier(0.2,0.7,0.3,1)',
-                    transform: isActive ? 'scale(1.04)' : 'scale(1.0)',
-                  }}
-                />
-              ) : (
-                <div
-                  aria-hidden="true"
-                  className="disc-placeholder"
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background:
-                      'radial-gradient(80% 60% at 30% 25%, rgba(236,232,222,0.06), transparent 65%),' +
-                      'radial-gradient(80% 70% at 75% 85%, rgba(224,85,44,0.16), transparent 60%),' +
-                      'linear-gradient(160deg, #1f1a16 0%, #14110e 60%, #0c0a08 100%)',
-                  }}
-                />
-              )}
+              <img
+                src={d.img}
+                alt={d.name}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  objectPosition: d.focal,
+                  filter: isActive
+                    ? 'grayscale(0) contrast(1.06) brightness(0.92)'
+                    : 'grayscale(0.85) contrast(1.0) brightness(0.55)',
+                  transition: 'filter 320ms, transform 600ms cubic-bezier(0.2,0.7,0.3,1)',
+                  transform: isActive ? 'scale(1.04)' : 'scale(1.0)',
+                }}
+              />
               <div
                 aria-hidden="true"
                 style={{
@@ -1202,9 +903,9 @@ const Disciplines = () => {
                   </div>
                   <div
                     style={{
-                      fontFamily: 'var(--display)',
-                      fontStyle: 'italic',
-                      fontSize: 18,
+                      fontFamily: 'var(--body)',
+                      fontSize: 13,
+                      letterSpacing: '0.02em',
                       color: 'var(--parch-mute)',
                       marginBottom: 22,
                     }}
@@ -1212,6 +913,7 @@ const Disciplines = () => {
                     {d.sub}
                   </div>
                   <div
+                    className="disc-desc"
                     style={{
                       maxHeight: isActive ? 200 : 0,
                       opacity: isActive ? 1 : 0,
@@ -1254,15 +956,15 @@ const Disciplines = () => {
 // ───────────────────────────────────────────────────────────────────
 const Salle = () => {
   const slots = [
-    { day: 'Mar', time: '18h00 — 20h00', disc: 'Épée longue · rapière · messer · viking', lvl: 'Tous niveaux',   loc: 'Gymnase Robert Pras' },
-    { day: 'Jeu', time: '18h00 — 20h00', disc: 'Pratique libre',                          lvl: 'Sans encadrant', loc: 'Gymnase Robert Pras' },
-    { day: 'Jeu', time: '20h00 — 22h00', disc: 'Épée longue · épée de côté',              lvl: 'Tous niveaux',   loc: 'Gymnase Robert Pras' },
+    { day: 'Mar', time: '18h00 — 20h00', disc: 'Épée longue · rapière · messer · viking', lvl: 'Tous niveaux'   },
+    { day: 'Jeu', time: '18h00 — 20h00', disc: 'Pratique libre',                          lvl: 'Sans encadrant' },
+    { day: 'Jeu', time: '20h00 — 22h00', disc: 'Épée longue · épée-bocle',                lvl: 'Tous niveaux'   },
   ];
 
   return (
     <section
-      id="salle"
-      data-screen-label="06 Salle d'armes"
+      id="creneaux"
+      data-screen-label="06 Créneaux"
       style={{
         position: 'relative',
         padding: '160px 0 180px',
@@ -1272,7 +974,7 @@ const Salle = () => {
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={5} name="Salle d'armes" />
+          <SectionLabel number={5} name="Créneaux et lieux" />
         </Reveal>
 
         <div className="section-head">
@@ -1324,7 +1026,7 @@ const Salle = () => {
           >
             {/* Header row */}
             <div className="salle-table-header">
-              {['Jour', 'Horaire', 'Discipline', 'Niveau', 'Lieu', ''].map((h, i) => (
+              {['Jour', 'Horaire', 'Discipline', 'Niveau'].map((h, i) => (
                 <div
                   key={i}
                   style={{
@@ -1360,10 +1062,9 @@ const Salle = () => {
             <p
               style={{
                 margin: 0,
-                fontFamily: 'var(--display)',
-                fontStyle: 'italic',
-                fontSize: 18,
-                lineHeight: 1.5,
+                fontFamily: 'var(--body)',
+                fontSize: 14.5,
+                lineHeight: 1.6,
                 color: 'var(--parch-mute)',
                 maxWidth: 580,
               }}
@@ -1373,12 +1074,12 @@ const Salle = () => {
               pour une première séance.
             </p>
             <a
-              href="#contact"
-              className="btn btn--ghost"
+              href="#rejoindre"
+              className="btn btn--secondary"
               style={{ flexShrink: 0 }}
             >
               Nous contacter avant de venir
-              <ArrowGlyph size={12} />
+              <ArrowGlyph size={11} color="currentColor" />
             </a>
           </div>
         </Reveal>
@@ -1387,118 +1088,96 @@ const Salle = () => {
   );
 };
 
-const SlotRow = ({ slot }) => {
-  const [hover, setHover] = React.useState(false);
-  return (
+const SlotRow = ({ slot }) => (
+  <div className="salle-table-row">
     <div
-      className="salle-table-row"
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       style={{
-        background: hover ? 'rgba(236, 227, 207, 0.025)' : 'transparent',
+        fontFamily: 'var(--body)',
+        fontSize: 13,
+        letterSpacing: '0.24em',
+        textTransform: 'uppercase',
+        fontWeight: 600,
+        color: 'var(--accent)',
+        lineHeight: 1,
       }}
     >
-      <div
-        style={{
-          fontFamily: 'var(--display)',
-          fontStyle: 'italic',
-          fontSize: 22,
-          color: 'var(--accent)',
-          lineHeight: 1,
-        }}
-      >
-        {slot.day}.
-      </div>
-      <div
-        style={{
-          fontFamily: 'var(--display)',
-          fontSize: 22,
-          lineHeight: 1,
-          fontVariantNumeric: 'tabular-nums',
-          color: 'var(--parch)',
-        }}
-      >
-        {slot.time}
-      </div>
-      <div
-        style={{
-          fontFamily: 'var(--display)',
-          fontSize: 22,
-          lineHeight: 1,
-          color: 'var(--parch)',
-        }}
-      >
-        {slot.disc}
-      </div>
-      <div
-        style={{
-          fontFamily: 'var(--eyebrow)',
-          fontSize: 10.5,
-          letterSpacing: '0.28em',
-          textTransform: 'uppercase',
-          color: 'var(--parch-mute)',
-        }}
-      >
-        {slot.lvl}
-      </div>
-      <div
-        style={{
-          fontFamily: 'var(--body)',
-          fontSize: 13.5,
-          color: 'var(--parch-soft)',
-        }}
-      >
-        {slot.loc}
-      </div>
-      <div
-        style={{
-          textAlign: 'right',
-          color: hover ? 'var(--accent)' : 'var(--parch-mute)',
-          transition: 'color 200ms, transform 200ms',
-          transform: hover ? 'translateX(4px)' : 'translateX(0)',
-        }}
-      >
-        <ArrowGlyph size={14} color="currentColor" />
-      </div>
+      {slot.day}
     </div>
-  );
-};
+    <div
+      style={{
+        fontFamily: 'var(--body)',
+        fontSize: 16,
+        lineHeight: 1.2,
+        fontVariantNumeric: 'tabular-nums',
+        fontWeight: 500,
+        color: 'var(--parch)',
+      }}
+    >
+      {slot.time}
+    </div>
+    <div
+      style={{
+        fontFamily: 'var(--body)',
+        fontSize: 15,
+        lineHeight: 1.35,
+        color: 'var(--parch)',
+      }}
+    >
+      {slot.disc}
+    </div>
+    <div
+      style={{
+        fontFamily: 'var(--body)',
+        fontSize: 10.5,
+        letterSpacing: '0.26em',
+        textTransform: 'uppercase',
+        fontWeight: 500,
+        color: 'var(--parch-mute)',
+      }}
+    >
+      {slot.lvl}
+    </div>
+  </div>
+);
 
 // ───────────────────────────────────────────────────────────────────
-// TOURNOIS — events with podium photo and editorial list
+// FAQ — questions fréquentes des prospects (âge, niveau, matériel, danger)
+// Réponses bâties uniquement sur les infos déjà présentes sur le site.
 // ───────────────────────────────────────────────────────────────────
-const Tournois = () => {
-  const events = [
+const Faq = () => {
+  const items = [
     {
-      date: 'Annuel', year: 'FFAMHE',
-      title: 'La Bravade',
-      type: 'Tournoi AMHE',
-      city: 'Événement référencé',
-      desc: 'Rendez-vous récurrent du circuit AMHE auquel le club participe régulièrement. Épreuves variées selon les éditions.',
-      tag: 'Tournoi',
+      q: 'Faut-il déjà faire du sport ou de l\'escrime ?',
+      a: 'Non. La séance accueille tous niveaux et l\'encadrement prend le temps avec les débutants — on commence par comprendre le geste avant de l\'enchaîner. Aucun pré-requis sportif ou martial.',
     },
     {
-      date: 'Saison', year: 'FFAMHE',
-      title: 'Tournois fédéraux',
-      type: 'Circuit FFAMHE',
-      city: 'France',
-      desc: 'Compétitions officielles ouvertes aux licenciés : épée longue (open, débutant, féminin), épée seule, épée de côté, rapière.',
-      tag: 'Fédéral',
+      q: 'C\'est dangereux ?',
+      a: 'On s\'entraîne en tenue de sport, masque d\'escrime et protections modernes, avec des armes d\'entraînement adaptées à chaque discipline. Le travail est progressif : drills, sentiment du fer, puis assauts encadrés. Pas d\'arme tranchante en main, pas de contact sans équipement.',
     },
     {
-      date: 'Toute l\'année', year: 'AMHE',
-      title: 'Stages & rencontres interclubs',
-      type: 'Inter-clubs · stages',
-      city: 'France',
-      desc: 'Échanges réguliers avec d\'autres clubs AMHE, stages techniques et rencontres conviviales — la compétition n\'est pas obligatoire.',
-      tag: 'Interclubs',
+      q: 'Que dois-je apporter pour la première séance ?',
+      a: 'Tenue de sport, chaussures propres pour le gymnase et une bouteille d\'eau. Le matériel d\'initiation (masque, gants, arme d\'entraînement) est prêté pour découvrir.',
+    },
+    {
+      q: 'Combien coûte l\'adhésion ?',
+      a: '85 € pour la saison 2025-2026, via HelloAsso. Il est possible de rejoindre en cours d\'année. La première séance d\'essai est sans engagement — contactez-nous avant de venir pour qu\'on vous attende.',
+    },
+    {
+      q: 'Quels créneaux et quel lieu ?',
+      a: 'Mardi 18h-20h et jeudi 18h-22h au Gymnase Robert Pras (3 rue Jean Monnet, 63100 Clermont-Ferrand). Le créneau Mardi couvre épée longue, rapière, messer, viking. Le créneau Jeudi couvre épée longue et épée-bocle, précédé d\'une pratique libre sans encadrant.',
+    },
+    {
+      q: 'Faut-il faire de la compétition ?',
+      a: 'Non. Le club est présent sur le circuit FFAMHE et plusieurs membres sont référencés sur HEMA Ratings, mais la compétition n\'est jamais obligatoire. Loisir et perfectionnement technique sont une voie tout aussi reconnue.',
     },
   ];
 
+  const [open, setOpen] = React.useState(0);
+
   return (
     <section
-      id="tournois"
-      data-screen-label="07 Tournois"
+      id="faq"
+      data-screen-label="10 FAQ"
       style={{
         position: 'relative',
         padding: '160px 0 180px',
@@ -1508,10 +1187,10 @@ const Tournois = () => {
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={6} name="Tournois & saison" />
+          <SectionLabel number={9} name="Questions fréquentes" />
         </Reveal>
 
-        <div className="section-head" style={{ marginBottom: 100 }}>
+        <div className="section-head">
           <Reveal>
             <h2
               className="display"
@@ -1521,16 +1200,10 @@ const Tournois = () => {
                 margin: 0,
               }}
             >
-              Saison
+              Tout ce qu'on
               <br />
-              <em
-                style={{
-                  fontStyle: 'italic',
-                  fontWeight: 300,
-                  color: 'var(--accent)',
-                }}
-              >
-                de compétition.
+              <em style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent)' }}>
+                nous demande.
               </em>
             </h2>
           </Reveal>
@@ -1542,174 +1215,286 @@ const Tournois = () => {
                 fontSize: 16,
                 lineHeight: 1.7,
                 color: 'var(--parch-mute)',
-                maxWidth: 520,
+              }}
+            >
+              Les questions qu'on entend le plus souvent au premier
+              contact. Si la vôtre n'y est pas, écrivez-nous — on répond.
+            </p>
+          </Reveal>
+        </div>
+
+        <Reveal delay={140}>
+          <ul className="faq-list">
+            {items.map((it, i) => {
+              const isOpen = open === i;
+              return (
+                <li key={i} className="faq-item" data-open={isOpen ? 'true' : 'false'}>
+                  <button
+                    type="button"
+                    className="faq-q"
+                    aria-expanded={isOpen}
+                    aria-controls={`faq-panel-${i}`}
+                    id={`faq-q-${i}`}
+                    onClick={() => setOpen(isOpen ? -1 : i)}
+                  >
+                    <span className="faq-q-text">{it.q}</span>
+                    <span className="faq-q-icon" aria-hidden="true" />
+                  </button>
+                  <div
+                    id={`faq-panel-${i}`}
+                    role="region"
+                    aria-labelledby={`faq-q-${i}`}
+                    className="faq-a"
+                    hidden={!isOpen}
+                  >
+                    <p>{it.a}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </Reveal>
+      </div>
+
+      <style>{`
+        .faq-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--parch-line); }
+        .faq-item { border-bottom: 1px solid var(--parch-line); }
+        .faq-q {
+          width: 100%;
+          background: transparent;
+          border: 0;
+          padding: 26px 8px 26px 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 32px;
+          cursor: pointer;
+          color: var(--parch);
+          font-family: var(--display);
+          font-size: 22px;
+          line-height: 1.3;
+          text-align: left;
+          transition: color 200ms var(--ease);
+        }
+        .faq-q:hover { color: var(--accent); }
+        .faq-q-text { flex: 1; }
+        .faq-q-icon {
+          position: relative;
+          width: 14px;
+          height: 14px;
+          flex-shrink: 0;
+        }
+        .faq-q-icon::before, .faq-q-icon::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          margin: auto;
+          background: currentColor;
+          transition: transform 240ms var(--ease), opacity 240ms var(--ease);
+        }
+        .faq-q-icon::before { width: 14px; height: 1.5px; }
+        .faq-q-icon::after  { width: 1.5px; height: 14px; }
+        .faq-item[data-open="true"] .faq-q { color: var(--accent); }
+        .faq-item[data-open="true"] .faq-q-icon::after { transform: rotate(90deg); opacity: 0; }
+        .faq-a {
+          padding: 0 8px 28px 0;
+        }
+        .faq-a p {
+          margin: 0;
+          max-width: 760px;
+          font-family: var(--body);
+          font-size: 15.5px;
+          line-height: 1.7;
+          color: var(--parch-soft);
+        }
+        @media (max-width: 640px) {
+          .faq-q { font-size: 18px; padding: 22px 4px 22px 0; gap: 20px; }
+          .faq-a p { font-size: 14.5px; }
+        }
+      `}</style>
+    </section>
+  );
+};
+
+// ───────────────────────────────────────────────────────────────────
+// TOURNOIS — bloc court : photo + intro + facts + 2 liens externes
+// ───────────────────────────────────────────────────────────────────
+const Tournois = () => (
+  <section
+    id="tournois"
+    data-screen-label="07 Tournois"
+    style={{
+      position: 'relative',
+      padding: '160px 0 180px',
+      background: 'var(--ink)',
+      borderTop: '1px solid var(--parch-line)',
+    }}
+  >
+    <div className="container">
+      <Reveal>
+        <SectionLabel number={6} name="Tournois & saison" />
+      </Reveal>
+
+      <div className="tournois-grid">
+        <Reveal>
+          <Photo
+            src="assets/podium.jpg"
+            alt="Podium FFAMHE"
+            focal="50% 30%"
+            style={{ aspectRatio: '3/4', width: '100%' }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background:
+                  'linear-gradient(180deg, transparent 50%, rgba(8,7,10,0.92) 100%)',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                left: 28,
+                right: 28,
+                bottom: 28,
+              }}
+            >
+              <Eyebrow>Compétiteurs</Eyebrow>
+              <div
+                className="display"
+                style={{
+                  marginTop: 14,
+                  fontSize: 26,
+                  lineHeight: 1.1,
+                }}
+              >
+                Plusieurs membres engagés en compétition,
+                référencés sur HEMA Ratings.
+              </div>
+            </div>
+          </Photo>
+        </Reveal>
+
+        <Reveal delay={150}>
+          <div>
+            <h2
+              className="display"
+              style={{
+                fontSize: 'clamp(44px, 4.6vw, 72px)',
+                lineHeight: 0.98,
+                margin: '0 0 28px',
+              }}
+            >
+              Saison
+              {' '}
+              <em
+                style={{
+                  fontStyle: 'italic',
+                  fontWeight: 300,
+                  color: 'var(--accent)',
+                }}
+              >
+                de compétition.
+              </em>
+            </h2>
+            <p
+              style={{
+                margin: '0 0 36px',
+                fontSize: 16.5,
+                lineHeight: 1.7,
+                color: 'var(--parch-soft)',
+                maxWidth: 580,
               }}
             >
               Le club est présent sur le circuit FFAMHE et référencé sur
               HEMA Ratings. La compétition reste un choix : on peut
               pratiquer en loisir ou viser les tournois, à son rythme.
             </p>
-          </Reveal>
-        </div>
 
-        <div className="tournois-grid">
-          <Reveal>
-            <Photo
-              src="assets/podium.jpg"
-              alt="Podium FFAMHE"
-              focal="50% 30%"
-              style={{ aspectRatio: '3/4', width: '100%' }}
+            <ul className="tournois-facts">
+              <li>
+                <span className="tournois-fact-l">Circuit FFAMHE</span>
+                <span className="tournois-fact-v">épée longue, épée-bocle, rapière — open / débutant / féminin</span>
+              </li>
+              <li>
+                <span className="tournois-fact-l">Interclubs &amp; stages</span>
+                <span className="tournois-fact-v">échanges réguliers avec d'autres clubs AMHE</span>
+              </li>
+              <li>
+                <span className="tournois-fact-l">Loisir possible</span>
+                <span className="tournois-fact-v">la compétition n'est jamais obligatoire</span>
+              </li>
+            </ul>
+
+            <div
+              style={{
+                display: 'flex',
+                gap: 12,
+                marginTop: 40,
+                flexWrap: 'wrap',
+              }}
             >
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background:
-                    'linear-gradient(180deg, transparent 50%, rgba(8,7,10,0.92) 100%)',
-                }}
-              />
-              <div
-                style={{
-                  position: 'absolute',
-                  left: 28,
-                  right: 28,
-                  bottom: 28,
-                }}
+              <a
+                href="https://hemaratings.com/clubs/details/1155/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn--secondary"
               >
-                <Eyebrow>Compétiteurs</Eyebrow>
-                <div
-                  className="display"
-                  style={{
-                    marginTop: 14,
-                    fontSize: 28,
-                    lineHeight: 1.05,
-                  }}
-                >
-                  Plusieurs membres du club engagés en compétition,
-                  référencés sur HEMA Ratings.
-                </div>
-              </div>
-            </Photo>
-          </Reveal>
-
-          <Reveal delay={150}>
-            <div>
-              {events.map((e, i) => (
-                <EventRow key={i} event={e} index={i} last={i === events.length - 1} />
-              ))}
+                Résultats HEMA Ratings
+                <ArrowGlyph size={11} color="currentColor" />
+              </a>
+              <a
+                href="https://ffamhe.fr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn--tertiary"
+              >
+                Calendrier FFAMHE
+                <ArrowGlyph size={11} color="currentColor" />
+              </a>
             </div>
-          </Reveal>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const EventRow = ({ event, index, last }) => {
-  const [hover, setHover] = React.useState(false);
-  return (
-    <div
-      className="event-row"
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        borderTop: index === 0 ? '1px solid var(--parch-line)' : 'none',
-      }}
-    >
-      <div>
-        <div
-          style={{
-            fontFamily: 'var(--eyebrow)',
-            fontSize: 10,
-            letterSpacing: '0.32em',
-            color: 'var(--accent)',
-            textTransform: 'uppercase',
-            marginBottom: 8,
-          }}
-        >
-          {event.year}
-        </div>
-        <div
-          className="display"
-          style={{
-            fontSize: 30,
-            lineHeight: 1.05,
-            fontStyle: 'italic',
-          }}
-        >
-          {event.date}
-        </div>
-      </div>
-      <div>
-        <div
-          style={{
-            fontFamily: 'var(--eyebrow)',
-            fontSize: 10,
-            letterSpacing: '0.28em',
-            color: 'var(--parch-mute)',
-            textTransform: 'uppercase',
-            marginBottom: 12,
-          }}
-        >
-          {event.type} · {event.city}
-        </div>
-        <div
-          className="display"
-          style={{
-            fontSize: 38,
-            lineHeight: 1.05,
-            marginBottom: 14,
-          }}
-        >
-          {event.title}
-        </div>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 14.5,
-            lineHeight: 1.65,
-            color: 'var(--parch-mute)',
-            maxWidth: 560,
-          }}
-        >
-          {event.desc}
-        </p>
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          gap: 24,
-          paddingTop: 6,
-        }}
-      >
-        <span
-          style={{
-            padding: '8px 14px',
-            border: '1px solid var(--parch-line)',
-            fontFamily: 'var(--eyebrow)',
-            fontSize: 9.5,
-            letterSpacing: '0.28em',
-            color: 'var(--parch-soft)',
-            textTransform: 'uppercase',
-          }}
-        >
-          {event.tag}
-        </span>
-        <span
-          style={{
-            color: hover ? 'var(--accent)' : 'var(--parch-mute)',
-            transition: 'color 220ms, transform 220ms',
-            transform: hover ? 'translateX(6px)' : 'translateX(0)',
-          }}
-        >
-          <ArrowGlyph size={18} color="currentColor" />
-        </span>
+          </div>
+        </Reveal>
       </div>
     </div>
-  );
-};
+
+    <style>{`
+      .tournois-facts {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        border-top: 1px solid var(--parch-line);
+      }
+      .tournois-facts li {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 24px;
+        padding: 18px 0;
+        border-bottom: 1px solid var(--parch-line);
+        align-items: baseline;
+      }
+      .tournois-fact-l {
+        font-family: var(--eyebrow);
+        font-size: 10.5px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .tournois-fact-v {
+        font-family: var(--body);
+        font-size: 15px;
+        line-height: 1.55;
+        color: var(--parch);
+      }
+      @media (max-width: 640px) {
+        .tournois-facts li { grid-template-columns: 1fr; gap: 4px; padding: 14px 0; }
+      }
+    `}</style>
+  </section>
+);
 
 // ───────────────────────────────────────────────────────────────────
 // GALERIE — masonry-ish grid with real photos
@@ -1758,7 +1543,7 @@ const Galerie = () => (
             href="https://www.facebook.com/63AMHE/"
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn--ghost lede-col"
+            className="btn btn--secondary lede-col"
             style={{ justifySelf: 'end' }}
           >
             Voir sur Facebook
@@ -1788,134 +1573,14 @@ const Galerie = () => (
   </section>
 );
 
-// ───────────────────────────────────────────────────────────────────
-// IDENTITÉ — wide Clermont-Ferrand cinematic strip
-// ───────────────────────────────────────────────────────────────────
-const Identite = () => (
-  <section
-    id="identite"
-    data-screen-label="09 Clermont"
-    style={{
-      position: 'relative',
-      padding: 0,
-      background: 'var(--ink)',
-      borderTop: '1px solid var(--parch-line)',
-      overflow: 'hidden',
-    }}
-  >
-    <div
-      style={{
-        position: 'relative',
-        minHeight: 640,
-        background:
-          'radial-gradient(ellipse at 30% 50%, rgba(200,64,48,0.18), transparent 55%), linear-gradient(180deg, var(--ink), #15110e)',
-      }}
-    >
-      {/* Mountain silhouette */}
-      <svg
-        viewBox="0 0 1600 400"
-        preserveAspectRatio="none"
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: '100%',
-          height: '55%',
-          opacity: 0.55,
-        }}
-      >
-        <defs>
-          <linearGradient id="puyGrad" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#1a1411" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#08070a" stopOpacity="1" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M0 400 L0 280 L160 220 L300 240 L420 180 L520 200 L640 130 L780 170 L900 200 L1040 150 L1180 220 L1320 200 L1480 240 L1600 220 L1600 400 Z"
-          fill="url(#puyGrad)"
-        />
-        <path
-          d="M0 400 L0 320 L120 290 L260 310 L380 280 L520 300 L640 250 L780 280 L920 270 L1080 310 L1220 290 L1380 310 L1500 300 L1600 310 L1600 400 Z"
-          fill="#08070a"
-          opacity="0.85"
-        />
-      </svg>
-      <span aria-hidden="true" className="identite-horizon" />
-
-      <div className="container identite-container" style={{ position: 'relative', padding: '140px 56px' }}>
-        <Reveal>
-          <SectionLabel number={8} name="Clermont-Ferrand" />
-        </Reveal>
-        <div className="editorial-split split-14-1-end">
-          <Reveal>
-            <h2
-              className="display"
-              style={{
-                fontSize: 'clamp(56px, 6vw, 108px)',
-                lineHeight: 0.96,
-                margin: 0,
-              }}
-            >
-              Une ville de pierre noire,
-              <br />
-              <em
-                style={{
-                  fontStyle: 'italic',
-                  fontWeight: 300,
-                  color: 'var(--accent)',
-                }}
-              >
-                au pied des volcans.
-              </em>
-            </h2>
-          </Reveal>
-          <Reveal delay={150}>
-            <div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 16.5,
-                  lineHeight: 1.7,
-                  color: 'var(--parch-soft)',
-                  maxWidth: 480,
-                  marginBottom: 32,
-                }}
-              >
-                La cathédrale est noire, les murs taillés dans la pierre
-                de Volvic, le Puy de Dôme veille à l'horizon. C'est une
-                ville qui sait ce que le feu peut faire à la pierre, et ce
-                que l'acier doit à la patience.
-              </p>
-              <p
-                style={{
-                  margin: 0,
-                  fontFamily: 'var(--display)',
-                  fontStyle: 'italic',
-                  fontSize: 22,
-                  lineHeight: 1.4,
-                  color: 'var(--parch)',
-                }}
-              >
-                On s'y retrouve assez bien.
-              </p>
-            </div>
-          </Reveal>
-        </div>
-      </div>
-    </div>
-  </section>
-);
-
 Object.assign(window, {
   SectionsStyles,
-  FirstSteps,
   Manifesto,
   Club,
   Encadrement,
   Disciplines,
   Salle,
+  Faq,
   Tournois,
   Galerie,
-  Identite,
 });
