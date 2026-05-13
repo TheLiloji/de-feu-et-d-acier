@@ -1,0 +1,17 @@
+# Matériel de travail / sources brutes
+research/
+uploads/
+
+# Système
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Éditeurs
+.vscode/
+.idea/
+
+# Logs
+*.log
