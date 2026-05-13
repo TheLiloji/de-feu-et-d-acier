@@ -173,8 +173,16 @@ const LegalNotes = () => {
                 Clermont-Ferrand, association loi 1901 affiliée à la FFAMHE.
               </p>
               <dl className="legal-dl">
-                <dt>Siège</dt>
+                <dt>Siège &amp; lieu d'entraînement</dt>
                 <dd>Gymnase Robert Pras — 3 rue Jean Monnet, 63100 Clermont-Ferrand</dd>
+                <dt>Horaires hebdomadaires</dt>
+                <dd>
+                  Mardi 18h00 — 20h00 · entraînement encadré, tous niveaux
+                  <br />
+                  Jeudi 18h00 — 20h00 · pratique libre, sans encadrant
+                  <br />
+                  Jeudi 20h00 — 22h00 · entraînement encadré, tous niveaux
+                </dd>
                 <dt>Directrice de publication</dt>
                 <dd>Clémence Sillac, présidente de section</dd>
                 <dt>Contact</dt>
@@ -183,6 +191,8 @@ const LegalNotes = () => {
                   {' · '}
                   <a href="tel:+33631585460">06 31 58 54 60</a>
                 </dd>
+                <dt>Affiliation</dt>
+                <dd>Section AMHE de l'USAM Clermont-Ferrand · fédération FFAMHE</dd>
                 <dt>Hébergement</dt>
                 <dd>Cloudflare Workers — Cloudflare, Inc., 101 Townsend St, San Francisco, CA 94107, USA</dd>
               </dl>
