@@ -3,29 +3,102 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>De Feu et D'Acier · AMHE Clermont-Ferrand</title>
+  <meta name="theme-color" content="#0a0908" />
+  <title>De Feu et d'Acier — AMHE Clermont-Ferrand · Arts Martiaux Historiques Européens</title>
+  <meta
+    name="description"
+    content="De Feu et d'Acier, club AMHE de Clermont-Ferrand : épée longue, rapière, épée de côté, messer. Entraînements mardi et jeudi au Gymnase Robert Pras, tous niveaux. Affilié FFAMHE."
+  />
+  <!--
+    ────────────────────────────────────────────────────────────────────────
+    TODO PROD : remplacer https://defeuetdacier.fr/ partout.
+    Cherche-et-remplace global sur "defeuetdacier.fr" dans ce fichier.
+    Présent dans : <link rel="canonical">, <meta property="og:url">,
+    <meta property="og:image">, <meta name="twitter:image">,
+    JSON-LD "url", "logo", "image".
+    Si le domaine custom n'est pas encore branché, utiliser temporairement
+    l'URL Workers : https://de-feu-et-d-acier.<sub>.workers.dev/
+    ────────────────────────────────────────────────────────────────────────
+  -->
+  <link rel="canonical" href="https://defeuetdacier.fr/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="fr_FR" />
+  <meta property="og:site_name" content="De Feu et d'Acier" />
+  <meta property="og:title" content="De Feu et d'Acier — AMHE Clermont-Ferrand" />
+  <meta
+    property="og:description"
+    content="Club d'Arts Martiaux Historiques Européens à Clermont-Ferrand. Épée longue, rapière, sources historiques. Entraînements mardi & jeudi, débutants bienvenus."
+  />
+  <meta property="og:url" content="https://defeuetdacier.fr/" />
+  <meta property="og:image" content="https://defeuetdacier.fr/assets/hero-studio.avif" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="De Feu et d'Acier — AMHE Clermont-Ferrand" />
+  <meta name="twitter:description" content="Arts Martiaux Historiques Européens à Clermont-Ferrand. Épée longue, rapière, sources historiques." />
+  <meta name="twitter:image" content="https://defeuetdacier.fr/assets/hero-studio.avif" />
+
+  <!-- JSON-LD : SportsOrganization (AMHE Clermont-Ferrand) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SportsOrganization",
+    "name": "De Feu et d'Acier",
+    "alternateName": "USAM AMHE Clermont-Ferrand",
+    "url": "https://defeuetdacier.fr/",
+    "logo": "https://defeuetdacier.fr/assets/logo.png",
+    "image": "https://defeuetdacier.fr/assets/hero-studio.avif",
+    "description": "Club d'Arts Martiaux Historiques Européens (AMHE) à Clermont-Ferrand. Épée longue, rapière, épée de côté, messer, combat viking. Affilié FFAMHE.",
+    "sport": ["Arts Martiaux Historiques Européens", "AMHE", "HEMA", "Escrime historique"],
+    "areaServed": "Clermont-Ferrand",
+    "memberOf": [
+      { "@type": "SportsOrganization", "name": "FFAMHE", "url": "https://ffamhe.fr" },
+      { "@type": "SportsOrganization", "name": "USAM Clermont-Ferrand", "url": "https://usam-clermont-ferrand.com/amhe-arts-martiaux-historiques-europeens" }
+    ],
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Gymnase Robert Pras, 3 rue Jean Monnet",
+      "postalCode": "63100",
+      "addressLocality": "Clermont-Ferrand",
+      "addressRegion": "Auvergne-Rhône-Alpes",
+      "addressCountry": "FR"
+    },
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "Inscriptions et première séance",
+      "email": "c.sillac@protonmail.com",
+      "telephone": "+33-6-31-58-54-60",
+      "availableLanguage": "fr"
+    },
+    "sameAs": [
+      "https://www.facebook.com/63AMHE/",
+      "https://hemaratings.com/clubs/details/1155/",
+      "https://www.helloasso.com/associations/usam-amhe-clermont-ferrand"
+    ]
+  }
+  </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <style>
     :root {
-      --ink: #08070a;
-      --coal: #14110e;
-      --char: #1d1915;
-      --parch: #ece3cf;
-      --parch-soft: rgba(236, 227, 207, 0.72);
-      --parch-mute: rgba(236, 227, 207, 0.45);
-      --parch-line: rgba(236, 227, 207, 0.14);
-      --parch-faint: rgba(236, 227, 207, 0.06);
-      --ember: #c84030;
-      --ember-hot: #e6553a;
-      --steel: #5d7c93;
-      --gold:  #d8a13a;
+      --ink: #0a0908;
+      --coal: #15120f;
+      --char: #1f1b16;
+      --parch: #ece8de;
+      --parch-soft: rgba(236, 232, 222, 0.78);
+      --parch-mute: rgba(236, 232, 222, 0.52);
+      --parch-line: rgba(236, 232, 222, 0.12);
+      --parch-faint: rgba(236, 232, 222, 0.05);
+      --ember: #e0552c;
+      --ember-hot: #f06b3a;
       --accent: var(--ember);
       --display: 'Cormorant Garamond', 'Iowan Old Style', Georgia, serif;
-      --eyebrow: 'Cinzel', 'Trajan Pro', serif;
+      --eyebrow: 'Inter', system-ui, -apple-system, sans-serif;
       --body: 'Inter', system-ui, -apple-system, sans-serif;
       --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
     }
@@ -35,9 +108,9 @@
       background: var(--ink);
       color: var(--parch);
       font-family: var(--body);
-      font-weight: 300;
-      font-size: 15px;
-      line-height: 1.55;
+      font-weight: 400;
+      font-size: 15.5px;
+      line-height: 1.6;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
       overflow-x: hidden;
@@ -61,40 +134,22 @@
       inset: 0;
       pointer-events: none;
       z-index: 1;
-      opacity: 0.32;
+      opacity: 0.18;
       mix-blend-mode: overlay;
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.5  0 0 0 0 0.4  0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.5  0 0 0 0 0.4  0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
     }
     @media (prefers-reduced-motion: reduce) {
-      body::after { opacity: 0.22; }
+      body::after { opacity: 0.12; }
     }
 
-    /* Reusable typography */
+    /* Reusable typography — sober uppercase Inter */
     .eyebrow {
       font-family: var(--eyebrow);
       font-size: 11px;
-      letter-spacing: 0.32em;
+      letter-spacing: 0.28em;
       text-transform: uppercase;
       color: var(--parch-mute);
       font-weight: 500;
-    }
-    .eyebrow .dot {
-      display: inline-block;
-      width: 4px; height: 4px;
-      background: var(--accent);
-      transform: rotate(45deg);
-      margin: 0 14px 2px;
-      vertical-align: middle;
-    }
-
-    /* Ember-breathing accent — very subtle pulse on small accent marks */
-    @keyframes ember-breathe {
-      0%, 100% { opacity: 1; filter: drop-shadow(0 0 0 transparent); }
-      50%      { opacity: 0.78; filter: drop-shadow(0 0 6px rgba(200,64,48,0.55)); }
-    }
-    .ember-pulse { animation: ember-breathe 4.6s ease-in-out infinite; }
-    @media (prefers-reduced-motion: reduce) {
-      .ember-pulse { animation: none; }
     }
 
     .display {
@@ -124,16 +179,8 @@
     /* Custom scrollbar — slim ink */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: var(--ink); }
-    ::-webkit-scrollbar-thumb { background: rgba(236, 227, 207, 0.18); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(236, 227, 207, 0.35); }
-
-    /* Diamond glyph */
-    .diamond {
-      display: inline-block;
-      width: 7px; height: 7px;
-      background: currentColor;
-      transform: rotate(45deg);
-    }
+    ::-webkit-scrollbar-thumb { background: rgba(236, 232, 222, 0.18); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(236, 232, 222, 0.35); }
 
     /* Buttons — flat, sharp-edged, with a brief metallic shine-sweep on hover */
     .btn {
@@ -182,21 +229,33 @@
       background: var(--accent);
       color: var(--parch);
     }
+    .btn--ember {
+      background: var(--accent);
+      color: #1a0c07;
+      font-weight: 600;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset,
+                  0 10px 28px -12px rgba(224, 85, 44, 0.55);
+    }
+    .btn--ember:hover {
+      background: var(--ember-hot);
+      color: #150806;
+    }
     .btn--ghost {
-      border-color: var(--parch-line);
+      border-color: rgba(236, 232, 222, 0.22);
       color: var(--parch);
     }
     .btn--ghost:hover {
       border-color: var(--parch);
-      background: rgba(236, 227, 207, 0.04);
+      background: rgba(236, 232, 222, 0.04);
     }
     .btn:focus-visible {
-      outline: 1px solid var(--accent);
+      outline: 2px solid var(--accent);
       outline-offset: 3px;
     }
     a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
-      outline: 1px solid var(--accent);
+      outline: 2px solid var(--accent);
       outline-offset: 4px;
+      border-radius: 2px;
     }
 
     /* Animation: fade up on scroll */
@@ -211,17 +270,6 @@
       transform: translateY(0);
     }
 
-    /* Hairline divider */
-    .hair {
-      height: 1px;
-      background: var(--parch-line);
-      width: 100%;
-    }
-    .hair--accent {
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
-      height: 1px;
-    }
-
     /* Container */
     .container {
       max-width: 1480px;
@@ -230,29 +278,6 @@
     }
     @media (max-width: 900px) {
       .container { padding: 0 22px; }
-    }
-
-    /* Forge divider — single fading ember spark between sections */
-    .forge-divider {
-      position: relative;
-      height: 1px;
-      width: 100%;
-      background: linear-gradient(90deg, transparent, var(--parch-line) 22%, var(--parch-line) 78%, transparent);
-    }
-    .forge-divider::after {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 6px;
-      height: 6px;
-      background: var(--accent);
-      transform: translate(-50%, -50%) rotate(45deg);
-      box-shadow: 0 0 18px rgba(200,64,48,0.5);
-      animation: ember-breathe 5.4s ease-in-out infinite;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .forge-divider::after { animation: none; }
     }
 
     /* Scroll indicator breathing line */
@@ -270,22 +295,6 @@
     @media (max-width: 640px) {
       .lede { font-size: 20px !important; }
     }
-
-    /* Numbered section marker (left rail) */
-    .sec-num {
-      position: absolute;
-      left: 56px;
-      top: 80px;
-      font-family: var(--eyebrow);
-      font-size: 10.5px;
-      letter-spacing: 0.32em;
-      color: var(--parch-mute);
-      text-transform: uppercase;
-      writing-mode: vertical-rl;
-      transform: rotate(180deg);
-      z-index: 5;
-    }
-    @media (max-width: 1100px) { .sec-num { display: none; } }
 
     /* Underline link */
     .ulink {
@@ -313,8 +322,16 @@
 <body>
   <div id="root"></div>
 
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <!--
+    TODO production "vrai build" : passer à un pipeline Vite + esbuild.
+      • Babel-standalone (~330 kB) ne sert qu'à transformer le JSX au runtime.
+        En passant par Vite/esbuild, on précompile tout, on supprime Babel-standalone
+        du chargement, et on gagne ~300 kB + le temps de transformation au démarrage.
+      • Pour l'instant on reste en JSX inline avec Babel-standalone (suffisant pour
+        un site associatif statique), mais on charge bien React en build production.
+  -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
   <script type="text/babel" src="tweaks-panel.jsx"></script>

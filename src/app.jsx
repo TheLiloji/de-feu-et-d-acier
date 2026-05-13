@@ -1,7 +1,7 @@
 // Main app — assembles all sections, manages tweaks
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "accent": "#c84030",
+  "accent": "#e0552c",
   "heroVariant": "studio",
   "showTreatise": true,
   "italicAccent": true
@@ -28,14 +28,17 @@ function App() {
       <ContactStyles />
       <Nav scrolled={scrolled} />
       <Hero />
+      <FirstSteps />
       <Manifesto />
       <Club />
+      <Encadrement />
       <Disciplines />
       <Salle />
       <Tournois />
       <Galerie />
       <Identite />
       <Contact />
+      <LegalNotes />
       <Footer />
 
       <TweaksPanel title="Tweaks · D.F.D.A">
@@ -43,7 +46,7 @@ function App() {
           <TweakColor
             label="Accent"
             value={tweaks.accent}
-            options={['#c84030', '#5d7c93', '#d8a13a', '#8a6f5d', '#9a3a3a']}
+            options={['#e0552c', '#c84030', '#5d7c93', '#d8a13a', '#8a6f5d']}
             onChange={(v) => setTweak('accent', v)}
           />
         </TweakSection>

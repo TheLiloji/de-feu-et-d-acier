@@ -15,18 +15,72 @@ const SectionsStyles = () => (
     .editorial-split.center { align-items: center; }
     .editorial-split.bottom { align-items: end; }
 
-    /* Pillars (Club 3-col) */
+    /* Pillars (Club 3-col) — acier + braise au hover */
     .pillars { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--parch-line); border-bottom: 1px solid var(--parch-line); }
-    .pillar { padding: 52px 44px; display: flex; flex-direction: column; gap: 18px; border-left: 1px solid var(--parch-line); }
+    .pillar {
+      position: relative;
+      padding: 52px 44px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      border-left: 1px solid var(--parch-line);
+      transition: background 320ms var(--ease);
+    }
     .pillar:first-child { border-left: none; }
+    .pillar::after {
+      content: '';
+      position: absolute;
+      left: 44px;
+      bottom: 0;
+      width: 36px;
+      height: 1px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 360ms var(--ease);
+    }
+    .pillar:hover { background: linear-gradient(180deg, rgba(224,85,44,0.025), transparent 70%); }
+    .pillar:hover::after { transform: scaleX(1); }
 
     /* Disciplines card strip */
     .disc-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; width: 100%; height: 620px; border-top: 1px solid var(--parch-line); }
-    .disc-card { position: relative; overflow: hidden; cursor: pointer; transition: filter 320ms var(--ease); outline: none; background: var(--coal); border-right: 1px solid var(--parch-line); }
+    .disc-card {
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: filter 320ms var(--ease);
+      outline: none;
+      background: var(--coal);
+      border-right: 1px solid var(--parch-line);
+    }
     .disc-card:last-child { border-right: none; }
+    /* Filet ember en haut de la carte active */
+    .disc-card::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; top: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent) 35%, var(--ember-hot) 65%, transparent);
+      opacity: 0;
+      transition: opacity 280ms var(--ease);
+      z-index: 3;
+      pointer-events: none;
+    }
+    .disc-card[aria-pressed="true"]::after { opacity: 0.9; }
 
-    /* Schedule table */
+    /* Schedule table — left ember bar appears on hover */
     .salle-table-row { display: grid; grid-template-columns: 80px 200px 1.4fr 1fr 1.3fr 60px; padding: 26px 0; align-items: center; gap: 24px; border-bottom: 1px solid var(--parch-line); position: relative; transition: background 200ms var(--ease); }
+    .salle-table-row::before {
+      content: '';
+      position: absolute;
+      left: -12px; top: 50%;
+      width: 2px; height: 0;
+      background: var(--accent);
+      transform: translateY(-50%);
+      transition: height 260ms var(--ease);
+      pointer-events: none;
+    }
+    .salle-table-row:hover::before { height: 26px; }
     .salle-table-header { display: grid; grid-template-columns: 80px 200px 1.4fr 1fr 1.3fr 60px; padding: 18px 0; border-bottom: 1px solid var(--parch-line); align-items: center; gap: 24px; }
 
     /* Events */
@@ -35,11 +89,11 @@ const SectionsStyles = () => (
     /* Tournois split */
     .tournois-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 56px; align-items: start; }
 
-    /* Galerie masonry */
+    /* Galerie masonry — filtre commun (cool + légère désaturation), hover réchauffe */
     .galerie-grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 160px; gap: 12px; }
     .galerie-tile { position: relative; overflow: hidden; width: 100%; height: 100%; }
-    .galerie-tile img { transition: transform 700ms var(--ease), filter 500ms var(--ease); }
-    .galerie-tile:hover img { transform: scale(1.06); filter: brightness(1.04); }
+    .galerie-tile img { transition: transform 700ms var(--ease), filter 500ms var(--ease); filter: saturate(0.88) contrast(1.04) brightness(0.92); }
+    .galerie-tile:hover img { transform: scale(1.06); filter: saturate(0.95) contrast(1.06) brightness(1.0); }
     .galerie-tile .caption {
       position: absolute; left: 16px; right: 16px; bottom: 14px;
       font-family: var(--display); font-style: italic; font-size: 14.5px;
@@ -86,6 +140,8 @@ const SectionsStyles = () => (
     /* ── Tablet: 900px and below ── */
     @media (max-width: 900px) {
       section { padding: 100px 0 110px !important; }
+      /* FirstSteps reste compact (utility band, pas une section "récit") */
+      section#firststeps { padding: 56px 0 60px !important; }
       .editorial-split { grid-template-columns: 1fr !important; gap: 40px !important; align-items: start !important; }
       .editorial-split .lede-col, .editorial-split img { justify-self: start !important; }
       .section-head { grid-template-columns: 1fr !important; gap: 28px !important; margin-bottom: 56px !important; align-items: start !important; }
@@ -139,6 +195,216 @@ const SectionsStyles = () => (
       pointer-events: none;
     }
   `}</style>
+);
+
+// ───────────────────────────────────────────────────────────────────
+// FIRST STEPS — bande pratique juste après le hero
+// Trois étapes simples : Contact → Première séance → Adhésion
+// ───────────────────────────────────────────────────────────────────
+const FirstSteps = () => (
+  <section
+    id="firststeps"
+    aria-label="Comment essayer le club"
+    style={{
+      position: 'relative',
+      padding: '72px 0 72px',
+      background: 'var(--coal)',
+      borderTop: '1px solid var(--parch-line)',
+      borderBottom: '1px solid var(--parch-line)',
+    }}
+  >
+    <div className="container">
+      <div
+        className="first-steps-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1.05fr 1fr 1fr 1fr',
+          gap: 36,
+          alignItems: 'start',
+        }}
+      >
+        <Reveal>
+          <div>
+            <Eyebrow>Comment essayer</Eyebrow>
+            <h3
+              className="display"
+              style={{
+                margin: '14px 0 12px',
+                fontSize: 'clamp(28px, 2.6vw, 38px)',
+                lineHeight: 1.05,
+                fontWeight: 400,
+              }}
+            >
+              Trois étapes,
+              {' '}
+              <em style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent)' }}>
+                pas plus.
+              </em>
+            </h3>
+            <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.65, color: 'var(--parch-mute)', maxWidth: 340 }}>
+              On vous attend, on vous prête le matériel, et vous décidez après si vous restez.
+            </p>
+          </div>
+        </Reveal>
+
+        {[
+          {
+            n: '01',
+            title: 'Contactez le club',
+            body: 'Un message, un mail ou un appel pour caler une première séance — on vous dit quand venir.',
+            primary: { href: 'mailto:c.sillac@protonmail.com', label: 'Écrire un mail' },
+            secondary: { href: 'tel:+33631585460', label: '06 31 58 54 60' },
+          },
+          {
+            n: '02',
+            title: 'Venez essayer',
+            body: 'Tenue de sport, chaussures propres, bouteille d\'eau. On prête masque, gants et arme d\'entraînement.',
+            primary: { href: '#salle', label: 'Voir les créneaux' },
+            secondary: { href: '#disciplines', label: 'Les disciplines' },
+          },
+          {
+            n: '03',
+            title: 'Inscrivez-vous',
+            body: 'Si ça vous plaît, adhésion 85 € pour la saison via HelloAsso. Rejoindre en cours d\'année est possible.',
+            primary: {
+              href: 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026',
+              label: 'Adhérer en ligne',
+              external: true,
+            },
+          },
+        ].map((s, i) => (
+          <Reveal key={s.n} delay={120 + i * 80}>
+            <div className="first-step-card">
+              <div className="first-step-num">
+                <span>{s.n}</span>
+                <span className="first-step-rule" aria-hidden="true" />
+              </div>
+              <div className="first-step-title">{s.title}</div>
+              <p className="first-step-body">{s.body}</p>
+              <div className="first-step-actions">
+                <a
+                  href={s.primary.href}
+                  {...(s.primary.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                  className="first-step-link first-step-link--primary"
+                >
+                  {s.primary.label}
+                  <ArrowGlyph size={11} color="currentColor" />
+                </a>
+                {s.secondary && (
+                  <a
+                    href={s.secondary.href}
+                    className="first-step-link first-step-link--mute"
+                  >
+                    {s.secondary.label}
+                  </a>
+                )}
+              </div>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+      <style>{`
+        .first-step-card {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          padding: 30px 28px 26px;
+          background: linear-gradient(180deg, rgba(236,232,222,0.028), rgba(236,232,222,0.008));
+          border: 1px solid var(--parch-line);
+          border-radius: 2px;
+          height: 100%;
+          overflow: hidden;
+          transition: border-color 260ms var(--ease), transform 260ms var(--ease), background 260ms var(--ease);
+        }
+        /* Liseré ember subtil en haut, animation au hover */
+        .first-step-card::before {
+          content: '';
+          position: absolute;
+          left: 0; right: 0; top: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, var(--accent), transparent);
+          opacity: 0.25;
+          transform: scaleX(0.4);
+          transform-origin: left;
+          transition: transform 420ms var(--ease), opacity 260ms var(--ease);
+        }
+        .first-step-card:hover {
+          border-color: rgba(236,232,222,0.30);
+          transform: translateY(-2px);
+          background: linear-gradient(180deg, rgba(224,85,44,0.05), rgba(236,232,222,0.012));
+        }
+        .first-step-card:hover::before { transform: scaleX(1); opacity: 0.7; }
+
+        .first-step-num {
+          display: inline-flex;
+          align-items: center;
+          gap: 14px;
+          font-family: var(--eyebrow);
+          font-size: 10.5px;
+          letter-spacing: 0.30em;
+          color: var(--accent);
+          font-weight: 600;
+        }
+        .first-step-rule {
+          display: inline-block;
+          width: 28px;
+          height: 1px;
+          background: var(--accent);
+          opacity: 0.6;
+        }
+        .first-step-title {
+          font-family: var(--display);
+          font-size: 28px;
+          line-height: 1.12;
+          color: var(--parch);
+          font-weight: 500;
+        }
+        .first-step-body {
+          margin: 0;
+          font-size: 14px;
+          line-height: 1.65;
+          color: var(--parch-mute);
+          flex: 1;
+        }
+        .first-step-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 8px;
+        }
+        .first-step-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          font-family: var(--eyebrow);
+          font-size: 10.5px;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          font-weight: 500;
+          min-height: 32px;
+          transition: color 200ms var(--ease), gap 200ms var(--ease);
+        }
+        .first-step-link--primary { color: var(--parch); }
+        .first-step-link--primary:hover { color: var(--accent); gap: 14px; }
+        .first-step-link--mute {
+          color: var(--parch-mute);
+          font-variant-numeric: tabular-nums;
+        }
+        .first-step-link--mute:hover { color: var(--accent); }
+
+        @media (max-width: 1100px) {
+          .first-steps-grid { grid-template-columns: 1fr 1fr !important; gap: 24px !important; }
+        }
+        @media (max-width: 640px) {
+          .first-steps-grid { grid-template-columns: 1fr !important; }
+          .first-step-card { padding: 26px 22px 22px; }
+          .first-step-title { font-size: 24px; }
+          .first-step-link { min-height: 44px; font-size: 11.5px; }
+        }
+      `}</style>
+    </div>
+  </section>
 );
 
 // ───────────────────────────────────────────────────────────────────
@@ -252,88 +518,50 @@ const Manifesto = () => (
           </Reveal>
         </div>
 
-        {/* Right column — treatise drawing in a parchment-toned frame */}
+        {/* Right column — treatise drawing, sober frame */}
         <Reveal delay={150}>
           <figure
             className="treatise-frame"
             style={{
               margin: 0,
               position: 'relative',
-              padding: 24,
-              background:
-                'linear-gradient(180deg, rgba(236,227,207,0.05), rgba(236,227,207,0.02))',
+              padding: 0,
               border: '1px solid var(--parch-line)',
+              background: 'var(--char)',
             }}
           >
-            {/* Four corner brackets — subtle "folio plate" framing */}
-            {[
-              { top: -1, left: -1, b: '1px 0 0 1px' },
-              { top: -1, right: -1, b: '1px 1px 0 0' },
-              { bottom: -1, left: -1, b: '0 0 1px 1px' },
-              { bottom: -1, right: -1, b: '0 1px 1px 0' },
-            ].map((c, i) => (
-              <span key={i} aria-hidden="true" style={{
-                position: 'absolute',
-                width: 14, height: 14,
-                borderStyle: 'solid',
-                borderColor: 'var(--accent)',
-                borderWidth: c.b,
-                opacity: 0.6,
-                ...c,
-              }} />
-            ))}
             <div
               style={{
-                position: 'absolute',
-                top: 14,
-                left: 14,
-                right: 14,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontFamily: 'var(--eyebrow)',
-                fontSize: 9,
-                letterSpacing: '0.3em',
-                color: 'var(--parch-mute)',
-                textTransform: 'uppercase',
-                pointerEvents: 'none',
-                zIndex: 2,
-              }}
-            >
-              <span>Folio · Planche XIV</span>
-              <Diamond size={4} color="var(--accent)" />
-            </div>
-            <div
-              style={{
-                background: '#efe4c4',
-                padding: 0,
                 position: 'relative',
                 overflow: 'hidden',
+                background: '#e8dec0',
               }}
             >
               <img
                 src="assets/treatise.jpg"
-                alt="Planche issue d'un traité d'escrime médiévale"
+                alt="Planche issue d'un traité d'escrime historique"
                 style={{
                   display: 'block',
                   width: '100%',
                   height: 'auto',
-                  filter: 'sepia(0.15) contrast(1.05)',
+                  filter: 'contrast(1.02)',
                 }}
               />
             </div>
             <figcaption
               style={{
-                marginTop: 18,
+                margin: 0,
+                padding: '18px 22px 20px',
                 fontFamily: 'var(--display)',
                 fontStyle: 'italic',
                 fontSize: 14.5,
                 lineHeight: 1.5,
                 color: 'var(--parch-mute)',
+                borderTop: '1px solid var(--parch-line)',
               }}
             >
-              Planche extraite d'un traité d'escrime ancien. Étude des
-              gardes, des distances, du timing — autant de gestes que l'on
+              Planche extraite d'un traité d'escrime historique. Étude
+              des gardes, des distances, du timing — des gestes que l'on
               cherche à comprendre, puis à éprouver dans la salle.
             </figcaption>
           </figure>
@@ -489,6 +717,260 @@ const Club = () => (
 );
 
 // ───────────────────────────────────────────────────────────────────
+// ENCADREMENT — qui vous accueille, ton humain, placeholders propres
+// ───────────────────────────────────────────────────────────────────
+const Encadrement = () => {
+  const people = [
+    {
+      initials: 'GT',
+      name: 'Gabriel Tardio',
+      role: 'Encadrant',
+      body: 'Gabriel mène les séances : drills techniques, lecture des traités, mise en assaut. Il prend le temps avec les débutants — comprendre le geste avant de l\'enchaîner.',
+    },
+    {
+      initials: 'CS',
+      name: 'Clémence Sillac',
+      role: 'Présidente de section',
+      body: 'Clémence gère la vie associative, les inscriptions et l\'accueil. C\'est la première personne à qui écrire si vous voulez venir essayer.',
+      contact: [
+        { l: 'mail', href: 'mailto:c.sillac@protonmail.com', v: 'c.sillac@protonmail.com' },
+        { l: 'tél', href: 'tel:+33631585460', v: '06 31 58 54 60' },
+      ],
+    },
+  ];
+
+  return (
+    <section
+      id="encadrement"
+      data-screen-label="04 Encadrement"
+      style={{
+        position: 'relative',
+        padding: '160px 0 180px',
+        background: 'var(--ink)',
+        borderTop: '1px solid var(--parch-line)',
+      }}
+    >
+      <div className="container">
+        <Reveal>
+          <SectionLabel number={3} name="Encadrement" />
+        </Reveal>
+
+        <div className="section-head">
+          <Reveal>
+            <h2
+              className="display"
+              style={{
+                fontSize: 'clamp(48px, 5.2vw, 84px)',
+                lineHeight: 0.96,
+                margin: 0,
+              }}
+            >
+              On vous attend,
+              <br />
+              <em style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent)' }}>
+                on vous prête le masque.
+              </em>
+            </h2>
+          </Reveal>
+          <Reveal delay={120}>
+            <p
+              className="lede-col"
+              style={{
+                margin: 0,
+                fontSize: 16,
+                lineHeight: 1.7,
+                color: 'var(--parch-mute)',
+              }}
+            >
+              Une petite équipe accueille débutants et confirmés. Pas de
+              hiérarchie martiale : on s'entraide, on corrige, on prend
+              le temps de bien faire les choses.
+            </p>
+          </Reveal>
+        </div>
+
+        <div className="staff-grid">
+          {people.map((p, i) => (
+            <Reveal key={p.name} delay={120 + i * 100}>
+              <article className="staff-card">
+                <div className="staff-portrait" aria-hidden="true">
+                  <span className="staff-portrait-mono">{p.initials}</span>
+                  <span className="staff-portrait-grain" />
+                </div>
+                <div className="staff-info">
+                  <div className="staff-role">{p.role}</div>
+                  <h3 className="staff-name">{p.name}</h3>
+                  <p className="staff-body">{p.body}</p>
+                  {p.contact && (
+                    <ul className="staff-contact">
+                      {p.contact.map((c) => (
+                        <li key={c.l}>
+                          <span className="staff-contact-l">{c.l}</span>
+                          <a href={c.href} className="staff-contact-v">{c.v}</a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal delay={320}>
+          <p className="staff-note">
+            Photos à venir — le club vit en salle, pas devant un objectif.
+          </p>
+        </Reveal>
+      </div>
+
+      <style>{`
+        .staff-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 32px;
+        }
+        .staff-card {
+          display: grid;
+          grid-template-columns: 180px 1fr;
+          gap: 32px;
+          align-items: start;
+          padding: 28px;
+          background: linear-gradient(180deg, rgba(236,232,222,0.025), rgba(236,232,222,0.008));
+          border: 1px solid var(--parch-line);
+          border-radius: 2px;
+          transition: border-color 240ms var(--ease), background 240ms var(--ease);
+        }
+        .staff-card:hover {
+          border-color: rgba(236,232,222,0.22);
+          background: linear-gradient(180deg, rgba(224,85,44,0.035), rgba(236,232,222,0.01));
+        }
+        .staff-portrait {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 1 / 1;
+          background:
+            radial-gradient(80% 80% at 30% 25%, rgba(236,232,222,0.06), transparent 60%),
+            radial-gradient(70% 70% at 70% 80%, rgba(224,85,44,0.12), transparent 60%),
+            linear-gradient(160deg, #1d1a16 0%, #14110e 60%, #0e0c0a 100%);
+          border: 1px solid var(--parch-line);
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .staff-portrait-mono {
+          position: relative;
+          z-index: 2;
+          font-family: var(--display);
+          font-style: italic;
+          font-weight: 400;
+          font-size: 64px;
+          line-height: 1;
+          color: var(--parch);
+          letter-spacing: -0.02em;
+          background: linear-gradient(180deg, #ece8de 0%, #c7b893 55%, #8a6a4e 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          filter: drop-shadow(0 1px 0 rgba(0,0,0,0.45));
+        }
+        .staff-portrait-grain {
+          position: absolute;
+          inset: 0;
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.5  0 0 0 0 0.4  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
+          opacity: 0.18;
+          mix-blend-mode: overlay;
+          pointer-events: none;
+        }
+        .staff-info { display: flex; flex-direction: column; gap: 12px; }
+        .staff-role {
+          font-family: var(--eyebrow);
+          font-size: 10.5px;
+          letter-spacing: 0.28em;
+          text-transform: uppercase;
+          color: var(--accent);
+          font-weight: 600;
+        }
+        .staff-name {
+          margin: 0;
+          font-family: var(--display);
+          font-size: 30px;
+          line-height: 1.1;
+          color: var(--parch);
+          font-weight: 500;
+        }
+        .staff-body {
+          margin: 0;
+          font-size: 14.5px;
+          line-height: 1.65;
+          color: var(--parch-mute);
+        }
+        .staff-contact {
+          margin: 6px 0 0;
+          padding: 0;
+          list-style: none;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .staff-contact li {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 14px;
+        }
+        .staff-contact-l {
+          font-family: var(--eyebrow);
+          font-size: 10px;
+          letter-spacing: 0.26em;
+          text-transform: uppercase;
+          color: var(--parch-mute);
+          min-width: 36px;
+          font-weight: 500;
+        }
+        .staff-contact-v {
+          font-family: var(--display);
+          font-size: 17px;
+          color: var(--parch);
+          border-bottom: 1px solid transparent;
+          transition: color 200ms var(--ease), border-color 200ms var(--ease);
+        }
+        .staff-contact-v:hover {
+          color: var(--accent);
+          border-bottom-color: var(--accent);
+        }
+        .staff-note {
+          margin: 56px 0 0;
+          font-family: var(--display);
+          font-style: italic;
+          font-size: 15px;
+          color: var(--parch-mute);
+          text-align: center;
+        }
+
+        @media (max-width: 1100px) {
+          .staff-grid { gap: 24px; }
+          .staff-card { grid-template-columns: 140px 1fr; gap: 24px; padding: 24px; }
+          .staff-portrait-mono { font-size: 52px; }
+          .staff-name { font-size: 26px; }
+        }
+        @media (max-width: 900px) {
+          .staff-grid { grid-template-columns: 1fr !important; }
+          .staff-card { grid-template-columns: 120px 1fr; gap: 20px; padding: 22px; }
+          .staff-portrait-mono { font-size: 44px; }
+        }
+        @media (max-width: 480px) {
+          .staff-card { grid-template-columns: 1fr; }
+          .staff-portrait { aspect-ratio: 1.6 / 1; }
+          .staff-portrait-mono { font-size: 48px; }
+        }
+      `}</style>
+    </section>
+  );
+};
+
+// ───────────────────────────────────────────────────────────────────
 // DISCIPLINES — 4 large interactive cards in a row
 // Hover expands to reveal details about the weapon system
 // ───────────────────────────────────────────────────────────────────
@@ -541,15 +1023,16 @@ const Disciplines = () => {
       name: 'Combat viking',
       sub: 'Bouclier & arme courte',
       era: 'Haut Moyen Âge',
-      desc: 'Pratique inspirée des traditions martiales anciennes, avec bouclier et armes adaptées selon les cours. Jeu de pression, contact, contrôle.',
-      img: 'assets/group-gym.jpg',
+      desc: 'Pratique inspirée des traditions martiales anciennes, avec bouclier et armes adaptées selon les sources. Jeu de pression, contact, contrôle.',
+      img: null,
       focal: '50% 40%',
+      placeholder: true,
     },
   ];
   return (
     <section
       id="disciplines"
-      data-screen-label="04 Disciplines"
+      data-screen-label="05 Disciplines"
       style={{
         position: 'relative',
         padding: '160px 0 0',
@@ -559,7 +1042,7 @@ const Disciplines = () => {
     >
       <div className="container" style={{ marginBottom: 64 }}>
         <Reveal>
-          <SectionLabel number={3} name="Les disciplines" />
+          <SectionLabel number={4} name="Les disciplines" />
         </Reveal>
 
         <div className="section-head" style={{ marginBottom: 0 }}>
@@ -618,23 +1101,38 @@ const Disciplines = () => {
               role="button"
               aria-pressed={isActive}
             >
-              <img
-                src={d.img}
-                alt={d.name}
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  objectPosition: d.focal,
-                  filter: isActive
-                    ? 'grayscale(0) contrast(1.05) brightness(0.95)'
-                    : 'grayscale(0.85) contrast(1.0) brightness(0.55)',
-                  transition: 'filter 320ms, transform 600ms cubic-bezier(0.2,0.7,0.3,1)',
-                  transform: isActive ? 'scale(1.04)' : 'scale(1.0)',
-                }}
-              />
+              {d.img ? (
+                <img
+                  src={d.img}
+                  alt={d.name}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: d.focal,
+                    filter: isActive
+                      ? 'grayscale(0) contrast(1.06) brightness(0.92)'
+                      : 'grayscale(0.85) contrast(1.0) brightness(0.55)',
+                    transition: 'filter 320ms, transform 600ms cubic-bezier(0.2,0.7,0.3,1)',
+                    transform: isActive ? 'scale(1.04)' : 'scale(1.0)',
+                  }}
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="disc-placeholder"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background:
+                      'radial-gradient(80% 60% at 30% 25%, rgba(236,232,222,0.06), transparent 65%),' +
+                      'radial-gradient(80% 70% at 75% 85%, rgba(224,85,44,0.16), transparent 60%),' +
+                      'linear-gradient(160deg, #1f1a16 0%, #14110e 60%, #0c0a08 100%)',
+                  }}
+                />
+              )}
               <div
                 aria-hidden="true"
                 style={{
@@ -764,7 +1262,7 @@ const Salle = () => {
   return (
     <section
       id="salle"
-      data-screen-label="05 Salle d'armes"
+      data-screen-label="06 Salle d'armes"
       style={{
         position: 'relative',
         padding: '160px 0 180px',
@@ -774,7 +1272,7 @@ const Salle = () => {
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={4} name="Salle d'armes" />
+          <SectionLabel number={5} name="Salle d'armes" />
         </Reveal>
 
         <div className="section-head">
@@ -1000,7 +1498,7 @@ const Tournois = () => {
   return (
     <section
       id="tournois"
-      data-screen-label="06 Tournois"
+      data-screen-label="07 Tournois"
       style={{
         position: 'relative',
         padding: '160px 0 180px',
@@ -1010,7 +1508,7 @@ const Tournois = () => {
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={5} name="Tournois & saison" />
+          <SectionLabel number={6} name="Tournois & saison" />
         </Reveal>
 
         <div className="section-head" style={{ marginBottom: 100 }}>
@@ -1219,7 +1717,7 @@ const EventRow = ({ event, index, last }) => {
 const Galerie = () => (
   <section
     id="galerie"
-    data-screen-label="07 Galerie"
+    data-screen-label="08 Galerie"
     style={{
       position: 'relative',
       padding: '160px 0 180px',
@@ -1229,7 +1727,7 @@ const Galerie = () => (
   >
     <div className="container">
       <Reveal>
-        <SectionLabel number={6} name="Galerie" />
+        <SectionLabel number={7} name="Galerie" />
       </Reveal>
 
       <div className="section-head">
@@ -1296,7 +1794,7 @@ const Galerie = () => (
 const Identite = () => (
   <section
     id="identite"
-    data-screen-label="08 Clermont"
+    data-screen-label="09 Clermont"
     style={{
       position: 'relative',
       padding: 0,
@@ -1347,7 +1845,7 @@ const Identite = () => (
 
       <div className="container identite-container" style={{ position: 'relative', padding: '140px 56px' }}>
         <Reveal>
-          <SectionLabel number={7} name="Clermont-Ferrand" />
+          <SectionLabel number={8} name="Clermont-Ferrand" />
         </Reveal>
         <div className="editorial-split split-14-1-end">
           <Reveal>
@@ -1411,8 +1909,10 @@ const Identite = () => (
 
 Object.assign(window, {
   SectionsStyles,
+  FirstSteps,
   Manifesto,
   Club,
+  Encadrement,
   Disciplines,
   Salle,
   Tournois,
