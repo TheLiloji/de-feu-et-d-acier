@@ -952,7 +952,7 @@ const Disciplines = () => {
 };
 
 // ───────────────────────────────────────────────────────────────────
-// SALLE D'ARMES — proper weekly grid of training sessions
+// NOUS REJOINDRE — créneaux + lieu + essai gratuit + adhésion en un bloc
 // ───────────────────────────────────────────────────────────────────
 const Salle = () => {
   const slots = [
@@ -964,7 +964,7 @@ const Salle = () => {
   return (
     <section
       id="creneaux"
-      data-screen-label="06 Créneaux"
+      data-screen-label="06 Nous rejoindre"
       style={{
         position: 'relative',
         padding: '160px 0 180px',
@@ -974,57 +974,41 @@ const Salle = () => {
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={5} name="Créneaux et lieux" />
+          <SectionLabel number={5} name="Nous rejoindre" />
         </Reveal>
 
-        <div className="section-head">
-          <Reveal>
-            <h2
-              className="display"
+        <Reveal>
+          <h2
+            className="display"
+            style={{
+              fontSize: 'clamp(44px, 4.8vw, 76px)',
+              lineHeight: 1.02,
+              margin: '0 0 56px',
+              maxWidth: 980,
+            }}
+          >
+            Une lame, un masque,
+            <br />
+            <em
               style={{
-                fontSize: 'clamp(48px, 5.2vw, 84px)',
-                lineHeight: 0.96,
-                margin: 0,
+                fontStyle: 'italic',
+                fontWeight: 300,
+                color: 'var(--accent)',
               }}
             >
-              Trois créneaux
-              <br />
-              <em
-                style={{
-                  fontStyle: 'italic',
-                  fontWeight: 300,
-                  color: 'var(--accent)',
-                }}
-              >
-                par semaine.
-              </em>
-            </h2>
-          </Reveal>
-          <Reveal delay={100}>
-            <p
-              className="lede-col"
-              style={{
-                margin: 0,
-                fontSize: 16,
-                lineHeight: 1.7,
-                color: 'var(--parch-mute)',
-              }}
-            >
-              Première séance possible après contact avec le club —
-              tenue de sport, chaussures propres pour le gymnase, bouteille
-              d'eau. Le matériel d'initiation peut être prêté.
-            </p>
-          </Reveal>
-        </div>
+              et l'envie de bien faire.
+            </em>
+          </h2>
+        </Reveal>
 
-        <Reveal delay={120}>
+        {/* ─── Horaires ─── */}
+        <Reveal delay={100}>
           <div
             style={{
               borderTop: '1px solid var(--parch-line)',
               borderBottom: '1px solid var(--parch-line)',
             }}
           >
-            {/* Header row */}
             <div className="salle-table-header">
               {['Jour', 'Horaire', 'Discipline', 'Niveau'].map((h, i) => (
                 <div
@@ -1048,39 +1032,74 @@ const Salle = () => {
           </div>
         </Reveal>
 
-        <Reveal delay={200}>
-          <div
-            style={{
-              marginTop: 56,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-              gap: 32,
-              flexWrap: 'wrap',
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontFamily: 'var(--body)',
-                fontSize: 14.5,
-                lineHeight: 1.6,
-                color: 'var(--parch-mute)',
-                maxWidth: 580,
-              }}
-            >
-              Gymnase Robert Pras — 3 rue Jean Monnet, 63100
-              Clermont-Ferrand. Vérifiez les horaires avant de venir
-              pour une première séance.
-            </p>
-            <a
-              href="#rejoindre"
-              className="btn btn--secondary"
-              style={{ flexShrink: 0 }}
-            >
-              Nous contacter avant de venir
-              <ArrowGlyph size={11} color="currentColor" />
-            </a>
+        {/* ─── 2 piliers texte : viens essayer · continuer ensuite ─── */}
+        <Reveal delay={140}>
+          <div className="rejoindre-pillars">
+            <article className="rejoindre-pillar">
+              <div className="rejoindre-pillar-eyebrow">01 · Viens essayer</div>
+              <div className="rejoindre-pillar-content">
+                <h3 className="rejoindre-pillar-headline">
+                  Le premier mois est <em>gratuit</em>.
+                  Viens quand tu veux, sans prévenir.
+                </h3>
+                <p className="rejoindre-pillar-body">
+                  Peu importe que tu n'aies jamais fait de sport, que
+                  tu sortes d'un autre art martial ou que tu n'aies
+                  rien touché depuis des années — <strong>on t'accueille</strong>.
+                  Tu n'as besoin de rien apporter&nbsp;: on te prête le
+                  masque, la veste, les gants, et <strong>l'arme que tu
+                  veux tester</strong> (épée longue, sabre, dague, rapière…).
+                </p>
+                <p className="rejoindre-pillar-body">
+                  Aucun engagement, aucun frais. <em>Viens, ça nous fait
+                  plaisir.</em>
+                </p>
+
+                {/* Carte OSM — Gymnase Robert Pras */}
+                <RejoindreMap />
+
+                <a
+                  href="https://www.google.com/maps/dir/?api=1&destination=Gymnase+Robert+Pras%2C+3+rue+Jean+Monnet%2C+63100+Clermont-Ferrand"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn rejoindre-pillar-cta"
+                >
+                  Itinéraire
+                  <ArrowGlyph size={11} color="currentColor" />
+                </a>
+              </div>
+            </article>
+
+            <article className="rejoindre-pillar">
+              <div className="rejoindre-pillar-eyebrow">02 · Pour continuer</div>
+              <div className="rejoindre-pillar-content">
+                <h3 className="rejoindre-pillar-headline">
+                  <strong>85&nbsp;€</strong> par an, un masque, des
+                  gants coqués. <em>C'est tout.</em>
+                </h3>
+                <p className="rejoindre-pillar-body">
+                  Si tu décides de rester pour l'année, l'adhésion
+                  c'est 85&nbsp;€ — soit <em>littéralement moins qu'un
+                  Netflix</em>. À ça, tu ajoutes les <strong>deux seules
+                  pièces</strong> à te procurer pour les séances régulières&nbsp;:
+                  un masque d'escrime standard et des gants coqués.
+                </p>
+                <p className="rejoindre-pillar-body">
+                  Le reste — vestes, protections, armes — on en parle
+                  au fil du temps, souvent à prix d'ami chez nos
+                  partenaires.
+                </p>
+                <a
+                  href="https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn rejoindre-pillar-cta"
+                >
+                  Adhérer · HelloAsso
+                  <ArrowGlyph size={11} color="currentColor" />
+                </a>
+              </div>
+            </article>
           </div>
         </Reveal>
       </div>
@@ -1177,7 +1196,7 @@ const Faq = () => {
   return (
     <section
       id="faq"
-      data-screen-label="10 FAQ"
+      data-screen-label="09 FAQ"
       style={{
         position: 'relative',
         padding: '160px 0 180px',
@@ -1187,7 +1206,7 @@ const Faq = () => {
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={9} name="Questions fréquentes" />
+          <SectionLabel number={8} name="Questions fréquentes" />
         </Reveal>
 
         <div className="section-head">
@@ -1574,176 +1593,244 @@ const Galerie = () => (
 );
 
 // ───────────────────────────────────────────────────────────────────
-// PARTENAIRES — bandeau placé entre FAQ et bas de page.
-// 2 mini-blocs : Affiliations (FFAMHE) | Équipement (Fait d'Arme,
-// Black Armoury). Logos en couleur, hover discret, liens externes.
+// PARTENAIRES — hommage aux gens qui rendent le club possible :
+// FFAMHE (la fédération qui structure tout l'AMHE en France) et
+// les ateliers / boutiques qui fournissent le matériel sérieux.
 // ───────────────────────────────────────────────────────────────────
 const Partenaires = () => {
-  const affiliations = [
+  const partners = [
     {
+      kind: 'Affiliation',
       name: 'FFAMHE',
       logo: 'assets/logo_signature_FFAMHE.png',
       href: 'https://ffamhe.fr',
       alt: 'Fédération Française des Arts Martiaux Historiques Européens',
+      cta: 'Visiter la FFAMHE',
+      body: (
+        <>
+          La <strong>Fédération Française des Arts Martiaux Historiques
+          Européens</strong> est la colonne vertébrale de tout le milieu
+          AMHE en France. Sans elle, <em>pas de circuit de tournois
+          national, pas de classement HEMA Ratings, pas de cadre pour
+          assurer et reconnaître les clubs</em>. Notre affiliation, c'est
+          ce qui permet à nos compétiteurs d'exister sur la scène, et à
+          chaque séance ici d'être rattachée à un travail collectif
+          beaucoup plus large que notre seule salle.
+        </>
+      ),
     },
-  ];
-  const equipement = [
     {
-      name: 'Faits d\'Armes',
-      logo: 'assets/Fait-d\'arme-logo.png',
+      kind: 'Équipement',
+      name: "Faits d'Armes",
+      logo: "assets/Fait-d'arme-logo.png",
       href: 'https://faitsdarmes.com/fr/',
-      alt: 'Faits d\'Armes — équipement AMHE',
+      alt: "Faits d'Armes — équipement AMHE",
+      cta: 'Voir leurs équipements',
+      body: (
+        <>
+          Atelier français qui développe son matériel en
+          <em> travaillant directement avec des pratiquants</em>. Vestes
+          350N ou 800N, gants coqués, protections rigides — chaque pièce
+          est conçue pour <strong>résister aux assauts longue épée</strong>
+          et durer. Quand tu veux monter ton équipement sérieusement,
+          c'est par là qu'on commence à regarder.
+        </>
+      ),
     },
     {
+      kind: 'Équipement',
       name: 'Black Armoury',
       logo: 'assets/black-armoury-logo.jpg',
       href: 'https://blackarmoury.com',
       alt: 'Black Armoury — équipement HEMA',
+      cta: 'Voir leurs lames',
+      body: (
+        <>
+          Forgeron-fournisseur <strong>incontournable de la scène AMHE
+          européenne</strong>. Simulateurs d'épée longue, montants,
+          dagues, rapières — la qualité de lame qu'on retrouve dans la
+          main d'une bonne partie des compétiteurs sérieux. Quand tu
+          veux <em>ton arme à toi</em>, c'est ici qu'on regarde en
+          premier.
+        </>
+      ),
     },
   ];
 
   return (
     <section
       id="partenaires"
-      aria-labelledby="partenaires-title"
+      data-screen-label="10 Partenaires"
       style={{
         position: 'relative',
-        padding: '100px 0 110px',
+        padding: '160px 0 140px',
         background: 'var(--coal)',
         borderTop: '1px solid var(--parch-line)',
       }}
     >
       <div className="container">
         <Reveal>
-          <div className="partenaires-head">
-            <div className="eyebrow">Partenaires & affiliations</div>
-            <h2 id="partenaires-title" className="partenaires-title">
-              Ils nous accompagnent.
-            </h2>
-          </div>
+          <SectionLabel number={9} name="Partenaires" />
         </Reveal>
 
-        <div className="partenaires-grid">
-          <Reveal delay={120}>
-            <div className="partenaires-col">
-              <div className="partenaires-col-l">Affiliation</div>
-              <div className="partenaires-logos">
-                {affiliations.map((p) => (
-                  <a
-                    key={p.name}
-                    href={p.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="partenaire-logo"
-                    aria-label={p.alt}
-                    title={p.name}
-                  >
-                    <img src={p.logo} alt={p.alt} loading="lazy" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          </Reveal>
+        <Reveal>
+          <h2
+            className="display"
+            style={{
+              fontSize: 'clamp(44px, 4.8vw, 76px)',
+              lineHeight: 1.02,
+              margin: '0 0 28px',
+              maxWidth: 980,
+            }}
+          >
+            Sans eux,
+            <br />
+            <em
+              style={{
+                fontStyle: 'italic',
+                fontWeight: 300,
+                color: 'var(--accent)',
+              }}
+            >
+              rien de tout ça.
+            </em>
+          </h2>
+        </Reveal>
 
-          <Reveal delay={200}>
-            <div className="partenaires-col">
-              <div className="partenaires-col-l">Équipement</div>
-              <div className="partenaires-logos">
-                {equipement.map((p) => (
+        <Reveal delay={100}>
+          <p
+            style={{
+              margin: '0 0 64px',
+              maxWidth: 760,
+              fontFamily: 'var(--body)',
+              fontSize: 16,
+              lineHeight: 1.7,
+              color: 'var(--parch-soft)',
+            }}
+          >
+            Un club n'existe pas tout seul. Il existe parce qu'une
+            fédération porte la discipline au niveau national, parce que
+            des artisans fabriquent du matériel pensé pour cette
+            pratique, et parce que ces gens-là <em>partagent la même
+            exigence que nous</em>. Les trois ci-dessous, on ne se
+            contente pas de les mentionner — on les recommande, on
+            travaille avec eux, et on t'invite à aller voir.
+          </p>
+        </Reveal>
+
+        <div className="partenaires-rows">
+          {partners.map((p, i) => (
+            <Reveal key={p.name} delay={140 + i * 60}>
+              <article className="partenaire-row">
+                <a
+                  href={p.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="partenaire-row-logo"
+                  aria-label={p.alt}
+                  title={p.name}
+                >
+                  <img src={p.logo} alt={p.alt} loading="lazy" />
+                </a>
+                <div className="partenaire-row-content">
+                  <div className="partenaire-row-eyebrow">{p.kind}</div>
+                  <h3 className="partenaire-row-name">{p.name}</h3>
+                  <p className="partenaire-row-body">{p.body}</p>
                   <a
-                    key={p.name}
                     href={p.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="partenaire-logo partenaire-logo--equip"
-                    aria-label={p.alt}
-                    title={p.name}
+                    className="btn btn--secondary partenaire-row-cta"
                   >
-                    <img src={p.logo} alt={p.alt} loading="lazy" />
+                    {p.cta}
+                    <ArrowGlyph size={11} color="currentColor" />
                   </a>
-                ))}
-              </div>
-            </div>
-          </Reveal>
+                </div>
+              </article>
+            </Reveal>
+          ))}
         </div>
       </div>
 
       <style>{`
-        .partenaires-head { margin-bottom: 56px; }
-        .partenaires-title {
-          margin: 14px 0 0;
-          font-family: var(--display);
-          font-size: clamp(36px, 4vw, 56px);
-          line-height: 1.05;
-          color: var(--parch);
-          font-weight: 500;
-        }
-        .partenaires-grid {
-          display: grid;
-          grid-template-columns: 1fr 1.6fr;
-          gap: 56px;
-          align-items: start;
-          padding-top: 40px;
-          border-top: 1px solid var(--parch-line);
-        }
-        .partenaires-col {
+        .partenaires-rows {
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          border-top: 1px solid var(--parch-line);
         }
-        .partenaires-col-l {
+        .partenaire-row {
+          display: grid;
+          grid-template-columns: 280px 1fr;
+          gap: 72px;
+          padding: 56px 0;
+          border-bottom: 1px solid var(--parch-line);
+          align-items: center;
+        }
+        .partenaire-row-logo {
+          display: inline-flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0;
+          transition: transform 240ms var(--ease), filter 240ms var(--ease);
+          filter: saturate(0.85) brightness(0.95);
+        }
+        .partenaire-row-logo:hover {
+          transform: translateY(-3px);
+          filter: saturate(1) brightness(1);
+        }
+        .partenaire-row-logo img {
+          display: block;
+          max-width: 240px;
+          max-height: 130px;
+          width: auto;
+          height: auto;
+          object-fit: contain;
+        }
+        .partenaire-row-content {
+          max-width: 720px;
+        }
+        .partenaire-row-eyebrow {
           font-family: var(--eyebrow);
           font-size: 10.5px;
           letter-spacing: 0.28em;
           text-transform: uppercase;
           color: var(--accent);
           font-weight: 600;
+          margin-bottom: 12px;
         }
-        .partenaires-logos {
-          display: flex;
-          gap: 48px;
-          flex-wrap: wrap;
-          align-items: center;
+        .partenaire-row-name {
+          margin: 0 0 18px;
+          font-family: var(--display);
+          font-weight: 400;
+          font-size: clamp(26px, 2.6vw, 38px);
+          line-height: 1.1;
+          color: var(--parch);
         }
-        /* Logos posés directement sur le fond. Pas de box, pas de bordure.
-           Légère désaturation au repos pour cohérence avec le ton sobre du
-           site, retour à pleine couleur + lift au hover. */
-        .partenaire-logo {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0;
-          background: transparent;
-          border: none;
-          transition: transform 220ms var(--ease), filter 220ms var(--ease);
-          filter: saturate(0.85) brightness(0.95);
+        .partenaire-row-body {
+          margin: 0 0 24px;
+          font-family: var(--body);
+          font-size: 16px;
+          line-height: 1.7;
+          color: var(--parch-soft);
         }
-        .partenaire-logo:hover {
-          transform: translateY(-3px);
-          filter: saturate(1) brightness(1);
+        .partenaire-row-body strong {
+          color: var(--parch);
+          font-weight: 500;
         }
-        .partenaire-logo img {
-          display: block;
-          height: auto;
-          max-height: 96px;
-          max-width: 280px;
-          width: auto;
-          object-fit: contain;
+        .partenaire-row-body em {
+          font-style: italic;
+          color: var(--accent);
+          font-weight: 400;
         }
-        .partenaire-logo--equip img {
-          max-height: 80px;
-          max-width: 220px;
-        }
+        .partenaire-row-cta { align-self: flex-start; }
+
         @media (max-width: 900px) {
-          .partenaires-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
-          .partenaires-logos { gap: 36px; }
-          .partenaire-logo img { max-height: 80px; max-width: 240px; }
-          .partenaire-logo--equip img { max-height: 64px; max-width: 180px; }
-        }
-        @media (max-width: 640px) {
-          .partenaires-logos { gap: 28px; }
-          .partenaire-logo img { max-height: 64px; max-width: 200px; }
-          .partenaire-logo--equip img { max-height: 56px; max-width: 160px; }
+          .partenaire-row {
+            grid-template-columns: 1fr;
+            gap: 28px;
+            padding: 44px 0;
+          }
+          .partenaire-row-logo img { max-width: 200px; max-height: 100px; }
         }
       `}</style>
     </section>
