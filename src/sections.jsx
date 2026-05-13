@@ -189,7 +189,15 @@ const Manifesto = () => (
             >
               Le geste juste,
               <br />
-              avant le costume.
+              <em
+                style={{
+                  fontStyle: 'italic',
+                  fontWeight: 300,
+                  color: 'var(--accent)',
+                }}
+              >
+                avant le costume.
+              </em>
             </h2>
           </Reveal>
 
@@ -197,22 +205,30 @@ const Manifesto = () => (
             <p
               className="lede"
               style={{
-                fontSize: 24,
-                lineHeight: 1.4,
                 maxWidth: 680,
                 marginBottom: 40,
                 color: 'var(--parch-soft)',
               }}
             >
-              On étudie les arts martiaux européens à partir des traités
-              et sources historiques, dans une pratique moderne, sportive
-              et sécurisée. On y vient pour le geste, pas pour le costume.
+              On étudie les arts martiaux européens à partir des{' '}
+              <em
+                style={{
+                  fontStyle: 'normal',
+                  color: 'var(--accent)',
+                  fontWeight: 500,
+                }}
+              >
+                traités et sources historiques
+              </em>
+              , dans une pratique moderne, sportive et sécurisée.
+              On y vient pour le geste, pas pour le costume.
             </p>
           </Reveal>
 
           <Reveal delay={180}>
             <p
               style={{
+                fontFamily: 'var(--body)',
                 fontSize: 16,
                 lineHeight: 1.7,
                 maxWidth: 600,
@@ -270,6 +286,17 @@ const Manifesto = () => (
                 borderTop: '1px solid var(--parch-line)',
               }}
             >
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-block',
+                  width: 22,
+                  height: 1,
+                  background: 'var(--accent)',
+                  verticalAlign: 'middle',
+                  marginRight: 12,
+                }}
+              />
               Planche extraite d'un traité d'escrime historique. Étude
               des gardes, des distances, du timing — des gestes que l'on
               cherche à comprendre, puis à éprouver dans la salle.
@@ -692,56 +719,57 @@ const Encadrement = () => {
 // Hover expands to reveal details about the weapon system
 // ───────────────────────────────────────────────────────────────────
 const Disciplines = () => {
-  const [active, setActive] = React.useState('longue');
+  const [active, setActive] = React.useState('viking');
+  // Ordre chronologique : Haut Moyen Âge → Médiévale → Renaissance
   const disciplines = [
     {
+      id: 'viking',
+      name: 'Combat viking',
+      sub: 'Bouclier & arme courte',
+      era: 'Haut Moyen Âge',
+      eraDates: 'VIIIᵉ — XIᵉ s.',
+      desc: 'Pratique inspirée des traditions martiales anciennes, avec bouclier et armes adaptées selon les sources. Jeu de pression, contact, contrôle.',
+      img: 'assets/Viking.webp',
+      focal: '50% 40%',
+    },
+    {
       id: 'longue',
-      n: '01',
       name: 'Épée longue',
       sub: 'Arme emblématique des AMHE',
       era: 'Médiévale',
+      eraDates: 'XIVᵉ — XVᵉ s.',
       desc: 'Pratiquée à deux mains, l\'épée longue est l\'arme emblématique des AMHE médiévales. Travail de garde, de pointe et d\'entrée au corps.',
       img: 'assets/duel-blue.webp',
       focal: '50% 40%',
     },
     {
-      id: 'rapiere',
-      n: '02',
-      name: 'Rapière',
-      sub: 'Escrime de la Renaissance',
-      era: 'Renaissance',
-      desc: 'Arme plus tardive, liée à l\'escrime de la Renaissance et de l\'époque moderne. Jeu de pointe fin, distance, et déplacement précis.',
-      img: 'assets/Rapière.jpg',
-      focal: '50% 40%',
-    },
-    {
       id: 'messer',
-      n: '03',
       name: 'Messer',
       sub: 'Grand couteau de combat',
       era: 'Médiévale',
+      eraDates: 'XVᵉ s.',
       desc: 'Arme médiévale germanique, proche d\'un grand couteau de combat à un tranchant. Système populaire mêlant escrime et lutte rapprochée.',
       img: 'assets/Messer.avif',
       focal: '50% 40%',
     },
     {
       id: 'bocle',
-      n: '04',
       name: 'Épée-bocle',
       sub: 'Épée à une main & petit bouclier',
       era: 'Médiévale',
+      eraDates: 'XIIIᵉ — XVᵉ s.',
       desc: 'Combinaison d\'une épée à une main et d\'un petit bouclier rond (bocle). Tradition médiévale du combat rapproché, mêlant frappe, parade et liaisons au bouclier.',
       img: 'assets/Epee-bocle.png',
       focal: '50% 40%',
     },
     {
-      id: 'viking',
-      n: '05',
-      name: 'Combat viking',
-      sub: 'Bouclier & arme courte',
-      era: 'Haut Moyen Âge',
-      desc: 'Pratique inspirée des traditions martiales anciennes, avec bouclier et armes adaptées selon les sources. Jeu de pression, contact, contrôle.',
-      img: 'assets/Viking.webp',
+      id: 'rapiere',
+      name: 'Rapière',
+      sub: 'Escrime de la Renaissance',
+      era: 'Renaissance',
+      eraDates: 'XVIᵉ — XVIIᵉ s.',
+      desc: 'Arme plus tardive, liée à l\'escrime de la Renaissance et de l\'époque moderne. Jeu de pointe fin, distance, et déplacement précis.',
+      img: 'assets/Rapière.jpg',
       focal: '50% 40%',
     },
   ];
@@ -840,8 +868,8 @@ const Disciplines = () => {
                   position: 'absolute',
                   inset: 0,
                   background: isActive
-                    ? 'linear-gradient(180deg, rgba(8,7,10,0.05) 0%, rgba(8,7,10,0.4) 50%, rgba(8,7,10,0.95) 100%)'
-                    : 'linear-gradient(180deg, rgba(8,7,10,0.3) 0%, rgba(8,7,10,0.7) 60%, rgba(8,7,10,0.95) 100%)',
+                    ? 'linear-gradient(180deg, rgba(8,7,10,0.7) 0%, rgba(8,7,10,0.25) 22%, rgba(8,7,10,0.18) 45%, rgba(8,7,10,0.55) 72%, rgba(8,7,10,0.96) 100%)'
+                    : 'linear-gradient(180deg, rgba(8,7,10,0.55) 0%, rgba(8,7,10,0.45) 35%, rgba(8,7,10,0.75) 65%, rgba(8,7,10,0.96) 100%)',
                   transition: 'background 320ms',
                 }}
               />
@@ -860,36 +888,52 @@ const Disciplines = () => {
                 <div
                   style={{
                     display: 'flex',
-                    justifyContent: 'space-between',
+                    flexDirection: 'column',
+                    gap: 6,
                     alignItems: 'flex-start',
+                    textShadow: '0 1px 6px rgba(8,7,10,0.7)',
                   }}
                 >
                   <div
                     style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
                       fontFamily: 'var(--eyebrow)',
                       fontSize: 10.5,
-                      letterSpacing: '0.32em',
+                      letterSpacing: '0.28em',
                       color: 'var(--accent)',
                       textTransform: 'uppercase',
+                      fontWeight: 600,
                     }}
                   >
-                    {d.n}
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 22,
+                        height: 1,
+                        background: 'var(--accent)',
+                        display: 'inline-block',
+                        boxShadow: '0 0 6px rgba(8,7,10,0.6)',
+                      }}
+                    />
+                    {d.era}
                   </div>
                   <div
                     style={{
-                      fontFamily: 'var(--eyebrow)',
-                      fontSize: 9.5,
-                      letterSpacing: '0.32em',
-                      color: 'var(--parch-mute)',
+                      fontFamily: 'var(--body)',
+                      fontSize: 11,
+                      letterSpacing: '0.18em',
+                      color: 'var(--parch)',
                       textTransform: 'uppercase',
-                      textAlign: 'right',
+                      fontVariantNumeric: 'tabular-nums',
                     }}
                   >
-                    {d.era}
+                    {d.eraDates}
                   </div>
                 </div>
 
-                <div>
+                <div style={{ textShadow: '0 2px 12px rgba(8,7,10,0.75)' }}>
                   <div
                     className="display"
                     style={{
@@ -906,7 +950,7 @@ const Disciplines = () => {
                       fontFamily: 'var(--body)',
                       fontSize: 13,
                       letterSpacing: '0.02em',
-                      color: 'var(--parch-mute)',
+                      color: 'var(--parch-soft)',
                       marginBottom: 22,
                     }}
                   >
@@ -1174,6 +1218,10 @@ const Faq = () => {
       a: 'On s\'entraîne en tenue de sport, masque d\'escrime et protections modernes, avec des armes d\'entraînement adaptées à chaque discipline. Le travail est progressif : drills, sentiment du fer, puis assauts encadrés. Pas d\'arme tranchante en main, pas de contact sans équipement.',
     },
     {
+      q: 'À quoi ressemble une séance ?',
+      a: 'Chaque séance commence par environ 40 minutes d\'échauffement collectif, intense et rythmé — tous ensemble, sur la même cadence. On prépare les articulations, le cardio, les déplacements et la coordination, en groupe. Personne ne se retrouve seul à se demander quoi faire : on suit le rythme. Une fois le corps prêt, on enchaîne sur le travail technique du jour (drills, exercices d\'opposition, puis assauts encadrés selon le niveau).',
+    },
+    {
       q: 'Que dois-je apporter pour la première séance ?',
       a: 'Tenue de sport, chaussures propres pour le gymnase et une bouteille d\'eau. Le matériel d\'initiation (masque, gants, arme d\'entraînement) est prêté pour découvrir.',
     },
@@ -1184,6 +1232,10 @@ const Faq = () => {
     {
       q: 'Quels créneaux et quel lieu ?',
       a: 'Mardi 18h-20h et jeudi 18h-22h au Gymnase Robert Pras (3 rue Jean Monnet, 63100 Clermont-Ferrand). Le créneau Mardi couvre épée longue, rapière, messer, viking. Le créneau Jeudi couvre épée longue et épée-bocle, précédé d\'une pratique libre sans encadrant.',
+    },
+    {
+      q: 'Faut-il venir à toutes les séances ?',
+      a: 'Non, c\'est complètement libre. Pas besoin de prévenir si tu sautes une séance, si tu n\'es pas là pendant deux semaines ou si tu n\'as juste pas envie un soir — tu reviens quand tu veux, sans justification. Cela dit : la régularité reste la clé pour progresser. La technique se construit dans la répétition, et le corps s\'habitue petit à petit aux gardes, aux distances et à l\'effort. Plus tu viens, plus ça paie.',
     },
     {
       q: 'Faut-il faire de la compétition ?',
@@ -1448,7 +1500,7 @@ const Tournois = () => (
             <div
               style={{
                 display: 'flex',
-                gap: 12,
+                gap: 16,
                 marginTop: 40,
                 flexWrap: 'wrap',
               }}
@@ -1458,6 +1510,7 @@ const Tournois = () => (
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn--secondary"
+                style={{ padding: '0 32px' }}
               >
                 Résultats HEMA Ratings
                 <ArrowGlyph size={11} color="currentColor" />
@@ -1467,6 +1520,7 @@ const Tournois = () => (
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn--tertiary"
+                style={{ padding: '0 28px', minHeight: 44 }}
               >
                 Calendrier FFAMHE
                 <ArrowGlyph size={11} color="currentColor" />
