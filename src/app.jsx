@@ -29,8 +29,8 @@ function App() {
       <Nav scrolled={scrolled} />
       <Hero />
       {/* Nouvelle hiérarchie 2026-05 :
-          1 Disciplines · 2 Profs · 3 Club · 4 Rigueur · 5 Créneaux ·
-          6 Tournois · 7 Galerie · 8 Rejoindre · 9 FAQ */}
+          1 Disciplines · 2 Profs · 3 Club · 4 Rigueur · 5 Nous rejoindre ·
+          6 Tournois · 7 Galerie · 8 FAQ */}
       <Disciplines />
       <Encadrement />
       <Club />
@@ -38,7 +38,6 @@ function App() {
       <Salle />
       <Tournois />
       <Galerie />
-      <Contact />
       <Faq />
       <Partenaires />
       <LegalNotes />

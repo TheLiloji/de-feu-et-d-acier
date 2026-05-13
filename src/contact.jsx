@@ -1,500 +1,84 @@
 // CONTACT — Form + practical info + footer
 
-const Field = ({ label, placeholder, multiline = false, type = 'text', name, value, onChange, required }) => {
-  const [focus, setFocus] = React.useState(false);
+/**
+ * Iframe OSM avec un reload post-onLoad : OSM lit ses dimensions au boot et
+ * ne se redimensionne pas, mais une fois la première frame chargée le
+ * contentDocument a les bonnes tailles — le 2e load fait un rendu propre.
+ */
+const MapIframe = ({ src }) => {
+  const ref = React.useRef(null);
+  const reloadedRef = React.useRef(false);
+  const onLoad = () => {
+    if (reloadedRef.current) return;
+    reloadedRef.current = true;
+    setTimeout(() => {
+      const f = ref.current;
+      if (f) f.src = src;
+    }, 80);
+  };
   return (
-    <label
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-        flex: 1,
-        minWidth: 0,
-        position: 'relative',
-      }}
-    >
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 10,
-          fontFamily: 'var(--eyebrow)',
-          fontSize: 10,
-          letterSpacing: '0.28em',
-          color: focus ? 'var(--accent)' : 'var(--parch-mute)',
-          textTransform: 'uppercase',
-          fontWeight: 500,
-          transition: 'color 200ms var(--ease)',
-        }}
-      >
-        <Diamond size={4} color={focus ? 'var(--accent)' : 'var(--parch-mute)'} />
-        {label}
-      </span>
-      <span style={{ position: 'relative', display: 'block' }}>
-        {multiline ? (
-          <textarea
-            name={name}
-            value={value}
-            onChange={onChange}
-            required={required}
-            placeholder={placeholder}
-            rows={4}
-            onFocus={() => setFocus(true)}
-            onBlur={() => setFocus(false)}
-            className="forge-field"
-            style={{
-              width: '100%',
-              padding: '14px 0',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: '1px solid var(--parch-line)',
-              color: 'var(--parch)',
-              fontFamily: 'var(--body)',
-              fontSize: 16,
-              lineHeight: 1.55,
-              fontWeight: 400,
-              outline: 'none',
-              resize: 'vertical',
-            }}
-          />
-        ) : (
-          <input
-            type={type}
-            name={name}
-            value={value}
-            onChange={onChange}
-            required={required}
-            placeholder={placeholder}
-            onFocus={() => setFocus(true)}
-            onBlur={() => setFocus(false)}
-            className="forge-field"
-            style={{
-              width: '100%',
-              padding: '14px 0',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: '1px solid var(--parch-line)',
-              color: 'var(--parch)',
-              fontFamily: 'var(--body)',
-              fontSize: 17,
-              lineHeight: 1.4,
-              fontWeight: 400,
-              outline: 'none',
-            }}
-          />
-        )}
-        {/* Animated underline — grows from the left when focused */}
-        <span
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            left: 0, right: 0, bottom: 0,
-            height: 1,
-            background: 'var(--accent)',
-            transform: focus ? 'scaleX(1)' : 'scaleX(0)',
-            transformOrigin: 'left',
-            transition: 'transform 320ms var(--ease)',
-            pointerEvents: 'none',
-          }}
-        />
-      </span>
-    </label>
+    <iframe
+      ref={ref}
+      src={src}
+      width="760"
+      height="320"
+      style={{ border: 0, width: '100%', height: 320, display: 'block' }}
+      referrerPolicy="no-referrer-when-downgrade"
+      title="Gymnase Robert Pras — Clermont-Ferrand"
+      onLoad={onLoad}
+    />
   );
 };
 
-const Contact = () => {
-  const [submitted, setSubmitted] = React.useState(false);
-  // Structure demandée : mail, sujet, contenu, puis signature prénom/nom
-  const [form, setForm] = React.useState({
-    email: '',
-    subject: '',
-    content: '',
-    firstname: '',
-    lastname: '',
-  });
-  const onField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const fullname = [form.firstname, form.lastname].filter(Boolean).join(' ');
-    const subject = encodeURIComponent(form.subject || 'Première séance — contact site');
-    const bodyParts = [
-      form.content || '',
-      '',
-      'Cordialement,',
-      fullname || '',
-    ];
-    if (form.email) bodyParts.push(form.email);
-    const body = encodeURIComponent(bodyParts.join('\n'));
-    window.location.href = `mailto:c.sillac@protonmail.com?subject=${subject}&body=${body}`;
-    setSubmitted(true);
-  };
+/**
+ * Carte OpenStreetMap pour le Gymnase Robert Pras.
+ * Workaround : l'embed OSM mesure son viewport au moment de l'init et ne se
+ * redimensionne pas après. On ne charge l'iframe que quand elle entre dans le
+ * viewport (et qu'elle a donc ses bonnes dimensions à l'init).
+ */
+const RejoindreMap = () => {
+  const containerRef = React.useRef(null);
+  const [loaded, setLoaded] = React.useState(false);
+  const SRC = "https://www.openstreetmap.org/export/embed.html?bbox=3.0397%2C45.7808%2C3.0957%2C45.8048&layer=mapnik&marker=45.7928%2C3.0677";
+  React.useEffect(() => {
+    if (loaded) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setLoaded(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [loaded]);
   return (
-    <section
-      id="rejoindre"
-      data-screen-label="09 Rejoindre"
-      style={{
-        position: 'relative',
-        padding: '160px 0 100px',
-        background: 'var(--coal)',
-        borderTop: '1px solid var(--parch-line)',
-      }}
-    >
-      <div className="container">
-        <Reveal>
-          <SectionLabel number={8} name="Rejoindre le club" />
-        </Reveal>
-
-        <Reveal>
-          <h2
-            className="display"
-            style={{
-              fontSize: 'clamp(56px, 7vw, 128px)',
-              lineHeight: 0.92,
-              margin: '0 0 40px',
-              maxWidth: 1100,
-            }}
-          >
-            Une lame, un masque,
-            <br />
-            <em
-              style={{
-                fontStyle: 'italic',
-                fontWeight: 300,
-                color: 'var(--accent)',
-              }}
-            >
-              et l'envie de bien faire.
-            </em>
-          </h2>
-        </Reveal>
-
-        {/* Quick-actions mobile-first : tap-to-call / tap-to-mail */}
-        <Reveal delay={80}>
-          <div className="contact-quick" role="group" aria-label="Contact rapide">
-            <a href="tel:+33631585460" className="contact-quick-btn contact-quick-btn--ember">
-              <span className="contact-quick-icon" aria-hidden="true">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square">
-                  <path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>
-                </svg>
-              </span>
-              <span className="contact-quick-l">Appeler</span>
-              <span className="contact-quick-v">06 31 58 54 60</span>
-            </a>
-            <a href="mailto:c.sillac@protonmail.com" className="contact-quick-btn">
-              <span className="contact-quick-icon" aria-hidden="true">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square">
-                  <rect x="3" y="5" width="18" height="14"/>
-                  <path d="M3 6l9 7 9-7"/>
-                </svg>
-              </span>
-              <span className="contact-quick-l">Écrire</span>
-              <span className="contact-quick-v">c.sillac@protonmail.com</span>
-            </a>
-            <a
-              href="https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="contact-quick-btn"
-            >
-              <span className="contact-quick-icon" aria-hidden="true">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square">
-                  <path d="M5 8h14v11H5z"/>
-                  <path d="M9 8V5h6v3"/>
-                </svg>
-              </span>
-              <span className="contact-quick-l">Adhérer</span>
-              <span className="contact-quick-v">HelloAsso</span>
-            </a>
-          </div>
-        </Reveal>
-
-        {/* 3 cartes en pleine largeur, AVANT la grille contact/form */}
-        <Reveal delay={120}>
-          <div className="rejoindre-cards">
-            {/* CARTE 1 — Viens essayer */}
-            <article className="rejoindre-card rejoindre-card--essai">
-              <div className="rejoindre-card-eyebrow">01 · Viens essayer</div>
-              <div className="rejoindre-card-headline">
-                Gratuit pendant <strong>environ&nbsp;1&nbsp;mois</strong>
-              </div>
-              <p className="rejoindre-card-body">
-                Pas besoin d'avoir déjà fait de l'escrime ou des arts
-                martiaux. Tu viens, tu observes, tu prends une lame —
-                c'est le meilleur moyen de découvrir l'ambiance du club
-                et les différentes disciplines avant de t'engager.
-              </p>
-              <ul className="rejoindre-card-points">
-                <li>Période d'essai d'environ 1 mois</li>
-                <li>Débutants complets bienvenus</li>
-                <li>Rien à apporter de spécial</li>
-              </ul>
-              <a
-                href="mailto:c.sillac@protonmail.com?subject=Première séance d'essai"
-                className="btn rejoindre-card-cta"
-              >
-                Réserver une séance
-                <ArrowGlyph size={11} color="currentColor" />
-              </a>
-            </article>
-
-            {/* CARTE 2 — Adhésion */}
-            <article className="rejoindre-card rejoindre-card--adhesion">
-              <div className="rejoindre-card-eyebrow">02 · Adhésion</div>
-              <div className="rejoindre-price-figure">
-                <span className="rejoindre-price-amount">85</span>
-                <span className="rejoindre-price-currency">€</span>
-                <span className="rejoindre-price-per">par an</span>
-              </div>
-              <p className="rejoindre-card-body">
-                Soit environ <strong>7&nbsp;€ par mois</strong>. Si tu
-                veux continuer après la période d'essai, l'adhésion
-                annuelle te donne accès à tous les créneaux et armes.
-              </p>
-              <ul className="rejoindre-card-points rejoindre-compare">
-                <li>Moins qu'un abonnement de sport classique</li>
-                <li>Moins qu'une sortie ciné par mois</li>
-                <li>Moins que quelques cafés dans le mois</li>
-              </ul>
-              <a
-                href="https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn--secondary rejoindre-card-cta"
-              >
-                Adhérer · HelloAsso
-                <ArrowGlyph size={11} color="currentColor" />
-              </a>
-            </article>
-
-            {/* CARTE 3 — Matériel */}
-            <article className="rejoindre-card rejoindre-card--materiel">
-              <div className="rejoindre-card-eyebrow">03 · Matériel</div>
-              <div className="rejoindre-card-headline">
-                Rien d'obligatoire <strong>au début</strong>
-              </div>
-              <p className="rejoindre-card-body">
-                Pas besoin d'acheter tout l'équipement dès le départ.
-                Pour t'investir vraiment, on recommande à terme un
-                <strong> masque d'escrime standard</strong> et des
-                <strong> gants coqués</strong> — on te conseille, avec
-                souvent des prix intéressants chez nos partenaires.
-              </p>
-              <ul className="rejoindre-card-points">
-                <li>Masque d'escrime standard</li>
-                <li>Gants coqués</li>
-                <li>Conseils du club + partenaires</li>
-              </ul>
-              <a href="#partenaires" className="btn btn--tertiary rejoindre-card-cta">
-                Voir les partenaires
-                <ArrowGlyph size={11} color="currentColor" />
-              </a>
-            </article>
-          </div>
-        </Reveal>
-
-        <div className="contact-grid" style={{ marginTop: 80 }}>
-          {/* Left: infos pratiques */}
-          <Reveal>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 56,
-              }}
-            >
-              {/* INFOS PRATIQUES compactes */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr',
-                  gap: 4,
-                  paddingTop: 0,
-                }}
-              >
-                {[
-                  {
-                    l: 'Lieu d\'entraînement',
-                    v: 'Gymnase Robert Pras\n3 rue Jean Monnet · 63100 Clermont-Ferrand',
-                    href: 'https://www.google.com/maps/search/?api=1&query=Gymnase+Robert+Pras+3+rue+Jean+Monnet+63100+Clermont-Ferrand',
-                    external: true,
-                    cta: 'Itinéraire',
-                  },
-                  {
-                    l: 'Contact',
-                    v: 'Clémence Sillac · présidente de section',
-                  },
-                  {
-                    l: 'Email',
-                    v: 'c.sillac@protonmail.com',
-                    href: 'mailto:c.sillac@protonmail.com',
-                  },
-                  {
-                    l: 'Téléphone',
-                    v: '06 31 58 54 60',
-                    href: 'tel:+33631585460',
-                  },
-                  {
-                    l: 'Inscriptions',
-                    v: 'HelloAsso — usam-amhe-clermont-ferrand',
-                    href: 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026',
-                    external: true,
-                    cta: 'Adhérer en ligne',
-                  },
-                ].map((c) => (
-                  <div key={c.l} className="contact-info-row">
-                    <div
-                      style={{
-                        fontFamily: 'var(--eyebrow)',
-                        fontSize: 10,
-                        letterSpacing: '0.26em',
-                        color: 'var(--parch-mute)',
-                        textTransform: 'uppercase',
-                        fontWeight: 500,
-                      }}
-                    >
-                      {c.l}
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: 'var(--body)',
-                        fontSize: 15,
-                        lineHeight: 1.55,
-                        color: 'var(--parch)',
-                        whiteSpace: 'pre-line',
-                      }}
-                    >
-                      {c.href ? (
-                        <a
-                          href={c.href}
-                          {...(c.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                          className="contact-link"
-                        >
-                          {c.v}
-                          {c.cta && (
-                            <span className="contact-link-cta">
-                              {c.cta}
-                              <ArrowGlyph size={11} color="currentColor" />
-                            </span>
-                          )}
-                        </a>
-                      ) : (
-                        c.v
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-
-          {/* Right: form */}
-          <Reveal delay={150}>
-            <form
-              onSubmit={handleSubmit}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 36,
-                position: 'sticky',
-                top: 120,
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  fontFamily: 'var(--body)',
-                  fontSize: 17,
-                  lineHeight: 1.6,
-                  color: 'var(--parch-soft)',
-                  marginBottom: 8,
-                  maxWidth: 480,
-                }}
-              >
-                Une question, une envie d'essayer ? Écris-nous —
-                on répond en quelques jours.
-              </p>
-
-              <Field
-                label="Email"
-                placeholder="ton@email.fr"
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={onField('email')}
-                required
-              />
-              <Field
-                label="Sujet"
-                placeholder="Première séance · question · partenariat…"
-                name="subject"
-                value={form.subject}
-                onChange={onField('subject')}
-                required
-              />
-              <Field
-                label="Contenu"
-                placeholder="Dis-nous en quelques mots de quoi il s'agit…"
-                multiline
-                name="content"
-                value={form.content}
-                onChange={onField('content')}
-                required
-              />
-
-              {/* Signature : "Cordialement," puis prénom + nom séparés */}
-              <div className="contact-signature">
-                <div className="contact-signature-l">Cordialement,</div>
-                <div className="contact-form-row">
-                  <Field
-                    label="Prénom"
-                    placeholder="Prénom"
-                    name="firstname"
-                    value={form.firstname}
-                    onChange={onField('firstname')}
-                    required
-                  />
-                  <Field
-                    label="Nom"
-                    placeholder="Nom"
-                    name="lastname"
-                    value={form.lastname}
-                    onChange={onField('lastname')}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingTop: 24,
-                  gap: 24,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--parch-mute)',
-                    maxWidth: 320,
-                    lineHeight: 1.55,
-                  }}
-                >
-                  Le bouton ouvre ta messagerie avec le message
-                  pré-rempli. Pas de stockage de données côté site.
-                </div>
-                <button type="submit" className="btn">
-                  {submitted ? 'Message préparé.' : 'Envoyer le message'}
-                  <ArrowGlyph size={11} color="currentColor" />
-                </button>
-              </div>
-            </form>
-          </Reveal>
+    <div className="rejoindre-map" ref={containerRef}>
+      {loaded ? (
+        <MapIframe src={SRC} />
+      ) : (
+        <div className="rejoindre-map-placeholder" aria-hidden="true" />
+      )}
+      <div className="rejoindre-map-info">
+        <div className="rejoindre-map-info-l">
+          <div className="rejoindre-map-name">Gymnase Robert Pras</div>
+          <div className="rejoindre-map-addr">3 rue Jean Monnet · 63100 Clermont-Ferrand</div>
         </div>
+        <a
+          href="https://www.openstreetmap.org/?mlat=45.7928&mlon=3.0677#map=17/45.7928/3.0677"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rejoindre-map-osm"
+        >
+          Ouvrir sur OSM
+          <ArrowGlyph size={10} color="currentColor" />
+        </a>
       </div>
-    </section>
+    </div>
   );
 };
 
@@ -719,9 +303,8 @@ const Footer = () => (
           {
             label: 'Pratique',
             items: [
-              ['Créneaux et lieux', '#creneaux'],
+              ['Nous rejoindre', '#creneaux'],
               ['Adhésion', 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026'],
-              ['Première séance', '#rejoindre'],
               ['HelloAsso', 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand'],
             ],
           },
@@ -807,278 +390,136 @@ const Footer = () => (
 // Inject form-specific styles once
 const ContactStyles = () => (
   <style>{`
-    /* ── Section Rejoindre : 3 cartes ────────────────────────────── */
-    .rejoindre-cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      margin-bottom: 24px;
-    }
-    .rejoindre-card {
-      position: relative;
+    /* ── Section Rejoindre : 3 piliers texte, alignés sur le style éditorial du site ── */
+    .rejoindre-pillars {
       display: flex;
       flex-direction: column;
-      gap: 18px;
-      padding: 32px 28px 28px;
-      border: 1px solid var(--parch-line);
-      border-radius: 3px;
-      background: linear-gradient(180deg, rgba(236,232,222,0.028), rgba(236,232,222,0.008));
-      transition: border-color 240ms var(--ease), background 240ms var(--ease), transform 240ms var(--ease);
+      border-top: 1px solid var(--parch-line);
+      margin-bottom: 24px;
     }
-    .rejoindre-card:hover {
-      border-color: rgba(236,232,222,0.28);
-      transform: translateY(-2px);
+    .rejoindre-pillar {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 56px;
+      padding: 48px 0 44px;
+      border-bottom: 1px solid var(--parch-line);
+      align-items: start;
     }
-    /* La carte adhésion est mise en avant (c'est l'action de conversion principale) */
-    .rejoindre-card--adhesion {
-      background: linear-gradient(180deg, rgba(224,85,44,0.06), rgba(224,85,44,0.015));
-      border-color: rgba(224,85,44,0.32);
-    }
-    .rejoindre-card--adhesion::before {
-      content: '';
-      position: absolute;
-      left: -1px; right: -1px; top: -1px;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--ember-hot) 70%, transparent);
-    }
-    .rejoindre-card--adhesion:hover {
-      border-color: rgba(224,85,44,0.6);
-      background: linear-gradient(180deg, rgba(224,85,44,0.09), rgba(224,85,44,0.02));
-    }
-    .rejoindre-card-eyebrow {
+    .rejoindre-pillar-eyebrow {
       font-family: var(--eyebrow);
       font-size: 10.5px;
       letter-spacing: 0.28em;
       text-transform: uppercase;
-      color: var(--accent);
-      font-weight: 600;
-    }
-    .rejoindre-card-headline {
-      font-family: var(--display);
-      font-size: clamp(24px, 2.4vw, 32px);
-      line-height: 1.15;
-      color: var(--parch);
-      font-weight: 400;
-    }
-    .rejoindre-card-headline strong {
+      color: var(--parch-mute);
       font-weight: 500;
+      padding-top: 14px;
+    }
+    .rejoindre-pillar-content {
+      max-width: 760px;
+    }
+    .rejoindre-pillar-headline {
+      font-family: var(--display);
+      font-weight: 400;
+      font-size: clamp(26px, 3.1vw, 44px);
+      line-height: 1.1;
+      color: var(--parch);
+      margin: 0 0 22px;
+    }
+    .rejoindre-pillar-headline em {
+      font-style: italic;
+      font-weight: 300;
       color: var(--accent);
     }
-    .rejoindre-card-body {
-      margin: 0;
+    .rejoindre-pillar-headline strong {
+      font-weight: 500;
+      color: var(--parch);
+      font-variant-numeric: tabular-nums;
+    }
+    .rejoindre-pillar-body {
+      margin: 0 0 26px;
       font-family: var(--body);
-      font-size: 14.5px;
+      font-size: 16px;
       line-height: 1.65;
       color: var(--parch-soft);
     }
-    .rejoindre-card-body strong {
+    .rejoindre-pillar-body strong {
       color: var(--parch);
       font-weight: 500;
     }
-    .rejoindre-card-points {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      flex: 1;
-    }
-    .rejoindre-card-points li {
-      font-family: var(--body);
-      font-size: 13.5px;
-      line-height: 1.45;
-      color: var(--parch);
-      padding-left: 18px;
-      position: relative;
-    }
-    .rejoindre-card-points li::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 0.65em;
-      width: 8px; height: 1px;
-      background: var(--accent);
-    }
-    .rejoindre-compare li {
-      color: var(--parch-soft);
-      font-style: italic;
-    }
-    .rejoindre-card-cta {
+    .rejoindre-pillar-cta {
       align-self: flex-start;
-      margin-top: 4px;
-    }
-    /* Gros chiffre 85€ — réutilisé dans la carte adhésion */
-    .rejoindre-card--adhesion .rejoindre-price-figure {
-      display: flex;
-      align-items: baseline;
-      gap: 10px;
-      font-family: var(--display);
-      font-variant-numeric: tabular-nums;
-      line-height: 0.92;
-    }
-    .rejoindre-price-amount {
-      font-size: clamp(72px, 8vw, 104px);
-      font-weight: 500;
-      letter-spacing: -0.025em;
-      color: var(--parch);
-    }
-    .rejoindre-price-currency {
-      font-size: clamp(32px, 3.6vw, 48px);
-      font-weight: 400;
-      color: var(--accent);
-    }
-    .rejoindre-price-per {
-      font-family: var(--eyebrow);
-      font-size: 10.5px;
-      letter-spacing: 0.26em;
-      text-transform: uppercase;
-      color: var(--parch-mute);
-      font-weight: 500;
-      margin-left: auto;
-      padding-bottom: 6px;
     }
 
-    @media (max-width: 1100px) {
-      .rejoindre-cards { grid-template-columns: 1fr; gap: 18px; }
-    }
-    @media (max-width: 640px) {
-      .rejoindre-card { padding: 26px 22px 22px; }
-      .rejoindre-card--adhesion .rejoindre-price-figure { flex-wrap: wrap; gap: 6px 12px; }
-      .rejoindre-price-per { margin-left: 0; padding-bottom: 0; }
-    }
-
-    /* Signature du formulaire : "Cordialement," + prénom/nom séparés */
-    .contact-signature {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-      padding-top: 12px;
-      border-top: 1px solid var(--parch-line);
-    }
-    .contact-signature-l {
-      font-family: var(--display);
-      font-style: italic;
-      font-size: 17px;
-      line-height: 1.4;
-      color: var(--parch-soft);
-    }
-
-    .forge-field::placeholder {
-      color: var(--parch-mute);
-      opacity: 0.55;
-      font-family: var(--body);
-    }
-    .forge-field:focus { caret-color: var(--accent); }
-
-    /* Contact quick actions — tap-friendly tiles, ember pour l'action primaire */
-    .contact-quick {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 56px;
-    }
-    .contact-quick-btn {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      padding: 18px 20px;
-      min-height: 80px;
+    /* Carte OSM dans le pilier "viens essayer" */
+    .rejoindre-map {
+      margin: 8px 0 28px;
       border: 1px solid var(--parch-line);
       border-radius: 2px;
-      background: linear-gradient(180deg, rgba(236,232,222,0.03), rgba(236,232,222,0.008));
-      color: var(--parch);
-      transition: border-color 220ms var(--ease), background 220ms var(--ease), transform 220ms var(--ease);
+      overflow: hidden;
+      background: #0d0c0b;
     }
-    .contact-quick-btn:hover {
-      border-color: rgba(236,232,222,0.28);
-      background: linear-gradient(180deg, rgba(224,85,44,0.04), rgba(236,232,222,0.012));
-      transform: translateY(-1px);
+    .rejoindre-map iframe {
+      /* Dim & desaturate les tuiles OSM pour matcher la palette du site */
+      filter: invert(0.92) hue-rotate(180deg) saturate(0.55) brightness(0.95) contrast(0.95);
     }
-    .contact-quick-btn--ember {
-      background: linear-gradient(180deg, rgba(224,85,44,0.14), rgba(224,85,44,0.04));
-      border-color: rgba(224,85,44,0.4);
+    .rejoindre-map-placeholder {
+      width: 100%;
+      height: 320px;
+      display: block;
+      background:
+        linear-gradient(180deg, rgba(236,232,222,0.04), rgba(236,232,222,0.01)),
+        repeating-linear-gradient(45deg, rgba(236,232,222,0.025) 0 14px, transparent 14px 28px);
     }
-    .contact-quick-btn--ember:hover {
-      border-color: var(--accent);
-      background: linear-gradient(180deg, rgba(224,85,44,0.22), rgba(224,85,44,0.06));
-    }
-    .contact-quick-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 22px;
-      height: 22px;
-      color: var(--accent);
-    }
-    .contact-quick-l {
-      font-family: var(--eyebrow);
-      font-size: 10.5px;
-      letter-spacing: 0.26em;
-      text-transform: uppercase;
-      color: var(--parch-mute);
-      font-weight: 500;
-    }
-    .contact-quick-btn--ember .contact-quick-l { color: var(--parch); }
-    .contact-quick-v {
-      font-family: var(--body);
-      font-size: 16px;
-      font-weight: 500;
-      color: var(--parch);
-      font-variant-numeric: tabular-nums;
-      letter-spacing: 0;
-    }
-
-    @media (max-width: 900px) {
-      .contact-quick { grid-template-columns: 1fr; gap: 10px; margin-bottom: 48px; }
-      .contact-quick-btn {
-        min-height: 56px;
-        padding: 14px 18px;
-        flex-direction: row;
-        align-items: center;
-        gap: 14px;
-      }
-      .contact-quick-btn .contact-quick-l { display: none; }
-      .contact-quick-btn .contact-quick-v { font-size: 17px; }
-      .contact-quick-btn::after {
-        content: '';
-        margin-left: auto;
-        display: inline-block;
-        width: 12px; height: 12px;
-        border-right: 1.5px solid var(--parch-mute);
-        border-top: 1.5px solid var(--parch-mute);
-        transform: rotate(45deg);
-      }
-    }
-
-    /* Contact info links — sober underline + small ember CTA chip */
-    .contact-link {
-      display: inline-flex;
+    .rejoindre-map-info {
+      display: flex;
       flex-wrap: wrap;
-      align-items: baseline;
-      gap: 14px;
-      color: var(--parch);
-      transition: color 200ms var(--ease);
-      position: relative;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 18px;
+      padding: 14px 18px;
+      border-top: 1px solid var(--parch-line);
+      background: rgba(236,232,222,0.02);
     }
-    .contact-link:hover { color: var(--accent); }
-    .contact-link-cta {
+    .rejoindre-map-info-l {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .rejoindre-map-name {
+      font-family: var(--display);
+      font-size: 16px;
+      color: var(--parch);
+      line-height: 1.3;
+    }
+    .rejoindre-map-addr {
+      font-family: var(--body);
+      font-size: 13.5px;
+      color: var(--parch-soft);
+      line-height: 1.4;
+    }
+    .rejoindre-map-osm {
       display: inline-flex;
       align-items: center;
       gap: 8px;
       font-family: var(--eyebrow);
       font-size: 10px;
-      letter-spacing: 0.24em;
+      letter-spacing: 0.22em;
       text-transform: uppercase;
-      color: var(--accent);
-      padding: 4px 10px;
-      border: 1px solid var(--parch-line);
-      border-radius: 2px;
+      color: var(--parch-mute);
       font-weight: 500;
-      transition: border-color 200ms var(--ease), background 200ms var(--ease);
+      padding: 4px 0;
+      transition: color 200ms var(--ease);
     }
-    .contact-link:hover .contact-link-cta {
-      border-color: var(--accent);
-      background: rgba(224, 85, 44, 0.08);
+    .rejoindre-map-osm:hover { color: var(--accent); }
+
+    @media (max-width: 820px) {
+      .rejoindre-pillar {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 36px 0 32px;
+      }
+      .rejoindre-pillar-eyebrow { padding-top: 0; }
+      .rejoindre-map iframe { height: 260px !important; }
     }
 
     .footer-marquee {
@@ -1236,4 +677,4 @@ const ContactStyles = () => (
   `}</style>
 );
 
-Object.assign(window, { Contact, LegalNotes, Footer, ContactStyles });
+Object.assign(window, { RejoindreMap, LegalNotes, Footer, ContactStyles });

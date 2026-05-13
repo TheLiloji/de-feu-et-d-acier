@@ -162,7 +162,7 @@ const Nav = ({ scrolled }) => {
     { label: 'Disciplines', href: '#disciplines', id: 'disciplines' },
     { label: 'Les profs',   href: '#profs',       id: 'profs' },
     { label: 'Le club',     href: '#club',        id: 'club' },
-    { label: 'Créneaux',    href: '#creneaux',    id: 'creneaux' },
+    { label: 'Nous rejoindre', href: '#creneaux', id: 'creneaux' },
     { label: 'Tournois',    href: '#tournois',    id: 'tournois' },
     { label: 'FAQ',         href: '#faq',         id: 'faq' },
   ];
@@ -241,7 +241,7 @@ const Nav = ({ scrolled }) => {
         </ul>
 
         {/* Zone droite — CTA "Essayer" (toujours visible, action principale) */}
-        <a href="#rejoindre" className="btn site-nav-cta">
+        <a href="#creneaux" className="btn site-nav-cta">
           Essayer
           <ArrowGlyph size={11} color="currentColor" />
         </a>
@@ -284,7 +284,7 @@ const Nav = ({ scrolled }) => {
           ))}
         </ul>
         <a
-          href="#rejoindre"
+          href="#creneaux"
           onClick={() => setOpen(false)}
           className="btn site-drawer-cta"
         >

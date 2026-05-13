@@ -234,7 +234,7 @@ const Hero = () => {
 
         <Reveal delay={560}>
           <div className="hero-ctas">
-            <a href="#rejoindre" className="btn hero-cta-primary">
+            <a href="#creneaux" className="btn hero-cta-primary">
               Venir essayer gratuitement
               <ArrowGlyph size={11} color="currentColor" />
             </a>
