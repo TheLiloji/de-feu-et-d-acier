@@ -159,12 +159,12 @@ const useReveal = () => {
   return ref;
 };
 
-const Reveal = ({ children, delay = 0, style, ...props }) => {
+const Reveal = ({ children, delay = 0, style, className = '', ...props }) => {
   const ref = useReveal();
   return (
     <div
       ref={ref}
-      className="reveal"
+      className={`reveal ${className}`.trim()}
       style={{ transitionDelay: `${delay}ms`, ...style }}
       {...props}
     >
@@ -183,97 +183,243 @@ const Nav = ({ scrolled }) => {
     { label: 'Galerie', href: '#galerie' },
     { label: 'Contact', href: '#contact' },
   ];
+  const [open, setOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
+
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
-    <nav
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 50,
-        padding: scrolled ? '16px 56px' : '28px 56px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: scrolled
-          ? 'rgba(8, 7, 10, 0.78)'
-          : 'transparent',
-        backdropFilter: scrolled ? 'blur(20px) saturate(140%)' : 'none',
-        WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(140%)' : 'none',
-        borderBottom: scrolled ? '1px solid var(--parch-line)' : '1px solid transparent',
-        transition: 'all 240ms cubic-bezier(0.2,0.7,0.3,1)',
-      }}
-    >
-      <a href="#top" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <DfdaMark size={34} color="var(--parch)" />
-        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-          <span
-            style={{
-              fontFamily: 'var(--display)',
-              fontSize: 18,
-              letterSpacing: '0.02em',
-              fontWeight: 500,
-            }}
-          >
-            De Feu et D'Acier
-          </span>
-          <span
-            style={{
-              fontFamily: 'var(--eyebrow)',
-              fontSize: 9,
-              letterSpacing: '0.32em',
-              color: 'var(--parch-mute)',
-              textTransform: 'uppercase',
-              marginTop: 3,
-            }}
-          >
-            AMHE · Clermont-Ferrand
-          </span>
-        </div>
-      </a>
-      <ul
+    <>
+      <nav
+        className="site-nav"
+        data-scrolled={scrolled ? 'true' : 'false'}
         style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 50,
+          padding: scrolled ? '16px 56px' : '28px 56px',
           display: 'flex',
-          gap: 36,
-          listStyle: 'none',
-          margin: 0,
-          padding: 0,
           alignItems: 'center',
+          justifyContent: 'space-between',
+          background: scrolled
+            ? 'rgba(8, 7, 10, 0.78)'
+            : 'transparent',
+          backdropFilter: scrolled ? 'blur(20px) saturate(140%)' : 'none',
+          WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(140%)' : 'none',
+          borderBottom: scrolled ? '1px solid var(--parch-line)' : '1px solid transparent',
+          transition: 'padding 240ms var(--ease), background 240ms var(--ease), border-color 240ms var(--ease)',
         }}
       >
-        {items.map((it) => (
-          <li key={it.href}>
-            <a
-              href={it.href}
-              className="ulink"
+        <a href="#top" style={{ display: 'flex', alignItems: 'center', gap: 14 }} onClick={() => setOpen(false)}>
+          <DfdaMark size={34} color="var(--parch)" />
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+            <span
+              className="site-nav-title"
               style={{
-                fontFamily: 'var(--eyebrow)',
-                fontSize: 11,
-                letterSpacing: '0.22em',
-                textTransform: 'uppercase',
-                color: 'var(--parch-soft)',
+                fontFamily: 'var(--display)',
+                fontSize: 18,
+                letterSpacing: '0.02em',
                 fontWeight: 500,
               }}
             >
-              {it.label}
+              De Feu et D'Acier
+            </span>
+            <span
+              className="site-nav-tagline"
+              style={{
+                fontFamily: 'var(--eyebrow)',
+                fontSize: 9,
+                letterSpacing: '0.32em',
+                color: 'var(--parch-mute)',
+                textTransform: 'uppercase',
+                marginTop: 3,
+              }}
+            >
+              AMHE · Clermont-Ferrand
+            </span>
+          </div>
+        </a>
+        <ul
+          className="site-nav-list"
+          style={{
+            display: 'flex',
+            gap: 36,
+            listStyle: 'none',
+            margin: 0,
+            padding: 0,
+            alignItems: 'center',
+          }}
+        >
+          {items.map((it) => (
+            <li key={it.href}>
+              <a
+                href={it.href}
+                className="ulink"
+                style={{
+                  fontFamily: 'var(--eyebrow)',
+                  fontSize: 11,
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  color: 'var(--parch-soft)',
+                  fontWeight: 500,
+                }}
+              >
+                {it.label}
+              </a>
+            </li>
+          ))}
+          <li>
+            <a
+              href="#contact"
+              className="btn btn--ghost"
+              style={{
+                padding: '11px 18px',
+                fontSize: 10.5,
+              }}
+            >
+              Nous contacter
+              <ArrowGlyph size={12} />
             </a>
           </li>
-        ))}
-        <li>
-          <a
-            href="#contact"
-            className="btn btn--ghost"
-            style={{
-              padding: '11px 18px',
-              fontSize: 10.5,
-            }}
-          >
-            Nous contacter
-            <ArrowGlyph size={12} />
-          </a>
-        </li>
-      </ul>
-    </nav>
+        </ul>
+
+        {/* Mobile toggle */}
+        <button
+          type="button"
+          aria-label={open ? 'Fermer le menu' : 'Ouvrir le menu'}
+          aria-expanded={open}
+          aria-controls="mobile-menu"
+          onClick={() => setOpen(v => !v)}
+          className="site-nav-toggle"
+          style={{
+            display: 'none',
+            background: 'transparent',
+            border: '1px solid var(--parch-line)',
+            color: 'var(--parch)',
+            width: 44,
+            height: 44,
+            padding: 0,
+            cursor: 'pointer',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'border-color 200ms var(--ease)',
+          }}
+        >
+          <span aria-hidden="true" style={{
+            position: 'relative',
+            display: 'block',
+            width: 18,
+            height: 12,
+          }}>
+            <span style={{
+              position: 'absolute', left: 0, right: 0, height: 1.2,
+              background: 'currentColor',
+              top: open ? 5 : 0,
+              transform: open ? 'rotate(45deg)' : 'none',
+              transition: 'top 220ms var(--ease), transform 220ms var(--ease)',
+            }} />
+            <span style={{
+              position: 'absolute', left: 0, right: 0, height: 1.2,
+              background: 'currentColor',
+              top: 5,
+              opacity: open ? 0 : 1,
+              transition: 'opacity 160ms var(--ease)',
+            }} />
+            <span style={{
+              position: 'absolute', left: 0, right: 0, height: 1.2,
+              background: 'currentColor',
+              top: open ? 5 : 10,
+              transform: open ? 'rotate(-45deg)' : 'none',
+              transition: 'top 220ms var(--ease), transform 220ms var(--ease)',
+            }} />
+          </span>
+        </button>
+      </nav>
+
+      {/* Mobile drawer */}
+      <div
+        id="mobile-menu"
+        aria-hidden={!open}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 49,
+          background: 'rgba(8,7,10,0.96)',
+          backdropFilter: 'blur(20px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? 'auto' : 'none',
+          transition: 'opacity 280ms var(--ease)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          padding: '0 24px',
+        }}
+      >
+        <ul style={{
+          listStyle: 'none', margin: 0, padding: 0,
+          display: 'flex', flexDirection: 'column', gap: 4,
+        }}>
+          {items.map((it, i) => (
+            <li key={it.href} style={{
+              borderBottom: '1px solid var(--parch-line)',
+              transform: open ? 'translateY(0)' : 'translateY(8px)',
+              opacity: open ? 1 : 0,
+              transition: `opacity 320ms var(--ease) ${80 + i * 40}ms, transform 320ms var(--ease) ${80 + i * 40}ms`,
+            }}>
+              <a
+                href={it.href}
+                onClick={() => setOpen(false)}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '22px 4px',
+                  fontFamily: 'var(--display)',
+                  fontSize: 30,
+                  color: 'var(--parch)',
+                }}
+              >
+                <span>{it.label}</span>
+                <ArrowGlyph size={16} color="var(--accent)" />
+              </a>
+            </li>
+          ))}
+        </ul>
+        <div style={{
+          marginTop: 36,
+          fontFamily: 'var(--eyebrow)',
+          fontSize: 10,
+          letterSpacing: '0.32em',
+          color: 'var(--parch-mute)',
+          textTransform: 'uppercase',
+          textAlign: 'center',
+        }}>
+          AMHE · USAM Clermont-Ferrand
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .site-nav { padding: 16px 22px !important; }
+          .site-nav[data-scrolled="true"] { padding: 14px 22px !important; }
+          .site-nav-list { display: none !important; }
+          .site-nav-toggle { display: inline-flex !important; }
+          .site-nav-tagline { display: none; }
+          .site-nav-title { font-size: 16px !important; }
+        }
+      `}</style>
+    </>
   );
 };
 

@@ -10,61 +10,83 @@ const Field = ({ label, placeholder, multiline = false, type = 'text' }) => {
         gap: 10,
         flex: 1,
         minWidth: 0,
+        position: 'relative',
       }}
     >
       <span
         style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 10,
           fontFamily: 'var(--eyebrow)',
           fontSize: 10,
           letterSpacing: '0.32em',
-          color: 'var(--parch-mute)',
+          color: focus ? 'var(--accent)' : 'var(--parch-mute)',
           textTransform: 'uppercase',
+          transition: 'color 200ms var(--ease)',
         }}
       >
+        <Diamond size={4} color={focus ? 'var(--accent)' : 'var(--parch-mute)'} />
         {label}
       </span>
-      {multiline ? (
-        <textarea
-          placeholder={placeholder}
-          rows={4}
-          onFocus={() => setFocus(true)}
-          onBlur={() => setFocus(false)}
+      <span style={{ position: 'relative', display: 'block' }}>
+        {multiline ? (
+          <textarea
+            placeholder={placeholder}
+            rows={4}
+            onFocus={() => setFocus(true)}
+            onBlur={() => setFocus(false)}
+            className="forge-field"
+            style={{
+              width: '100%',
+              padding: '16px 0',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: '1px solid var(--parch-line)',
+              color: 'var(--parch)',
+              fontFamily: 'var(--display)',
+              fontSize: 22,
+              fontWeight: 400,
+              outline: 'none',
+              resize: 'vertical',
+            }}
+          />
+        ) : (
+          <input
+            type={type}
+            placeholder={placeholder}
+            onFocus={() => setFocus(true)}
+            onBlur={() => setFocus(false)}
+            className="forge-field"
+            style={{
+              width: '100%',
+              padding: '16px 0',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: '1px solid var(--parch-line)',
+              color: 'var(--parch)',
+              fontFamily: 'var(--display)',
+              fontSize: 24,
+              fontWeight: 400,
+              outline: 'none',
+            }}
+          />
+        )}
+        {/* Animated underline — grows from the left when focused */}
+        <span
+          aria-hidden="true"
           style={{
-            width: '100%',
-            padding: '16px 0',
-            background: 'transparent',
-            border: 'none',
-            borderBottom: `1px solid ${focus ? 'var(--accent)' : 'var(--parch-line)'}`,
-            color: 'var(--parch)',
-            fontFamily: 'var(--display)',
-            fontSize: 22,
-            fontWeight: 400,
-            outline: 'none',
-            resize: 'vertical',
-            transition: 'border 200ms',
+            position: 'absolute',
+            left: 0, right: 0, bottom: 0,
+            height: 1,
+            background: 'var(--accent)',
+            transform: focus ? 'scaleX(1)' : 'scaleX(0)',
+            transformOrigin: 'left',
+            transition: 'transform 320ms var(--ease)',
+            pointerEvents: 'none',
           }}
         />
-      ) : (
-        <input
-          type={type}
-          placeholder={placeholder}
-          onFocus={() => setFocus(true)}
-          onBlur={() => setFocus(false)}
-          style={{
-            width: '100%',
-            padding: '16px 0',
-            background: 'transparent',
-            border: 'none',
-            borderBottom: `1px solid ${focus ? 'var(--accent)' : 'var(--parch-line)'}`,
-            color: 'var(--parch)',
-            fontFamily: 'var(--display)',
-            fontSize: 24,
-            fontWeight: 400,
-            outline: 'none',
-            transition: 'border 200ms',
-          }}
-        />
-      )}
+      </span>
     </label>
   );
 };
@@ -111,14 +133,7 @@ const Contact = () => {
           </h2>
         </Reveal>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1.2fr',
-            gap: 100,
-            alignItems: 'start',
-          }}
-        >
+        <div className="contact-grid">
           {/* Left: practical info */}
           <Reveal>
             <div
@@ -147,15 +162,7 @@ const Contact = () => {
                 </p>
               </div>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: 32,
-                  paddingTop: 36,
-                  borderTop: '1px solid var(--parch-line)',
-                }}
-              >
+              <div className="contact-info-pair">
                 {[
                   { l: 'Adhésion 2025-2026', v: '85 €', s: 'inscription via HelloAsso' },
                   { l: 'Saison', v: 'Sept. → Août', s: 'rejoindre en cours d\'année possible' },
@@ -210,17 +217,7 @@ const Contact = () => {
                   { l: 'Téléphone', v: '06 31 58 54 60' },
                   { l: 'Inscriptions', v: 'HelloAsso — usam-amhe-clermont-ferrand' },
                 ].map((c) => (
-                  <div
-                    key={c.l}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '200px 1fr',
-                      gap: 24,
-                      alignItems: 'baseline',
-                      paddingBottom: 18,
-                      borderBottom: '1px solid var(--parch-line)',
-                    }}
-                  >
+                  <div key={c.l} className="contact-info-row">
                     <div
                       style={{
                         fontFamily: 'var(--eyebrow)',
@@ -278,7 +275,7 @@ const Contact = () => {
                 Écrivez-nous pour préparer votre venue, ou retrouvez-nous
                 sur la page Facebook du club.
               </div>
-              <div style={{ display: 'flex', gap: 32 }}>
+              <div className="contact-form-row">
                 <Field label="Nom" placeholder="Prénom Nom" />
                 <Field label="Email" placeholder="vous@email.fr" type="email" />
               </div>
@@ -340,17 +337,7 @@ const Footer = () => (
   >
     <div className="container">
       {/* Marquee-style large brand line */}
-      <div
-        style={{
-          fontFamily: 'var(--display)',
-          fontSize: 'clamp(64px, 9vw, 168px)',
-          lineHeight: 0.92,
-          letterSpacing: '-0.02em',
-          color: 'var(--parch)',
-          marginBottom: 80,
-          textAlign: 'center',
-        }}
-      >
+      <div className="footer-marquee">
         De Feu
         <em
           style={{
@@ -364,16 +351,7 @@ const Footer = () => (
         Acier
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr 1fr',
-          gap: 48,
-          paddingTop: 56,
-          borderTop: '1px solid var(--parch-line)',
-          marginBottom: 64,
-        }}
-      >
+      <div className="footer-grid">
         <div>
           <DfdaMark size={48} color="var(--parch)" />
           <p
@@ -463,14 +441,8 @@ const Footer = () => (
       </div>
 
       <div
+        className="footer-foot"
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 24,
-          flexWrap: 'wrap',
-          paddingTop: 32,
-          borderTop: '1px solid var(--parch-line)',
           fontFamily: 'var(--eyebrow)',
           fontSize: 10,
           letterSpacing: '0.32em',
@@ -495,4 +467,29 @@ const Footer = () => (
   </footer>
 );
 
-Object.assign(window, { Contact, Footer });
+// Inject form-specific styles once
+const ContactStyles = () => (
+  <style>{`
+    .forge-field::placeholder {
+      color: var(--parch-mute);
+      opacity: 0.55;
+      font-style: italic;
+      font-family: var(--display);
+    }
+    .forge-field:focus { caret-color: var(--accent); }
+    .footer-marquee {
+      font-family: var(--display);
+      font-size: clamp(60px, 9vw, 168px);
+      line-height: 0.92;
+      letter-spacing: -0.02em;
+      color: var(--parch);
+      margin-bottom: 80px;
+      text-align: center;
+    }
+    @media (max-width: 640px) {
+      .footer-marquee { font-size: clamp(48px, 14vw, 96px); margin-bottom: 56px; }
+    }
+  `}</style>
+);
+
+Object.assign(window, { Contact, Footer, ContactStyles });

@@ -24,6 +24,8 @@ function App() {
 
   return (
     <>
+      <SectionsStyles />
+      <ContactStyles />
       <Nav scrolled={scrolled} />
       <Hero />
       <Manifesto />

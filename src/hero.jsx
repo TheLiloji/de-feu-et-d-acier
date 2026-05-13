@@ -106,7 +106,7 @@ const Hero = () => {
             className="display forge-title"
             style={{
               margin: 0,
-              fontSize: 'clamp(64px, 12vw, 196px)',
+              fontSize: 'clamp(56px, 12vw, 196px)',
               lineHeight: 0.88,
               letterSpacing: '-0.02em',
               fontWeight: 500,
@@ -123,21 +123,24 @@ const Hero = () => {
 
         <Reveal delay={460}>
           <div
+            className="hero-baseline"
             style={{
               marginTop: 36,
               fontFamily: 'var(--eyebrow)',
-              fontSize: 12,
+              fontSize: 'clamp(10px, 1.1vw, 12px)',
               letterSpacing: '0.42em',
               textTransform: 'uppercase',
               color: 'var(--parch-soft)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: 18,
+              maxWidth: '92vw',
+              textAlign: 'center',
             }}
           >
-            <span style={{ width: 36, height: 1, background: 'var(--parch-line)' }} />
+            <span style={{ width: 36, height: 1, background: 'var(--parch-line)', flexShrink: 0 }} />
             <span>Arts Martiaux Historiques Européens · Clermont-Ferrand</span>
-            <span style={{ width: 36, height: 1, background: 'var(--parch-line)' }} />
+            <span style={{ width: 36, height: 1, background: 'var(--parch-line)', flexShrink: 0 }} />
           </div>
         </Reveal>
 
@@ -153,19 +156,20 @@ const Hero = () => {
         </Reveal>
       </div>
 
-      {/* Indicateur de scroll discret, bas centré */}
+      {/* Indicateur de scroll discret, bas centré — ligne qui respire comme une braise */}
       <a
         href="#manifesto"
         aria-label="Faire défiler"
+        className="hero-scroll"
         style={{
           position: 'absolute',
           left: '50%',
-          bottom: 28,
+          bottom: 32,
           transform: 'translateX(-50%)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: 10,
+          gap: 14,
           color: 'var(--parch-soft)',
           zIndex: 4,
           fontFamily: 'var(--eyebrow)',
@@ -178,11 +182,12 @@ const Hero = () => {
         <span>Faire défiler</span>
         <span
           aria-hidden="true"
+          className="hero-scroll-line"
           style={{
             width: 1,
-            height: 32,
+            height: 40,
             background: 'currentColor',
-            opacity: 0.5,
+            display: 'block',
           }}
         />
       </a>
@@ -190,29 +195,37 @@ const Hero = () => {
       {/* Effet titre forge : injecté ici pour rester avec le composant */}
       <style>{`
         .forge-title {
-          /* Métal sortant de la forge : cendre froide en haut → braise en bas */
+          /* Métal sortant de la forge : cendre froide en haut → cœur de braise en bas
+             Courbe rééquilibrée : on évite l'effet de "ré-assombrissement" au pied. */
           background: linear-gradient(
             180deg,
-            #c9bda5 0%,
-            #b89c78 22%,
-            #8a5a3a 44%,
-            #6a2a18 64%,
-            #b8381f 82%,
-            #e8552a 94%,
-            #4a1208 100%
+            #d6c9ad 0%,
+            #c1a37c 18%,
+            #9a6a44 38%,
+            #6a2e1a 58%,
+            #a83321 76%,
+            #d24a26 92%,
+            #ec6a32 100%
           );
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
           color: transparent;
-          /* Halos : un net derrière (profondeur), un large (chaleur diffuse) */
+          /* Halos étagés : net (profondeur), moyen (chaleur), large (atmosphère) */
           filter:
-            drop-shadow(0 6px 18px rgba(0,0,0,0.55))
-            drop-shadow(0 14px 40px rgba(200,64,48,0.32))
-            drop-shadow(0 0 80px rgba(200,64,48,0.18));
+            drop-shadow(0 4px 14px rgba(0,0,0,0.6))
+            drop-shadow(0 12px 30px rgba(200,64,48,0.28))
+            drop-shadow(0 0 90px rgba(200,64,48,0.18));
         }
+        .hero-scroll-line { animation: scroll-tick 2.6s var(--ease) infinite; }
+        .hero-scroll:hover { color: var(--parch); }
         @media (prefers-reduced-motion: reduce) {
           .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+          .hero-scroll-line { animation: none; opacity: 0.5; }
+        }
+        @media (max-width: 640px) {
+          .hero-baseline { font-size: 9.5px !important; letter-spacing: 0.32em !important; gap: 12px !important; }
+          .hero-baseline span:first-child, .hero-baseline span:last-child { width: 20px !important; }
         }
       `}</style>
     </section>
