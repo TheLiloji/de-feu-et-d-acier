@@ -1558,7 +1558,7 @@ const Galerie = () => (
           { src: 'assets/team-track.webp',      alt: "Équipe sur la piste d'athlétisme",            focal: '50% 50%', cap: 'L\'équipe', cls: 'galerie-tile-m',         col: 'span 5', row: 'span 2', d: 50 },
           { src: 'assets/kit-still-life.webp',  alt: 'Équipement et longue épée disposés au sol',   focal: '50% 50%', cap: 'L\'équipement', cls: 'galerie-tile-m',     col: 'span 5', row: 'span 2', d: 100 },
           { src: 'assets/group-gym.jpg',        alt: 'Photo de groupe en gymnase après un événement', focal: '50% 40%', cap: 'En gymnase', cls: 'galerie-tile-s',     col: 'span 4', row: 'span 3', d: 150 },
-          { src: 'assets/sparring.jpg',         alt: 'Assaut en salle, longue épée',                focal: '50% 30%', cap: 'À l\'assaut', cls: 'galerie-tile-s',       col: 'span 4', row: 'span 3', d: 200 },
+          { src: 'assets/sparring.jpg',         alt: 'Assaut en salle, longue épée',                focal: '50% 50%', cap: 'À l\'assaut', cls: 'galerie-tile-s',       col: 'span 4', row: 'span 3', d: 200 },
           { src: 'assets/duel-blue.webp',       alt: 'Garde en doublet bleu',                       focal: '60% 50%', cap: 'En garde', cls: 'galerie-tile-s',          col: 'span 4', row: 'span 3', d: 250 },
         ].map((t, i) => (
           <Reveal key={i} delay={t.d} style={{ gridColumn: t.col, gridRow: t.row }} className={t.cls}>
