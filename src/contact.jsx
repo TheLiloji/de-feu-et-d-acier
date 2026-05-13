@@ -104,14 +104,27 @@ const Field = ({ label, placeholder, multiline = false, type = 'text', name, val
 
 const Contact = () => {
   const [submitted, setSubmitted] = React.useState(false);
-  const [form, setForm] = React.useState({ name: '', email: '', subject: '', message: '' });
+  // Structure demandée : mail, sujet, contenu, puis signature prénom/nom
+  const [form, setForm] = React.useState({
+    email: '',
+    subject: '',
+    content: '',
+    firstname: '',
+    lastname: '',
+  });
   const onField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const handleSubmit = (e) => {
     e.preventDefault();
+    const fullname = [form.firstname, form.lastname].filter(Boolean).join(' ');
     const subject = encodeURIComponent(form.subject || 'Première séance — contact site');
-    const body = encodeURIComponent(
-      `${form.message || ''}\n\n— ${form.name || ''}${form.email ? ` (${form.email})` : ''}`
-    );
+    const bodyParts = [
+      form.content || '',
+      '',
+      'Cordialement,',
+      fullname || '',
+    ];
+    if (form.email) bodyParts.push(form.email);
+    const body = encodeURIComponent(bodyParts.join('\n'));
     window.location.href = `mailto:c.sillac@protonmail.com?subject=${subject}&body=${body}`;
     setSubmitted(true);
   };
@@ -195,8 +208,92 @@ const Contact = () => {
           </div>
         </Reveal>
 
-        <div className="contact-grid">
-          {/* Left: prix + équipement + infos pratiques */}
+        {/* 3 cartes en pleine largeur, AVANT la grille contact/form */}
+        <Reveal delay={120}>
+          <div className="rejoindre-cards">
+            {/* CARTE 1 — Viens essayer */}
+            <article className="rejoindre-card rejoindre-card--essai">
+              <div className="rejoindre-card-eyebrow">01 · Viens essayer</div>
+              <div className="rejoindre-card-headline">
+                Gratuit pendant <strong>environ&nbsp;1&nbsp;mois</strong>
+              </div>
+              <p className="rejoindre-card-body">
+                Pas besoin d'avoir déjà fait de l'escrime ou des arts
+                martiaux. Tu viens, tu observes, tu prends une lame —
+                c'est le meilleur moyen de découvrir l'ambiance du club
+                et les différentes disciplines avant de t'engager.
+              </p>
+              <ul className="rejoindre-card-points">
+                <li>Période d'essai d'environ 1 mois</li>
+                <li>Débutants complets bienvenus</li>
+                <li>Rien à apporter de spécial</li>
+              </ul>
+              <a
+                href="mailto:c.sillac@protonmail.com?subject=Première séance d'essai"
+                className="btn rejoindre-card-cta"
+              >
+                Réserver une séance
+                <ArrowGlyph size={11} color="currentColor" />
+              </a>
+            </article>
+
+            {/* CARTE 2 — Adhésion */}
+            <article className="rejoindre-card rejoindre-card--adhesion">
+              <div className="rejoindre-card-eyebrow">02 · Adhésion</div>
+              <div className="rejoindre-price-figure">
+                <span className="rejoindre-price-amount">85</span>
+                <span className="rejoindre-price-currency">€</span>
+                <span className="rejoindre-price-per">par an</span>
+              </div>
+              <p className="rejoindre-card-body">
+                Soit environ <strong>7&nbsp;€ par mois</strong>. Si tu
+                veux continuer après la période d'essai, l'adhésion
+                annuelle te donne accès à tous les créneaux et armes.
+              </p>
+              <ul className="rejoindre-card-points rejoindre-compare">
+                <li>Moins qu'un abonnement de sport classique</li>
+                <li>Moins qu'une sortie ciné par mois</li>
+                <li>Moins que quelques cafés dans le mois</li>
+              </ul>
+              <a
+                href="https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn--secondary rejoindre-card-cta"
+              >
+                Adhérer · HelloAsso
+                <ArrowGlyph size={11} color="currentColor" />
+              </a>
+            </article>
+
+            {/* CARTE 3 — Matériel */}
+            <article className="rejoindre-card rejoindre-card--materiel">
+              <div className="rejoindre-card-eyebrow">03 · Matériel</div>
+              <div className="rejoindre-card-headline">
+                Rien d'obligatoire <strong>au début</strong>
+              </div>
+              <p className="rejoindre-card-body">
+                Pas besoin d'acheter tout l'équipement dès le départ.
+                Pour t'investir vraiment, on recommande à terme un
+                <strong> masque d'escrime standard</strong> et des
+                <strong> gants coqués</strong> — on te conseille, avec
+                souvent des prix intéressants chez nos partenaires.
+              </p>
+              <ul className="rejoindre-card-points">
+                <li>Masque d'escrime standard</li>
+                <li>Gants coqués</li>
+                <li>Conseils du club + partenaires</li>
+              </ul>
+              <a href="#partenaires" className="btn btn--tertiary rejoindre-card-cta">
+                Voir les partenaires
+                <ArrowGlyph size={11} color="currentColor" />
+              </a>
+            </article>
+          </div>
+        </Reveal>
+
+        <div className="contact-grid" style={{ marginTop: 80 }}>
+          {/* Left: infos pratiques */}
           <Reveal>
             <div
               style={{
@@ -205,51 +302,13 @@ const Contact = () => {
                 gap: 56,
               }}
             >
-              {/* PRIX — gros chiffre 85€ pour capter l'œil immédiatement */}
-              <div className="rejoindre-price">
-                <div className="rejoindre-price-eyebrow">Adhésion · saison 25-26</div>
-                <div className="rejoindre-price-figure">
-                  <span className="rejoindre-price-amount">85</span>
-                  <span className="rejoindre-price-currency">€</span>
-                  <span className="rejoindre-price-per">par an</span>
-                </div>
-                <p className="rejoindre-price-headline">
-                  Première séance gratuite. Rejoindre en cours d'année est possible.
-                </p>
-              </div>
-
-              {/* ÉQUIPEMENT — 2 listes : prêté / à acheter */}
-              <div className="rejoindre-equip">
-                <div className="rejoindre-equip-col">
-                  <div className="rejoindre-equip-l">Prêté par le club</div>
-                  <ul className="rejoindre-equip-list">
-                    <li>Masque d'escrime</li>
-                    <li>Gants</li>
-                    <li>Arme d'entraînement</li>
-                    <li>Protections complémentaires</li>
-                  </ul>
-                </div>
-                <div className="rejoindre-equip-col rejoindre-equip-col--later">
-                  <div className="rejoindre-equip-l">À prévoir après 1-2 mois</div>
-                  <ul className="rejoindre-equip-list">
-                    <li>Votre masque personnel</li>
-                    <li>Vos gants personnels</li>
-                  </ul>
-                  <p className="rejoindre-equip-note">
-                    Si vous décidez de continuer. Le reste (arme,
-                    protections) reste fourni par le club.
-                  </p>
-                </div>
-              </div>
-
               {/* INFOS PRATIQUES compactes */}
               <div
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr',
                   gap: 4,
-                  paddingTop: 36,
-                  borderTop: '1px solid var(--parch-line)',
+                  paddingTop: 0,
                 }}
               >
                 {[
@@ -351,29 +410,59 @@ const Contact = () => {
                   maxWidth: 480,
                 }}
               >
-                Écrivez-nous pour préparer votre venue, ou retrouvez-nous
-                sur la page Facebook du club.
+                Une question, une envie d'essayer ? Écris-nous —
+                on répond en quelques jours.
               </p>
-              <div className="contact-form-row">
-                <Field label="Nom" placeholder="Prénom Nom" name="name" value={form.name} onChange={onField('name')} required />
-                <Field label="Email" placeholder="vous@email.fr" type="email" name="email" value={form.email} onChange={onField('email')} required />
-              </div>
+
+              <Field
+                label="Email"
+                placeholder="ton@email.fr"
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={onField('email')}
+                required
+              />
               <Field
                 label="Sujet"
-                placeholder="Première séance · stage · partenariat…"
+                placeholder="Première séance · question · partenariat…"
                 name="subject"
                 value={form.subject}
                 onChange={onField('subject')}
-              />
-              <Field
-                label="Message"
-                placeholder="Quelques mots sur votre demande…"
-                multiline
-                name="message"
-                value={form.message}
-                onChange={onField('message')}
                 required
               />
+              <Field
+                label="Contenu"
+                placeholder="Dis-nous en quelques mots de quoi il s'agit…"
+                multiline
+                name="content"
+                value={form.content}
+                onChange={onField('content')}
+                required
+              />
+
+              {/* Signature : "Cordialement," puis prénom + nom séparés */}
+              <div className="contact-signature">
+                <div className="contact-signature-l">Cordialement,</div>
+                <div className="contact-form-row">
+                  <Field
+                    label="Prénom"
+                    placeholder="Prénom"
+                    name="firstname"
+                    value={form.firstname}
+                    onChange={onField('firstname')}
+                    required
+                  />
+                  <Field
+                    label="Nom"
+                    placeholder="Nom"
+                    name="lastname"
+                    value={form.lastname}
+                    onChange={onField('lastname')}
+                    required
+                  />
+                </div>
+              </div>
 
               <div
                 style={{
@@ -393,7 +482,7 @@ const Contact = () => {
                     lineHeight: 1.55,
                   }}
                 >
-                  Le bouton ouvre votre messagerie avec le message
+                  Le bouton ouvre ta messagerie avec le message
                   pré-rempli. Pas de stockage de données côté site.
                 </div>
                 <button type="submit" className="btn">
@@ -718,124 +807,160 @@ const Footer = () => (
 // Inject form-specific styles once
 const ContactStyles = () => (
   <style>{`
-    /* ── Section Rejoindre : prix + équipement ─────────────────────── */
-    .rejoindre-price {
-      padding: 32px 0 28px;
-      border-top: 2px solid var(--accent);
-      border-bottom: 1px solid var(--parch-line);
+    /* ── Section Rejoindre : 3 cartes ────────────────────────────── */
+    .rejoindre-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 24px;
     }
-    .rejoindre-price-eyebrow {
+    .rejoindre-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 32px 28px 28px;
+      border: 1px solid var(--parch-line);
+      border-radius: 3px;
+      background: linear-gradient(180deg, rgba(236,232,222,0.028), rgba(236,232,222,0.008));
+      transition: border-color 240ms var(--ease), background 240ms var(--ease), transform 240ms var(--ease);
+    }
+    .rejoindre-card:hover {
+      border-color: rgba(236,232,222,0.28);
+      transform: translateY(-2px);
+    }
+    /* La carte adhésion est mise en avant (c'est l'action de conversion principale) */
+    .rejoindre-card--adhesion {
+      background: linear-gradient(180deg, rgba(224,85,44,0.06), rgba(224,85,44,0.015));
+      border-color: rgba(224,85,44,0.32);
+    }
+    .rejoindre-card--adhesion::before {
+      content: '';
+      position: absolute;
+      left: -1px; right: -1px; top: -1px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--ember-hot) 70%, transparent);
+    }
+    .rejoindre-card--adhesion:hover {
+      border-color: rgba(224,85,44,0.6);
+      background: linear-gradient(180deg, rgba(224,85,44,0.09), rgba(224,85,44,0.02));
+    }
+    .rejoindre-card-eyebrow {
       font-family: var(--eyebrow);
       font-size: 10.5px;
       letter-spacing: 0.28em;
       text-transform: uppercase;
       color: var(--accent);
       font-weight: 600;
-      margin-bottom: 18px;
     }
-    .rejoindre-price-figure {
-      display: flex;
-      align-items: baseline;
-      gap: 14px;
+    .rejoindre-card-headline {
       font-family: var(--display);
-      font-variant-numeric: tabular-nums;
-      line-height: 0.92;
-      margin-bottom: 14px;
-    }
-    .rejoindre-price-amount {
-      font-size: clamp(96px, 11vw, 168px);
-      font-weight: 500;
-      letter-spacing: -0.025em;
+      font-size: clamp(24px, 2.4vw, 32px);
+      line-height: 1.15;
       color: var(--parch);
-    }
-    .rejoindre-price-currency {
-      font-size: clamp(40px, 4.4vw, 64px);
       font-weight: 400;
+    }
+    .rejoindre-card-headline strong {
+      font-weight: 500;
       color: var(--accent);
     }
-    .rejoindre-price-per {
-      font-family: var(--eyebrow);
-      font-size: 11px;
-      letter-spacing: 0.26em;
-      text-transform: uppercase;
-      color: var(--parch-mute);
-      font-weight: 500;
-      margin-left: auto;
-      padding-bottom: 8px;
-    }
-    .rejoindre-price-headline {
+    .rejoindre-card-body {
       margin: 0;
-      font-family: var(--display);
-      font-style: italic;
-      font-size: clamp(18px, 1.6vw, 22px);
-      line-height: 1.4;
+      font-family: var(--body);
+      font-size: 14.5px;
+      line-height: 1.65;
       color: var(--parch-soft);
-      max-width: 480px;
     }
-
-    .rejoindre-equip {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 28px;
+    .rejoindre-card-body strong {
+      color: var(--parch);
+      font-weight: 500;
     }
-    .rejoindre-equip-col {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      padding: 22px 24px;
-      border: 1px solid var(--parch-line);
-      border-radius: 2px;
-      background: linear-gradient(180deg, rgba(236,232,222,0.022), rgba(236,232,222,0.006));
-    }
-    .rejoindre-equip-col--later {
-      background: linear-gradient(180deg, rgba(224,85,44,0.04), rgba(224,85,44,0.008));
-      border-color: rgba(224,85,44,0.22);
-    }
-    .rejoindre-equip-l {
-      font-family: var(--eyebrow);
-      font-size: 10.5px;
-      letter-spacing: 0.26em;
-      text-transform: uppercase;
-      color: var(--parch-mute);
-      font-weight: 600;
-    }
-    .rejoindre-equip-col--later .rejoindre-equip-l { color: var(--accent); }
-    .rejoindre-equip-list {
+    .rejoindre-card-points {
       list-style: none;
       margin: 0;
       padding: 0;
       display: flex;
       flex-direction: column;
       gap: 8px;
+      flex: 1;
     }
-    .rejoindre-equip-list li {
+    .rejoindre-card-points li {
       font-family: var(--body);
-      font-size: 14.5px;
-      line-height: 1.5;
+      font-size: 13.5px;
+      line-height: 1.45;
       color: var(--parch);
       padding-left: 18px;
       position: relative;
     }
-    .rejoindre-equip-list li::before {
+    .rejoindre-card-points li::before {
       content: '';
       position: absolute;
-      left: 0; top: 0.7em;
-      width: 6px; height: 1px;
+      left: 0; top: 0.65em;
+      width: 8px; height: 1px;
       background: var(--accent);
     }
-    .rejoindre-equip-note {
-      margin: 6px 0 0;
-      font-family: var(--body);
-      font-size: 12.5px;
-      line-height: 1.55;
-      color: var(--parch-mute);
+    .rejoindre-compare li {
+      color: var(--parch-soft);
       font-style: italic;
     }
+    .rejoindre-card-cta {
+      align-self: flex-start;
+      margin-top: 4px;
+    }
+    /* Gros chiffre 85€ — réutilisé dans la carte adhésion */
+    .rejoindre-card--adhesion .rejoindre-price-figure {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-family: var(--display);
+      font-variant-numeric: tabular-nums;
+      line-height: 0.92;
+    }
+    .rejoindre-price-amount {
+      font-size: clamp(72px, 8vw, 104px);
+      font-weight: 500;
+      letter-spacing: -0.025em;
+      color: var(--parch);
+    }
+    .rejoindre-price-currency {
+      font-size: clamp(32px, 3.6vw, 48px);
+      font-weight: 400;
+      color: var(--accent);
+    }
+    .rejoindre-price-per {
+      font-family: var(--eyebrow);
+      font-size: 10.5px;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: var(--parch-mute);
+      font-weight: 500;
+      margin-left: auto;
+      padding-bottom: 6px;
+    }
 
+    @media (max-width: 1100px) {
+      .rejoindre-cards { grid-template-columns: 1fr; gap: 18px; }
+    }
     @media (max-width: 640px) {
-      .rejoindre-price-figure { flex-wrap: wrap; gap: 8px 14px; }
+      .rejoindre-card { padding: 26px 22px 22px; }
+      .rejoindre-card--adhesion .rejoindre-price-figure { flex-wrap: wrap; gap: 6px 12px; }
       .rejoindre-price-per { margin-left: 0; padding-bottom: 0; }
-      .rejoindre-equip { grid-template-columns: 1fr; gap: 16px; }
+    }
+
+    /* Signature du formulaire : "Cordialement," + prénom/nom séparés */
+    .contact-signature {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      padding-top: 12px;
+      border-top: 1px solid var(--parch-line);
+    }
+    .contact-signature-l {
+      font-family: var(--display);
+      font-style: italic;
+      font-size: 17px;
+      line-height: 1.4;
+      color: var(--parch-soft);
     }
 
     .forge-field::placeholder {
