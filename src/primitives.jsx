@@ -297,8 +297,10 @@ const Nav = ({ scrolled }) => {
       <style>{`
         .site-nav {
           position: fixed;
-          top: 0; left: 0; right: 0;
+          top: var(--prebanner-h, 0);
+          left: 0; right: 0;
           z-index: 50;
+          transition: background 240ms var(--ease), border-color 240ms var(--ease), top 220ms var(--ease);
           display: grid;
           grid-template-columns: 1fr auto 1fr;
           align-items: center;
@@ -306,7 +308,6 @@ const Nav = ({ scrolled }) => {
           padding: 16px 40px;
           background: transparent;
           border-bottom: 1px solid transparent;
-          transition: background 240ms var(--ease), border-color 240ms var(--ease);
         }
         .site-nav[data-scrolled="true"] {
           background: rgba(10, 9, 8, 0.78);

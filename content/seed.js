@@ -7,6 +7,26 @@
 // HTML ; ils sont rendus via dangerouslySetInnerHTML. Pas un risque XSS car
 // seul un admin authentifié peut écrire dans KV.
 window.CONTENT_SEED = {
+  actualites: {
+    eyebrowNumber: 0,
+    eyebrowLabel: 'Actualités',
+    titleLine1: 'Ce qui',
+    titleLine2: 'se passe en ce moment.',
+    lede: '',
+    // Bandeau pre-header au-dessus de la nav. Toggle "enabled" pour le masquer
+    // quand il n'y a rien d'urgent à annoncer.
+    banner: {
+      enabled: false,
+      eyebrow: 'À noter',
+      text: '',
+      href: '',
+    },
+    // Cartes d'actualités sous le hero. Layout auto selon le nombre.
+    // Au clic sur une carte → modal détaillé.
+    // Tableau vide → la section ne s'affiche pas.
+    items: [],
+  },
+
   hero: {
     logo: 'assets/logo.png?v=2',
     logoAlt: "De Feu et d'Acier — logo",
