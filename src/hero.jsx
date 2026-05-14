@@ -217,12 +217,12 @@ const Hero = () => {
               color: 'var(--parch)',
             }}
           >
-            De <span style={{ color: 'var(--accent)' }}>Feu</span>
+            De <span className="brand-feu">Feu</span>
             <br />
             <span style={{ fontStyle: 'italic', fontWeight: 300, paddingLeft: '0.35em' }}>
               et d'
             </span>
-            <span style={{ color: 'var(--accent)' }}>Acier</span>
+            <span className="brand-acier">Acier</span>
           </h1>
         </Reveal>
 
@@ -248,6 +248,54 @@ const Hero = () => {
 
       {/* Responsive hero compact */}
       <style>{`
+        /* "Feu" : dégradé vertical façon flamme (jaune chaud en bas → braise en haut) + halo qui respire */
+        .brand-feu {
+          background-image: linear-gradient(
+            180deg,
+            #6a1d0c 0%,
+            #a83321 22%,
+            #d24a26 48%,
+            #ec6a32 72%,
+            #ffb86a 100%
+          );
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          filter: drop-shadow(0 0 18px rgba(232, 90, 40, 0.18));
+          animation: brand-feu-breath 7.5s var(--ease) infinite;
+        }
+        @keyframes brand-feu-breath {
+          0%, 100% { filter: drop-shadow(0 0 14px rgba(232, 90, 40, 0.14)); }
+          50%      { filter: drop-shadow(0 0 26px rgba(232, 90, 40, 0.30)); }
+        }
+
+        /* "Acier" : dégradé acier brossé avec un reflet argenté qui balaie le mot */
+        .brand-acier {
+          background-image: linear-gradient(
+            100deg,
+            #5e6a75 0%,
+            #5e6a75 35%,
+            #b8c3cc 45%,
+            #e3eaef 50%,
+            #b8c3cc 55%,
+            #5e6a75 65%,
+            #5e6a75 100%
+          );
+          background-size: 260% 100%;
+          background-position: 100% 0;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          animation: brand-acier-sheen 5s var(--ease) infinite;
+        }
+        @keyframes brand-acier-sheen {
+          0%   { background-position: 100% 0; }
+          40%  { background-position: 0% 0; }
+          100% { background-position: 0% 0; }
+        }
+
         /* H2 hero : 2 lignes, "Clermont-Ferrand" mis en avant (ember, plus gros, capitales letter-spacing) */
         .hero-h2 {
           margin: 0;
@@ -322,6 +370,8 @@ const Hero = () => {
         @media (prefers-reduced-motion: reduce) {
           .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
           .hero-scroll-drop { animation: none !important; top: 50%; transform: translateY(-50%); opacity: 0.8; }
+          .brand-feu { animation: none !important; filter: drop-shadow(0 0 16px rgba(232, 90, 40, 0.20)) !important; }
+          .brand-acier { animation: none !important; background-position: 50% 0 !important; }
         }
 
         @media (max-height: 720px) {
