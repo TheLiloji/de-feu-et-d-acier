@@ -37,9 +37,10 @@ const MapIframe = ({ src }) => {
  * viewport (et qu'elle a donc ses bonnes dimensions à l'init).
  */
 const RejoindreMap = () => {
+  const rejoindre = window.useContent('rejoindre') || {};
+  const map = rejoindre.map || {};
   const containerRef = React.useRef(null);
   const [loaded, setLoaded] = React.useState(false);
-  const SRC = "https://www.openstreetmap.org/export/embed.html?bbox=3.0397%2C45.7808%2C3.0957%2C45.8048&layer=mapnik&marker=45.7928%2C3.0677";
   React.useEffect(() => {
     if (loaded) return;
     const el = containerRef.current;
@@ -58,25 +59,27 @@ const RejoindreMap = () => {
   }, [loaded]);
   return (
     <div className="rejoindre-map" ref={containerRef}>
-      {loaded ? (
-        <MapIframe src={SRC} />
+      {loaded && map.iframeSrc ? (
+        <MapIframe src={map.iframeSrc} />
       ) : (
         <div className="rejoindre-map-placeholder" aria-hidden="true" />
       )}
       <div className="rejoindre-map-info">
         <div className="rejoindre-map-info-l">
-          <div className="rejoindre-map-name">Gymnase Robert Pras</div>
-          <div className="rejoindre-map-addr">3 rue Jean Monnet · 63100 Clermont-Ferrand</div>
+          <div className="rejoindre-map-name">{map.name}</div>
+          <div className="rejoindre-map-addr">{map.address}</div>
         </div>
-        <a
-          href="https://www.openstreetmap.org/?mlat=45.7928&mlon=3.0677#map=17/45.7928/3.0677"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rejoindre-map-osm"
-        >
-          Ouvrir sur OSM
-          <ArrowGlyph size={10} color="currentColor" />
-        </a>
+        {map.openLink && (
+          <a
+            href={map.openLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rejoindre-map-osm"
+          >
+            Ouvrir sur OSM
+            <ArrowGlyph size={10} color="currentColor" />
+          </a>
+        )}
       </div>
     </div>
   );
@@ -136,6 +139,10 @@ const LegalNotes = () => {
   if (!openId) return null;
 
   const isMentions = openId === 'mentions-legales';
+  const c = window.useContent('legal') || {};
+  const mentions = c.mentions || {};
+  const rgpd = c.rgpd || {};
+  const block = isMentions ? mentions : rgpd;
 
   return (
     <div
@@ -148,9 +155,9 @@ const LegalNotes = () => {
       <div className="legal-modal-panel" role="document">
         <div className="legal-modal-head">
           <div>
-            <div className="legal-modal-eyebrow">Informations légales</div>
+            <div className="legal-modal-eyebrow">{c.eyebrow || 'Informations légales'}</div>
             <h2 id="legal-modal-title" className="legal-modal-title">
-              {isMentions ? 'Mentions légales' : 'Confidentialité & RGPD'}
+              {block.title || (isMentions ? 'Mentions légales' : 'Confidentialité & RGPD')}
             </h2>
           </div>
           <button
@@ -168,76 +175,35 @@ const LegalNotes = () => {
         <div className="legal-modal-body">
           {isMentions ? (
             <>
-              <p>
-                Site édité par la section AMHE « De Feu et d'Acier » de l'USAM
-                Clermont-Ferrand, association loi 1901 affiliée à la FFAMHE.
-              </p>
+              {mentions.intro && <p>{mentions.intro}</p>}
               <dl className="legal-dl">
-                <dt>Siège &amp; lieu d'entraînement</dt>
-                <dd>Gymnase Robert Pras — 3 rue Jean Monnet, 63100 Clermont-Ferrand</dd>
-                <dt>Horaires hebdomadaires</dt>
-                <dd>
-                  Mardi 18h00 — 20h00 · entraînement encadré, tous niveaux
-                  <br />
-                  Jeudi 18h00 — 20h00 · pratique libre, sans encadrant
-                  <br />
-                  Jeudi 20h00 — 22h00 · entraînement encadré, tous niveaux
-                </dd>
-                <dt>Directrice de publication</dt>
-                <dd>Clémence Sillac, présidente de section</dd>
-                <dt>Contact</dt>
-                <dd>
-                  <a href="mailto:c.sillac@protonmail.com">c.sillac@protonmail.com</a>
-                  {' · '}
-                  <a href="tel:+33631585460">06 31 58 54 60</a>
-                </dd>
-                <dt>Affiliation</dt>
-                <dd>Section AMHE de l'USAM Clermont-Ferrand · fédération FFAMHE</dd>
-                <dt>Hébergement</dt>
-                <dd>Cloudflare Workers — Cloudflare, Inc., 101 Townsend St, San Francisco, CA 94107, USA</dd>
+                {(mentions.entries || []).map((e, i) => (
+                  <React.Fragment key={i}>
+                    <dt>{e.label}</dt>
+                    <dd dangerouslySetInnerHTML={{ __html: e.valueHtml || '' }} />
+                  </React.Fragment>
+                ))}
               </dl>
-              <p className="legal-mute">
-                Les photographies et illustrations utilisées sont la propriété
-                du club ou de leurs auteurs respectifs. Toute reproduction
-                non autorisée est interdite.
-              </p>
+              {mentions.footnote && <p className="legal-mute">{mentions.footnote}</p>}
             </>
           ) : (
             <>
-              <p>
-                Ce site ne dépose <strong>aucun cookie</strong>, n'utilise{' '}
-                <strong>aucun outil d'analyse</strong> et ne stocke aucune
-                donnée personnelle côté serveur.
-              </p>
-              <p>
-                Le formulaire de contact ouvre votre application de messagerie
-                avec un message pré-rempli. Aucune information n'est envoyée
-                vers ce site ni vers un service tiers : l'envoi se fait depuis
-                votre propre boîte mail.
-              </p>
-              <p>
-                Les coordonnées affichées (mail, téléphone, adresse) sont
-                celles communiquées volontairement par les responsables du
-                club pour leurs fonctions associatives.
-              </p>
-              <p className="legal-mute">
-                Conformément au RGPD, vous disposez d'un droit d'accès, de
-                rectification et de suppression sur les données qui vous
-                concernent. Pour exercer ces droits, contactez la présidente
-                de section à l'adresse ci-dessus.
-              </p>
+              {(rgpd.paragraphsHtml || []).map((para, i) => (
+                <p key={i} dangerouslySetInnerHTML={{ __html: para }} />
+              ))}
+              {rgpd.footnote && <p className="legal-mute">{rgpd.footnote}</p>}
             </>
           )}
 
           <div className="legal-modal-switch">
             {isMentions ? (
               <a href="#rgpd" className="legal-modal-switch-link">
-                Voir la politique de confidentialité
+                {c.switchToRgpd || 'Voir la politique de confidentialité'}
                 <ArrowGlyph size={11} color="currentColor" />
               </a>
             ) : (
               <a href="#mentions-legales" className="legal-modal-switch-link">
-                Voir les mentions légales
+                {c.switchToMentions || 'Voir les mentions légales'}
                 <ArrowGlyph size={11} color="currentColor" />
               </a>
             )}
@@ -251,7 +217,12 @@ const LegalNotes = () => {
 // ───────────────────────────────────────────────────────────────────
 // FOOTER
 // ───────────────────────────────────────────────────────────────────
-const Footer = () => (
+const Footer = () => {
+  const c = window.useContent('footer') || {};
+  const brand = c.brand || {};
+  const columns = c.columns || [];
+  const legalLinks = c.legalLinks || [];
+  return (
   <footer
     style={{
       position: 'relative',
@@ -263,23 +234,23 @@ const Footer = () => (
     <div className="container">
       {/* Marquee-style large brand line */}
       <div className="footer-marquee">
-        De <span className="brand-feu">Feu</span>
+        {brand.start} <span className="brand-feu">{brand.feu}</span>
         <em
           style={{
             fontStyle: 'italic',
             fontWeight: 300,
           }}
         >
-          &nbsp;et d'&nbsp;
+          &nbsp;{brand.connector}&nbsp;
         </em>
-        <span className="brand-acier">Acier</span>
+        <span className="brand-acier">{brand.acier}</span>
       </div>
 
       <div className="footer-grid">
         <div>
           <img
-            src="assets/logo.png?v=2"
-            alt="De Feu et d'Acier"
+            src={c.logo}
+            alt={c.logoAlt}
             width="56"
             height="56"
             style={{ display: 'block', objectFit: 'contain' }}
@@ -293,40 +264,10 @@ const Footer = () => (
               maxWidth: 260,
             }}
           >
-            Section AMHE de l'USAM Clermont-Ferrand, affiliée à la
-            FFAMHE. Arts martiaux historiques européens au cœur du
-            Puy-de-Dôme.
+            {c.description}
           </p>
         </div>
-        {[
-          {
-            label: 'Le club',
-            items: [
-              ['La rigueur', '#rigueur'],
-              ['Disciplines', '#disciplines'],
-              ['FAQ', '#faq'],
-              ['Tournois', '#tournois'],
-              ['Galerie', '#galerie'],
-            ],
-          },
-          {
-            label: 'Pratique',
-            items: [
-              ['Nous rejoindre', '#creneaux'],
-              ['Adhésion', 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026'],
-              ['HelloAsso', 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand'],
-            ],
-          },
-          {
-            label: 'Suivre',
-            items: [
-              ['Facebook', 'https://www.facebook.com/63AMHE/'],
-              ['HEMA Ratings', 'https://hemaratings.com/clubs/details/1155/'],
-              ['USAM Clermont', 'https://usam-clermont-ferrand.com/amhe-arts-martiaux-historiques-europeens'],
-              ['FFAMHE', 'https://ffamhe.fr'],
-            ],
-          },
-        ].map((col) => (
+        {columns.map((col) => (
           <div key={col.label}>
             <div
               style={{
@@ -351,7 +292,7 @@ const Footer = () => (
                 gap: 12,
               }}
             >
-              {col.items.map(([l, h]) => {
+              {(col.items || []).map(([l, h]) => {
                 const ext = /^https?:/.test(h);
                 return (
                   <li key={l}>
@@ -386,15 +327,17 @@ const Footer = () => (
           fontWeight: 500,
         }}
       >
-        <div>© 2026 · De Feu et d'Acier · Clermont-Ferrand</div>
+        <div>{c.copyright}</div>
         <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
-          <a href="#mentions-legales" className="ulink">Mentions légales</a>
-          <a href="#rgpd" className="ulink">Confidentialité</a>
+          {legalLinks.map(([l, h]) => (
+            <a key={l} href={h} className="ulink">{l}</a>
+          ))}
         </div>
       </div>
     </div>
   </footer>
-);
+  );
+};
 
 // Inject form-specific styles once
 const ContactStyles = () => (

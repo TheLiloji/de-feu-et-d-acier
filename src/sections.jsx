@@ -160,7 +160,9 @@ const SectionsStyles = () => (
 // MANIFESTO — treatise drawing right, large pull-quote left.
 // Editorial spread feel, alludes to historical sources.
 // ───────────────────────────────────────────────────────────────────
-const Manifesto = () => (
+const Manifesto = () => {
+  const c = window.useContent('rigueur') || {};
+  return (
   <section
     id="rigueur"
     data-screen-label="05 La rigueur"
@@ -172,7 +174,7 @@ const Manifesto = () => (
   >
     <div className="container">
       <Reveal>
-        <SectionLabel number={4} name="La rigueur" />
+        <SectionLabel number={c.eyebrowNumber || 4} name={c.eyebrowLabel || ''} />
       </Reveal>
 
       <div className="editorial-split split-12-085">
@@ -187,7 +189,7 @@ const Manifesto = () => (
                 maxWidth: 760,
               }}
             >
-              Le geste juste,
+              {c.titleLine1}
               <br />
               <em
                 style={{
@@ -196,7 +198,7 @@ const Manifesto = () => (
                   color: 'var(--accent)',
                 }}
               >
-                avant le costume.
+                {c.titleLine2}
               </em>
             </h2>
           </Reveal>
@@ -209,20 +211,8 @@ const Manifesto = () => (
                 marginBottom: 40,
                 color: 'var(--parch-soft)',
               }}
-            >
-              On étudie les arts martiaux européens à partir des{' '}
-              <em
-                style={{
-                  fontStyle: 'normal',
-                  color: 'var(--accent)',
-                  fontWeight: 500,
-                }}
-              >
-                traités et sources historiques
-              </em>
-              , dans une pratique moderne, sportive et sécurisée.
-              On y vient pour le geste, pas pour le costume.
-            </p>
+              dangerouslySetInnerHTML={{ __html: c.ledeHtml || '' }}
+            />
           </Reveal>
 
           <Reveal delay={180}>
@@ -236,11 +226,7 @@ const Manifesto = () => (
                 marginBottom: 56,
               }}
             >
-              Ici on s'entraîne en tenue de sport, masque d'escrime et
-              protections modernes, avec des armes d'entraînement adaptées
-              à chaque discipline. Les sources anciennes ne sont pas un
-              décor — elles sont la partition que l'on lit, que l'on
-              questionne, et qu'on éprouve sur le tapis.
+              {c.body}
             </p>
           </Reveal>
         </div>
@@ -265,8 +251,8 @@ const Manifesto = () => (
               }}
             >
               <img
-                src="assets/treatise.jpg"
-                alt="Planche issue d'un traité d'escrime historique"
+                src={c.image}
+                alt={c.imageAlt}
                 style={{
                   display: 'block',
                   width: '100%',
@@ -297,21 +283,23 @@ const Manifesto = () => (
                   marginRight: 12,
                 }}
               />
-              Planche extraite d'un traité d'escrime historique. Étude
-              des gardes, des distances, du timing — des gestes que l'on
-              cherche à comprendre, puis à éprouver dans la salle.
+              {c.figureCaption}
             </figcaption>
           </figure>
         </Reveal>
       </div>
     </div>
   </section>
-);
+  );
+};
 
 // ───────────────────────────────────────────────────────────────────
 // CLUB — full-width with split image and intro
 // ───────────────────────────────────────────────────────────────────
-const Club = () => (
+const Club = () => {
+  const c = window.useContent('club') || {};
+  const pillars = c.pillars || [];
+  return (
   <section
     id="club"
     data-screen-label="04 Le club"
@@ -324,7 +312,7 @@ const Club = () => (
   >
     <div className="container">
       <Reveal>
-        <SectionLabel number={3} name="Le club" />
+        <SectionLabel number={c.eyebrowNumber || 3} name={c.eyebrowLabel || ''} />
       </Reveal>
 
       <div className="editorial-split split-085-115 center" style={{ marginBottom: 100 }}>
@@ -338,7 +326,7 @@ const Club = () => (
                 marginBottom: 28,
               }}
             >
-              Une bande
+              {c.titleLine1}
               <br />
               <em
                 style={{
@@ -347,10 +335,10 @@ const Club = () => (
                   color: 'var(--accent)',
                 }}
               >
-                d'escrimeurs,
+                {c.titleLine2}
               </em>
               <br />
-              une école.
+              {c.titleLine3}
             </h2>
             <p
               style={{
@@ -361,20 +349,16 @@ const Club = () => (
                 margin: 0,
               }}
             >
-              Section AMHE de l'USAM Clermont-Ferrand, affiliée à la
-              FFAMHE, le club accueille débutants et pratiquants
-              confirmés, en loisir comme en compétition. Encadrement
-              assuré par Gabriel Tardio. La salle est ouverte à toutes et
-              tous, et l'on prend le temps de bien faire les choses.
+              {c.body}
             </p>
           </div>
         </Reveal>
 
         <Reveal delay={100}>
           <Photo
-            src="assets/team-track.webp"
-            alt="L'équipe sur la piste"
-            focal="50% 40%"
+            src={c.image}
+            alt={c.imageAlt}
+            focal={c.imageFocal}
             style={{ aspectRatio: '16/10', width: '100%' }}
           />
         </Reveal>
@@ -383,23 +367,7 @@ const Club = () => (
       {/* Pillars */}
       <Reveal delay={150}>
         <div className="pillars">
-          {[
-            {
-              n: '01',
-              title: 'Source',
-              body: 'Étude des textes et traités historiques. Lecture, mise en pratique, reconstitution martiale des gestes anciens.',
-            },
-            {
-              n: '02',
-              title: 'Geste',
-              body: 'Technique structurée par le drill, le sentiment du fer, et la mise en pratique en assaut libre.',
-            },
-            {
-              n: '03',
-              title: 'Salle',
-              body: 'Un esprit d\'école d\'armes : exigence sportive, respect du partenaire, et progression à son rythme.',
-            },
-          ].map((p, i) => (
+          {pillars.map((p, i) => (
             <div key={p.n} className="pillar">
               <div
                 style={{
@@ -451,7 +419,8 @@ const Club = () => (
       </Reveal>
     </div>
   </section>
-);
+  );
+};
 
 // ───────────────────────────────────────────────────────────────────
 // ENCADREMENT — 3 instructeurs, hiérarchie visuelle scannable.
@@ -459,34 +428,8 @@ const Club = () => (
 // Pas de portrait pseudo-photo (cf. retours UX : faisait "club qui n'assume pas").
 // ───────────────────────────────────────────────────────────────────
 const Encadrement = () => {
-  const people = [
-    {
-      eyebrow: 'Rapière',
-      name: 'Marie Poignant',
-      photo: 'assets/Marie.png',
-      focal: '50% 30%',
-      punch: 'Rapière française & italienne · bolonaise',
-      body: 'Instructrice rapière. Travaille les traditions française et italienne, l\'escrime bolonaise et les systèmes main gauche (cape, dague, bocle). Pratique AMHE depuis 2013.',
-    },
-    {
-      eyebrow: 'Épée longue',
-      name: 'Gabriel Tardio',
-      photo: 'assets/Gabriel.jpg',
-      focal: '50% 30%',
-      punch: 'Top 1 % mondial · épée longue acier',
-      body: 'Référent principal du club. Compétiteur reconnu du circuit AMHE, classé dans le top 1 % mondial en épée longue acier sur HEMA Ratings. Pratique exigeante, structurée, tournée vers l\'efficacité en assaut.',
-      link: { href: 'https://hemaratings.com/fighters/details/5716/', label: 'Profil HEMA Ratings' },
-      featured: true,
-    },
-    {
-      eyebrow: 'Messer · viking · bocle',
-      name: 'Ludwig Fort',
-      photo: 'assets/Ludwig.jpeg',
-      focal: '50% 30%',
-      punch: 'Armes courtes & bouclier',
-      body: 'Encadre les pratiques messer, combat viking et épée-bocle. Apporte une approche orientée armes courtes, bouclier et systèmes asymétriques — les disciplines moins courues du répertoire AMHE.',
-    },
-  ];
+  const c = window.useContent('profs') || {};
+  const people = c.items || [];
 
   return (
     <section
@@ -501,7 +444,7 @@ const Encadrement = () => {
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={2} name="Les profs" />
+          <SectionLabel number={c.eyebrowNumber || 2} name={c.eyebrowLabel || ''} />
         </Reveal>
 
         <div className="section-head">
@@ -514,10 +457,10 @@ const Encadrement = () => {
                 margin: 0,
               }}
             >
-              Trois encadrants,
+              {c.titleLine1}
               <br />
               <em style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent)' }}>
-                trois écoles.
+                {c.titleLine2}
               </em>
             </h2>
           </Reveal>
@@ -531,9 +474,7 @@ const Encadrement = () => {
                 color: 'var(--parch-mute)',
               }}
             >
-              Chaque arme a son référent. Tous transmettent à leur rythme,
-              avec le temps qu'il faut pour comprendre le geste avant de
-              l'enchaîner.
+              {c.lede}
             </p>
           </Reveal>
         </div>
@@ -555,7 +496,7 @@ const Encadrement = () => {
                   <div className="prof-eyebrow">{p.eyebrow}</div>
                   <h3 className="prof-name">{p.name}</h3>
                   <div className="prof-punch">
-                    {p.featured && p.punch.includes(' · ') ? (
+                    {p.featured && p.punch && p.punch.includes(' · ') ? (
                       <>
                         <span className="prof-punch-shine">
                           {p.punch.split(' · ')[0]}
@@ -565,7 +506,7 @@ const Encadrement = () => {
                     ) : p.punch}
                   </div>
                   <p className="prof-body">{p.body}</p>
-                  {p.link && (
+                  {p.link && p.link.href && (
                     <a
                       href={p.link.href}
                       target="_blank"
@@ -760,60 +701,19 @@ const Encadrement = () => {
 // Hover expands to reveal details about the weapon system
 // ───────────────────────────────────────────────────────────────────
 const Disciplines = () => {
-  const [active, setActive] = React.useState('viking');
-  // Ordre chronologique : Haut Moyen Âge → Médiévale → Renaissance
-  const disciplines = [
-    {
-      id: 'viking',
-      name: 'Combat viking',
-      sub: 'Bouclier & arme courte',
-      era: 'Haut Moyen Âge',
-      eraDates: 'VIIIᵉ — XIᵉ s.',
-      desc: 'Pratique inspirée des traditions martiales anciennes, avec bouclier et armes adaptées selon les sources. Jeu de pression, contact, contrôle.',
-      img: 'assets/Viking.webp',
-      focal: '50% 40%',
-    },
-    {
-      id: 'longue',
-      name: 'Épée longue',
-      sub: 'Arme emblématique des AMHE',
-      era: 'Médiévale',
-      eraDates: 'XIVᵉ — XVᵉ s.',
-      desc: 'Pratiquée à deux mains, l\'épée longue est l\'arme emblématique des AMHE médiévales. Travail de garde, de pointe et d\'entrée au corps.',
-      img: 'assets/duel-blue.webp',
-      focal: '50% 40%',
-    },
-    {
-      id: 'messer',
-      name: 'Messer',
-      sub: 'Grand couteau de combat',
-      era: 'Médiévale',
-      eraDates: 'XVᵉ s.',
-      desc: 'Arme médiévale germanique, proche d\'un grand couteau de combat à un tranchant. Système populaire mêlant escrime et lutte rapprochée.',
-      img: 'assets/Messer.avif',
-      focal: '50% 40%',
-    },
-    {
-      id: 'bocle',
-      name: 'Épée-bocle',
-      sub: 'Épée à une main & petit bouclier',
-      era: 'Médiévale',
-      eraDates: 'XIIIᵉ — XVᵉ s.',
-      desc: 'Combinaison d\'une épée à une main et d\'un petit bouclier rond (bocle). Tradition médiévale du combat rapproché, mêlant frappe, parade et liaisons au bouclier.',
-      img: 'assets/Epee-bocle.png',
-      focal: '50% 40%',
-    },
-    {
-      id: 'rapiere',
-      name: 'Rapière',
-      sub: 'Escrime de la Renaissance',
-      era: 'Renaissance',
-      eraDates: 'XVIᵉ — XVIIᵉ s.',
-      desc: 'Arme plus tardive, liée à l\'escrime de la Renaissance et de l\'époque moderne. Jeu de pointe fin, distance, et déplacement précis.',
-      img: 'assets/Rapière.jpg',
-      focal: '50% 40%',
-    },
-  ];
+  const content = window.useContent('disciplines') || {};
+  const disciplines = content.items || [];
+  const [active, setActive] = React.useState(() => disciplines[0]?.id);
+
+  // Si le contenu change (fetch admin / seed → KV), recale l'état actif
+  // sur le premier item si l'ancien ID n'existe plus.
+  React.useEffect(() => {
+    if (disciplines.length === 0) return;
+    if (!disciplines.find((d) => d.id === active)) {
+      setActive(disciplines[0].id);
+    }
+  }, [disciplines, active]);
+
   return (
     <section
       id="disciplines"
@@ -827,7 +727,7 @@ const Disciplines = () => {
     >
       <div className="container" style={{ marginBottom: 64 }}>
         <Reveal>
-          <SectionLabel number={1} name="Les disciplines" />
+          <SectionLabel number={content.eyebrowNumber || 1} name={content.eyebrowLabel || ''} />
         </Reveal>
 
         <div className="section-head" style={{ marginBottom: 0 }}>
@@ -840,7 +740,7 @@ const Disciplines = () => {
                 margin: 0,
               }}
             >
-              Cinq armes,
+              {content.titleLine1}
               <br />
               <em
                 style={{
@@ -849,7 +749,7 @@ const Disciplines = () => {
                   color: 'var(--accent)',
                 }}
               >
-                cinq grammaires.
+                {content.titleLine2}
               </em>
             </h2>
           </Reveal>
@@ -863,16 +763,19 @@ const Disciplines = () => {
                 color: 'var(--parch-mute)',
               }}
             >
-              On peut tout pratiquer, on peut se spécialiser. Chaque arme
-              ouvre une école de pensée et un répertoire technique
-              distincts, étalés sur plusieurs siècles.
+              {content.lede}
             </p>
           </Reveal>
         </div>
       </div>
 
-      {/* Card row — full bleed */}
-      <div className="disc-strip">
+      {/* Card row — full bleed. Grid template suit le nombre d'items (édition CMS). */}
+      <div
+        className="disc-strip"
+        style={{
+          gridTemplateColumns: `repeat(${Math.max(disciplines.length, 1)}, 1fr)`,
+        }}
+      >
         {disciplines.map((d) => {
           const isActive = active === d.id;
           return (
@@ -1040,11 +943,11 @@ const Disciplines = () => {
 // NOUS REJOINDRE — créneaux + lieu + essai gratuit + adhésion en un bloc
 // ───────────────────────────────────────────────────────────────────
 const Salle = () => {
-  const slots = [
-    { day: 'Mar', time: '18h00 — 20h00', disc: 'Épée longue · rapière · messer · viking', lvl: 'Tous niveaux'   },
-    { day: 'Jeu', time: '18h00 — 20h00', disc: 'Pratique libre',                          lvl: 'Sans encadrant' },
-    { day: 'Jeu', time: '20h00 — 22h00', disc: 'Épée longue · épée-bocle',                lvl: 'Tous niveaux'   },
-  ];
+  const c = window.useContent('rejoindre') || {};
+  const slots = c.slots || [];
+  const headers = c.scheduleHeaders || ['Jour', 'Horaire', 'Discipline', 'Niveau'];
+  const p1 = c.pillar1 || {};
+  const p2 = c.pillar2 || {};
 
   return (
     <section
@@ -1059,7 +962,7 @@ const Salle = () => {
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={5} name="Nous rejoindre" />
+          <SectionLabel number={c.eyebrowNumber || 5} name={c.eyebrowLabel || ''} />
         </Reveal>
 
         <Reveal>
@@ -1072,7 +975,7 @@ const Salle = () => {
               maxWidth: 980,
             }}
           >
-            Une lame, un masque,
+            {c.titleLine1}
             <br />
             <em
               style={{
@@ -1081,7 +984,7 @@ const Salle = () => {
                 color: 'var(--accent)',
               }}
             >
-              et l'envie de bien faire.
+              {c.titleLine2}
             </em>
           </h2>
         </Reveal>
@@ -1095,7 +998,7 @@ const Salle = () => {
             }}
           >
             <div className="salle-table-header">
-              {['Jour', 'Horaire', 'Discipline', 'Niveau'].map((h, i) => (
+              {headers.map((h, i) => (
                 <div
                   key={i}
                   style={{
@@ -1121,68 +1024,62 @@ const Salle = () => {
         <Reveal delay={140}>
           <div className="rejoindre-pillars">
             <article className="rejoindre-pillar">
-              <div className="rejoindre-pillar-eyebrow">01 · Viens essayer</div>
+              <div className="rejoindre-pillar-eyebrow">{p1.eyebrow}</div>
               <div className="rejoindre-pillar-content">
-                <h3 className="rejoindre-pillar-headline">
-                  Le premier mois est <em>gratuit</em>.
-                  Viens quand tu veux, sans prévenir.
-                </h3>
-                <p className="rejoindre-pillar-body">
-                  Peu importe que tu n'aies jamais fait de sport, que
-                  tu sortes d'un autre art martial ou que tu n'aies
-                  rien touché depuis des années — <strong>on t'accueille</strong>.
-                  Tu n'as besoin de rien apporter&nbsp;: on te prête le
-                  masque, la veste, les gants, et <strong>l'arme que tu
-                  veux tester</strong> (épée longue, sabre, dague, rapière…).
-                </p>
-                <p className="rejoindre-pillar-body">
-                  Aucun engagement, aucun frais. <em>Viens, ça nous fait
-                  plaisir.</em>
-                </p>
+                <h3
+                  className="rejoindre-pillar-headline"
+                  dangerouslySetInnerHTML={{ __html: p1.headlineHtml || '' }}
+                />
+                {(p1.bodyHtml || []).map((para, i) => (
+                  <p
+                    key={i}
+                    className="rejoindre-pillar-body"
+                    dangerouslySetInnerHTML={{ __html: para }}
+                  />
+                ))}
 
                 {/* Carte OSM — Gymnase Robert Pras */}
                 <RejoindreMap />
 
-                <a
-                  href="https://www.google.com/maps/dir/?api=1&destination=Gymnase+Robert+Pras%2C+3+rue+Jean+Monnet%2C+63100+Clermont-Ferrand"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn rejoindre-pillar-cta"
-                >
-                  Itinéraire
-                  <ArrowGlyph size={11} color="currentColor" />
-                </a>
+                {p1.cta && p1.cta.href && (
+                  <a
+                    href={p1.cta.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn rejoindre-pillar-cta"
+                  >
+                    {p1.cta.label}
+                    <ArrowGlyph size={11} color="currentColor" />
+                  </a>
+                )}
               </div>
             </article>
 
             <article className="rejoindre-pillar">
-              <div className="rejoindre-pillar-eyebrow">02 · Pour continuer</div>
+              <div className="rejoindre-pillar-eyebrow">{p2.eyebrow}</div>
               <div className="rejoindre-pillar-content">
-                <h3 className="rejoindre-pillar-headline">
-                  <strong>85&nbsp;€</strong> par an, un masque, des
-                  gants coqués. <em>C'est tout.</em>
-                </h3>
-                <p className="rejoindre-pillar-body">
-                  Si tu décides de rester pour l'année, l'adhésion
-                  c'est 85&nbsp;€ — soit <em>littéralement moins qu'un
-                  Netflix</em>. À ça, tu ajoutes les <strong>deux seules
-                  pièces</strong> à te procurer pour les séances régulières&nbsp;:
-                  un masque d'escrime standard et des gants coqués.
-                </p>
-                <p className="rejoindre-pillar-body">
-                  Le reste — vestes, protections, armes — on en parle
-                  au fil du temps, souvent à prix d'ami chez nos
-                  partenaires.
-                </p>
-                <a
-                  href="https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn rejoindre-pillar-cta"
-                >
-                  Adhérer · HelloAsso
-                  <ArrowGlyph size={11} color="currentColor" />
-                </a>
+                <h3
+                  className="rejoindre-pillar-headline"
+                  dangerouslySetInnerHTML={{ __html: p2.headlineHtml || '' }}
+                />
+                {(p2.bodyHtml || []).map((para, i) => (
+                  <p
+                    key={i}
+                    className="rejoindre-pillar-body"
+                    dangerouslySetInnerHTML={{ __html: para }}
+                  />
+                ))}
+                {p2.cta && p2.cta.href && (
+                  <a
+                    href={p2.cta.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn rejoindre-pillar-cta"
+                  >
+                    {p2.cta.label}
+                    <ArrowGlyph size={11} color="currentColor" />
+                  </a>
+                )}
               </div>
             </article>
           </div>
@@ -1249,40 +1146,8 @@ const SlotRow = ({ slot }) => (
 // Réponses bâties uniquement sur les infos déjà présentes sur le site.
 // ───────────────────────────────────────────────────────────────────
 const Faq = () => {
-  const items = [
-    {
-      q: 'Faut-il déjà faire du sport ou de l\'escrime ?',
-      a: 'Non. La séance accueille tous niveaux et l\'encadrement prend le temps avec les débutants — on commence par comprendre le geste avant de l\'enchaîner. Aucun pré-requis sportif ou martial.',
-    },
-    {
-      q: 'C\'est dangereux ?',
-      a: 'On s\'entraîne en tenue de sport, masque d\'escrime et protections modernes, avec des armes d\'entraînement adaptées à chaque discipline. Le travail est progressif : drills, sentiment du fer, puis assauts encadrés. Pas d\'arme tranchante en main, pas de contact sans équipement.',
-    },
-    {
-      q: 'À quoi ressemble une séance ?',
-      a: 'Chaque séance commence par environ 40 minutes d\'échauffement collectif, intense et rythmé — tous ensemble, sur la même cadence. On prépare les articulations, le cardio, les déplacements et la coordination, en groupe. Personne ne se retrouve seul à se demander quoi faire : on suit le rythme. Une fois le corps prêt, on enchaîne sur le travail technique du jour (drills, exercices d\'opposition, puis assauts encadrés selon le niveau).',
-    },
-    {
-      q: 'Que dois-je apporter pour la première séance ?',
-      a: 'Tenue de sport, chaussures propres pour le gymnase et une bouteille d\'eau. Le matériel d\'initiation (masque, gants, arme d\'entraînement) est prêté pour découvrir.',
-    },
-    {
-      q: 'Combien coûte l\'adhésion ?',
-      a: '85 € pour la saison 2025-2026, via HelloAsso. Il est possible de rejoindre en cours d\'année. La première séance d\'essai est sans engagement — contactez-nous avant de venir pour qu\'on vous attende.',
-    },
-    {
-      q: 'Quels créneaux et quel lieu ?',
-      a: 'Mardi 18h-20h et jeudi 18h-22h au Gymnase Robert Pras (3 rue Jean Monnet, 63100 Clermont-Ferrand). Le créneau Mardi couvre épée longue, rapière, messer, viking. Le créneau Jeudi couvre épée longue et épée-bocle, précédé d\'une pratique libre sans encadrant.',
-    },
-    {
-      q: 'Faut-il venir à toutes les séances ?',
-      a: 'Non, c\'est complètement libre. Pas besoin de prévenir si tu sautes une séance, si tu n\'es pas là pendant deux semaines ou si tu n\'as juste pas envie un soir — tu reviens quand tu veux, sans justification. Cela dit : la régularité reste la clé pour progresser. La technique se construit dans la répétition, et le corps s\'habitue petit à petit aux gardes, aux distances et à l\'effort. Plus tu viens, plus ça paie.',
-    },
-    {
-      q: 'Faut-il faire de la compétition ?',
-      a: 'Non. Le club est présent sur le circuit FFAMHE et plusieurs membres sont référencés sur HEMA Ratings, mais la compétition n\'est jamais obligatoire. Loisir et perfectionnement technique sont une voie tout aussi reconnue.',
-    },
-  ];
+  const c = window.useContent('faq') || {};
+  const items = c.items || [];
 
   const [open, setOpen] = React.useState(0);
 
@@ -1299,7 +1164,7 @@ const Faq = () => {
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={8} name="Questions fréquentes" />
+          <SectionLabel number={c.eyebrowNumber || 8} name={c.eyebrowLabel || ''} />
         </Reveal>
 
         <div className="section-head">
@@ -1312,10 +1177,10 @@ const Faq = () => {
                 margin: 0,
               }}
             >
-              Tout ce qu'on
+              {c.titleLine1}
               <br />
               <em style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent)' }}>
-                nous demande.
+                {c.titleLine2}
               </em>
             </h2>
           </Reveal>
@@ -1329,8 +1194,7 @@ const Faq = () => {
                 color: 'var(--parch-mute)',
               }}
             >
-              Les questions qu'on entend le plus souvent au premier
-              contact. Si la vôtre n'y est pas, écrivez-nous — on répond.
+              {c.lede}
             </p>
           </Reveal>
         </div>
@@ -1431,7 +1295,11 @@ const Faq = () => {
 // ───────────────────────────────────────────────────────────────────
 // TOURNOIS — bloc court : photo + intro + facts + 2 liens externes
 // ───────────────────────────────────────────────────────────────────
-const Tournois = () => (
+const Tournois = () => {
+  const c = window.useContent('tournois') || {};
+  const facts = c.facts || [];
+  const ctas = c.ctas || [];
+  return (
   <section
     id="tournois"
     data-screen-label="07 Tournois"
@@ -1444,15 +1312,15 @@ const Tournois = () => (
   >
     <div className="container">
       <Reveal>
-        <SectionLabel number={6} name="Tournois & saison" />
+        <SectionLabel number={c.eyebrowNumber || 6} name={c.eyebrowLabel || ''} />
       </Reveal>
 
       <div className="tournois-grid">
         <Reveal>
           <Photo
-            src="assets/podium.jpg"
-            alt="Podium FFAMHE"
-            focal="50% 30%"
+            src={c.photo}
+            alt={c.photoAlt}
+            focal={c.photoFocal}
             style={{ aspectRatio: '3/4', width: '100%' }}
           >
             <div
@@ -1471,7 +1339,7 @@ const Tournois = () => (
                 bottom: 28,
               }}
             >
-              <Eyebrow>Compétiteurs</Eyebrow>
+              <Eyebrow>{c.photoOverlayEyebrow}</Eyebrow>
               <div
                 className="display"
                 style={{
@@ -1480,8 +1348,7 @@ const Tournois = () => (
                   lineHeight: 1.1,
                 }}
               >
-                Plusieurs membres engagés en compétition,
-                référencés sur HEMA Ratings.
+                {c.photoOverlayTitle}
               </div>
             </div>
           </Photo>
@@ -1497,7 +1364,7 @@ const Tournois = () => (
                 margin: '0 0 28px',
               }}
             >
-              Saison
+              {c.titleLine1}
               {' '}
               <em
                 style={{
@@ -1506,7 +1373,7 @@ const Tournois = () => (
                   color: 'var(--accent)',
                 }}
               >
-                de compétition.
+                {c.titleLine2}
               </em>
             </h2>
             <p
@@ -1518,24 +1385,16 @@ const Tournois = () => (
                 maxWidth: 580,
               }}
             >
-              Le club est présent sur le circuit FFAMHE et référencé sur
-              HEMA Ratings. La compétition reste un choix : on peut
-              pratiquer en loisir ou viser les tournois, à son rythme.
+              {c.body}
             </p>
 
             <ul className="tournois-facts">
-              <li>
-                <span className="tournois-fact-l">Circuit FFAMHE</span>
-                <span className="tournois-fact-v">épée longue, épée-bocle, rapière — open / débutant / féminin</span>
-              </li>
-              <li>
-                <span className="tournois-fact-l">Interclubs &amp; stages</span>
-                <span className="tournois-fact-v">échanges réguliers avec d'autres clubs AMHE</span>
-              </li>
-              <li>
-                <span className="tournois-fact-l">Loisir possible</span>
-                <span className="tournois-fact-v">la compétition n'est jamais obligatoire</span>
-              </li>
+              {facts.map((f, i) => (
+                <li key={i}>
+                  <span className="tournois-fact-l">{f.label}</span>
+                  <span className="tournois-fact-v">{f.value}</span>
+                </li>
+              ))}
             </ul>
 
             <div
@@ -1546,26 +1405,19 @@ const Tournois = () => (
                 flexWrap: 'wrap',
               }}
             >
-              <a
-                href="https://hemaratings.com/clubs/details/1155/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn--secondary"
-                style={{ padding: '0 32px' }}
-              >
-                Résultats HEMA Ratings
-                <ArrowGlyph size={11} color="currentColor" />
-              </a>
-              <a
-                href="https://ffamhe.fr"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn--tertiary"
-                style={{ padding: '0 28px', minHeight: 44 }}
-              >
-                Calendrier FFAMHE
-                <ArrowGlyph size={11} color="currentColor" />
-              </a>
+              {ctas.map((cta, i) => (
+                <a
+                  key={i}
+                  href={cta.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`btn ${i === 0 ? 'btn--secondary' : 'btn--tertiary'}`}
+                  style={i === 0 ? { padding: '0 32px' } : { padding: '0 28px', minHeight: 44 }}
+                >
+                  {cta.label}
+                  <ArrowGlyph size={11} color="currentColor" />
+                </a>
+              ))}
             </div>
           </div>
         </Reveal>
@@ -1608,12 +1460,16 @@ const Tournois = () => (
       }
     `}</style>
   </section>
-);
+  );
+};
 
 // ───────────────────────────────────────────────────────────────────
 // GALERIE — masonry-ish grid with real photos
 // ───────────────────────────────────────────────────────────────────
-const Galerie = () => (
+const Galerie = () => {
+  const c = window.useContent('galerie') || {};
+  const tiles = c.tiles || [];
+  return (
   <section
     id="galerie"
     data-screen-label="08 Galerie"
@@ -1626,7 +1482,7 @@ const Galerie = () => (
   >
     <div className="container">
       <Reveal>
-        <SectionLabel number={7} name="Galerie" />
+        <SectionLabel number={c.eyebrowNumber || 7} name={c.eyebrowLabel || ''} />
       </Reveal>
 
       <div className="section-head">
@@ -1639,7 +1495,7 @@ const Galerie = () => (
               margin: 0,
             }}
           >
-            Quelques
+            {c.titleLine1}
             <br />
             <em
               style={{
@@ -1648,34 +1504,29 @@ const Galerie = () => (
                 color: 'var(--accent)',
               }}
             >
-              images de salle.
+              {c.titleLine2}
             </em>
           </h2>
         </Reveal>
-        <Reveal delay={120}>
-          <a
-            href="https://www.facebook.com/63AMHE/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn--secondary lede-col"
-            style={{ justifySelf: 'end' }}
-          >
-            Voir sur Facebook
-            <ArrowGlyph size={12} />
-          </a>
-        </Reveal>
+        {c.facebookHref && (
+          <Reveal delay={120}>
+            <a
+              href={c.facebookHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn--secondary lede-col"
+              style={{ justifySelf: 'end' }}
+            >
+              {c.facebookLabel || 'Voir sur Facebook'}
+              <ArrowGlyph size={12} />
+            </a>
+          </Reveal>
+        )}
       </div>
 
       <div className="galerie-grid">
-        {[
-          { src: 'assets/duel-reflection.webp', alt: 'Combat sur piste avec reflet dans une flaque', focal: '50% 50%', cap: 'Reflets de salle', cls: 'galerie-tile-l', col: 'span 7', row: 'span 3', d: 0 },
-          { src: 'assets/team-track.webp',      alt: "Équipe sur la piste d'athlétisme",            focal: '50% 50%', cap: 'L\'équipe', cls: 'galerie-tile-m',         col: 'span 5', row: 'span 2', d: 50 },
-          { src: 'assets/kit-still-life.webp',  alt: 'Équipement et longue épée disposés au sol',   focal: '50% 50%', cap: 'L\'équipement', cls: 'galerie-tile-m',     col: 'span 5', row: 'span 2', d: 100 },
-          { src: 'assets/group-gym.jpg',        alt: 'Photo de groupe en gymnase après un événement', focal: '50% 40%', cap: 'En gymnase', cls: 'galerie-tile-s',     col: 'span 4', row: 'span 3', d: 150 },
-          { src: 'assets/sparring.jpg',         alt: 'Assaut en salle, longue épée',                focal: '50% 50%', cap: 'À l\'assaut', cls: 'galerie-tile-s',       col: 'span 4', row: 'span 3', d: 200 },
-          { src: 'assets/duel-blue.webp',       alt: 'Garde en doublet bleu',                       focal: '60% 50%', cap: 'En garde', cls: 'galerie-tile-s',          col: 'span 4', row: 'span 3', d: 250 },
-        ].map((t, i) => (
-          <Reveal key={i} delay={t.d} style={{ gridColumn: t.col, gridRow: t.row }} className={t.cls}>
+        {tiles.map((t, i) => (
+          <Reveal key={i} delay={i * 50} style={{ gridColumn: t.col, gridRow: t.row }}>
             <figure className="galerie-tile" style={{ margin: 0 }}>
               <Photo src={t.src} alt={t.alt} focal={t.focal} style={{ width: '100%', height: '100%' }} />
               <figcaption className="caption">{t.cap}</figcaption>
@@ -1685,7 +1536,8 @@ const Galerie = () => (
       </div>
     </div>
   </section>
-);
+  );
+};
 
 // ───────────────────────────────────────────────────────────────────
 // PARTENAIRES — hommage aux gens qui rendent le club possible :
@@ -1693,64 +1545,8 @@ const Galerie = () => (
 // les ateliers / boutiques qui fournissent le matériel sérieux.
 // ───────────────────────────────────────────────────────────────────
 const Partenaires = () => {
-  const partners = [
-    {
-      kind: 'Affiliation',
-      name: 'FFAMHE',
-      logo: 'assets/logo_signature_FFAMHE.png',
-      href: 'https://ffamhe.fr',
-      alt: 'Fédération Française des Arts Martiaux Historiques Européens',
-      cta: 'Visiter la FFAMHE',
-      body: (
-        <>
-          La <strong>Fédération Française des Arts Martiaux Historiques
-          Européens</strong> est la colonne vertébrale de tout le milieu
-          AMHE en France. Sans elle, <em>pas de circuit de tournois
-          national, pas de classement HEMA Ratings, pas de cadre pour
-          assurer et reconnaître les clubs</em>. Notre affiliation, c'est
-          ce qui permet à nos compétiteurs d'exister sur la scène, et à
-          chaque séance ici d'être rattachée à un travail collectif
-          beaucoup plus large que notre seule salle.
-        </>
-      ),
-    },
-    {
-      kind: 'Équipement',
-      name: "Faits d'Armes",
-      logo: "assets/Fait-d'arme-logo.png",
-      href: 'https://faitsdarmes.com/fr/',
-      alt: "Faits d'Armes — équipement AMHE",
-      cta: 'Voir leurs équipements',
-      body: (
-        <>
-          Atelier français qui développe son matériel en
-          <em> travaillant directement avec des pratiquants</em>. Vestes
-          350N ou 800N, gants coqués, protections rigides — chaque pièce
-          est conçue pour <strong>résister aux assauts longue épée</strong>
-          et durer. Quand tu veux monter ton équipement sérieusement,
-          c'est par là qu'on commence à regarder.
-        </>
-      ),
-    },
-    {
-      kind: 'Équipement',
-      name: 'Black Armoury',
-      logo: 'assets/black-armoury-logo.jpg',
-      href: 'https://blackarmoury.com',
-      alt: 'Black Armoury — équipement HEMA',
-      cta: 'Voir leurs lames',
-      body: (
-        <>
-          Forgeron-fournisseur <strong>incontournable de la scène AMHE
-          européenne</strong>. Simulateurs d'épée longue, montants,
-          dagues, rapières — la qualité de lame qu'on retrouve dans la
-          main d'une bonne partie des compétiteurs sérieux. Quand tu
-          veux <em>ton arme à toi</em>, c'est ici qu'on regarde en
-          premier.
-        </>
-      ),
-    },
-  ];
+  const c = window.useContent('partenaires') || {};
+  const partners = c.items || [];
 
   return (
     <section
@@ -1765,7 +1561,7 @@ const Partenaires = () => {
     >
       <div className="container">
         <Reveal>
-          <SectionLabel number={9} name="Partenaires" />
+          <SectionLabel number={c.eyebrowNumber || 9} name={c.eyebrowLabel || ''} />
         </Reveal>
 
         <Reveal>
@@ -1778,7 +1574,7 @@ const Partenaires = () => {
               maxWidth: 980,
             }}
           >
-            Sans eux,
+            {c.titleLine1}
             <br />
             <em
               style={{
@@ -1787,7 +1583,7 @@ const Partenaires = () => {
                 color: 'var(--accent)',
               }}
             >
-              rien de tout ça.
+              {c.titleLine2}
             </em>
           </h2>
         </Reveal>
@@ -1802,15 +1598,8 @@ const Partenaires = () => {
               lineHeight: 1.7,
               color: 'var(--parch-soft)',
             }}
-          >
-            Un club n'existe pas tout seul. Il existe parce qu'une
-            fédération porte la discipline au niveau national, parce que
-            des artisans fabriquent du matériel pensé pour cette
-            pratique, et parce que ces gens-là <em>partagent la même
-            exigence que nous</em>. Les trois ci-dessous, on ne se
-            contente pas de les mentionner — on les recommande, on
-            travaille avec eux, et on t'invite à aller voir.
-          </p>
+            dangerouslySetInnerHTML={{ __html: c.lede || '' }}
+          />
         </Reveal>
 
         <div className="partenaires-rows">
@@ -1830,7 +1619,10 @@ const Partenaires = () => {
                 <div className="partenaire-row-content">
                   <div className="partenaire-row-eyebrow">{p.kind}</div>
                   <h3 className="partenaire-row-name">{p.name}</h3>
-                  <p className="partenaire-row-body">{p.body}</p>
+                  <p
+                    className="partenaire-row-body"
+                    dangerouslySetInnerHTML={{ __html: p.bodyHtml || '' }}
+                  />
                   <a
                     href={p.href}
                     target="_blank"
