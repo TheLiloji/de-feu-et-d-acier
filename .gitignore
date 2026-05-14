@@ -15,3 +15,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Cloudflare wrangler local state (KV/R2 simulés en local)
+.wrangler/
+node_modules/

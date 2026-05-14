@@ -26,8 +26,10 @@ function App() {
     <>
       <SectionsStyles />
       <ContactStyles />
+      <PreHeaderBanner />
       <Nav scrolled={scrolled} />
       <Hero />
+      <Actualites />
       {/* Nouvelle hiérarchie 2026-05 :
           1 Disciplines · 2 Profs · 3 Club · 4 Rigueur · 5 Nous rejoindre ·
           6 Tournois · 7 Galerie · 8 FAQ */}

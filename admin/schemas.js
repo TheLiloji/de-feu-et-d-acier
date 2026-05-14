@@ -16,6 +16,57 @@
 //   - 'paragraphs': tableau de strings (chaque entrée est une textarea html)
 
 window.CMS_SCHEMAS = {
+  actualites: {
+    label: 'Actualités',
+    fields: [
+      { key: 'eyebrowNumber', label: 'Numéro de section', type: 'number' },
+      { key: 'eyebrowLabel',  label: 'Libellé section',    type: 'string' },
+      { key: 'titleLine1',    label: 'Titre ligne 1',      type: 'string', help: 'Ex. "Ce qui"' },
+      { key: 'titleLine2',    label: 'Titre ligne 2 (italique accent)', type: 'string', help: 'Ex. "se passe en ce moment."' },
+      { key: 'lede',          label: 'Paragraphe d\'intro (optionnel)', type: 'longtext' },
+
+      { key: 'banner', label: 'Bandeau au-dessus de la nav', type: 'object',
+        schema: { fields: [
+          { key: 'enabled', label: 'Afficher le bandeau',     type: 'boolean' },
+          { key: 'eyebrow', label: 'Eyebrow (uppercase)',     type: 'string', help: 'Ex. "À noter", "Info", "Urgent"' },
+          { key: 'text',    label: 'Texte du bandeau',        type: 'string', help: 'Ex. "Pas de cours mardi 1er mai (férié)"' },
+          { key: 'href',    label: 'Lien (optionnel)',        type: 'url',    help: 'Cliquable si renseigné' },
+        ]},
+      },
+
+      { key: 'items', label: 'Cartes actualités', type: 'array',
+        help: '1 carte → grand format horizontal · 2 cartes → 50/50 · 3+ cartes → grille 3 colonnes. Au clic sur une carte, un modal s\'ouvre avec le contenu détaillé.',
+        itemLabel: (it, i) => it?.title || `Actualité ${i + 1}`,
+        item: { fields: [
+          { key: 'id',       label: 'Identifiant technique', type: 'string', help: 'Optionnel, ex. "open-lyon-juin"' },
+          { key: 'eyebrow',  label: 'Eyebrow (date / catégorie)', type: 'string', help: 'Ex. "Compétition · 14 juin 2026"' },
+          { key: 'title',    label: 'Titre',                  type: 'string' },
+          { key: 'desc',     label: 'Description courte (carte)', type: 'longtext', help: 'Affichée sur la carte avant clic. 1-2 phrases.' },
+          { key: 'image',    label: 'Image principale',       type: 'image' },
+          { key: 'imageAlt', label: 'Texte alt image',        type: 'string' },
+
+          { key: 'bodyHtml', label: 'Contenu détaillé (modal) — HTML', type: 'html', help: 'Affiché dans le modal au clic. Autorise <p>, <strong>, <em>, <a>, <ul>, <ol>.' },
+          { key: 'gallery', label: 'Galerie d\'images (modal)', type: 'array',
+            itemLabel: (it, i) => it?.src ? it.src.split('/').pop() : `Image ${i + 1}`,
+            item: { fields: [
+              { key: 'src',     label: 'Image',    type: 'image' },
+              { key: 'alt',     label: 'Texte alt', type: 'string' },
+              { key: 'caption', label: 'Légende (optionnelle)', type: 'string' },
+            ]},
+          },
+          { key: 'links', label: 'Liens (modal)', type: 'array',
+            help: 'Affichés comme boutons en bas du modal. Le 1er est mis en avant (ember), les suivants en outline.',
+            itemLabel: (it, i) => it?.label || `Lien ${i + 1}`,
+            item: { fields: [
+              { key: 'label', label: 'Libellé', type: 'string' },
+              { key: 'href',  label: 'URL',     type: 'url' },
+            ]},
+          },
+        ]},
+      },
+    ],
+  },
+
   hero: {
     label: 'Hero (accueil)',
     fields: [

@@ -157,6 +157,641 @@ const SectionsStyles = () => (
 
 
 // ───────────────────────────────────────────────────────────────────
+// PRE-HEADER BANNER — bandeau d'annonce ponctuel au-dessus de la nav.
+// Style éditorial : fond ink, eyebrow ember "À noter", filet ember en bas.
+// Toggle depuis l'admin (actualites.banner.enabled).
+// ───────────────────────────────────────────────────────────────────
+const PreHeaderBanner = () => {
+  const c = window.useContent('actualites') || {};
+  const b = c.banner || {};
+  const enabled = b.enabled && b.text;
+
+  // Pousse la nav vers le bas pendant que le bandeau est affiché.
+  React.useEffect(() => {
+    document.documentElement.style.setProperty('--prebanner-h', enabled ? '38px' : '0px');
+    return () => document.documentElement.style.setProperty('--prebanner-h', '0px');
+  }, [enabled]);
+
+  if (!enabled) return null;
+
+  const isLink = !!b.href;
+  const Tag = isLink ? 'a' : 'div';
+  const linkProps = isLink ? {
+    href: b.href,
+    target: /^https?:/.test(b.href) ? '_blank' : undefined,
+    rel: /^https?:/.test(b.href) ? 'noopener noreferrer' : undefined,
+  } : {};
+
+  return (
+    <Tag className={`prebanner ${isLink ? 'prebanner-link' : ''}`} {...linkProps}>
+      <span className="prebanner-eyebrow">{b.eyebrow || 'À noter'}</span>
+      <span className="prebanner-sep" aria-hidden="true" />
+      <span className="prebanner-text">{b.text}</span>
+      {isLink && <ArrowGlyph size={9} color="currentColor" />}
+      <style>{`
+        .prebanner {
+          position: fixed;
+          top: 0; left: 0; right: 0;
+          z-index: 51;
+          height: 38px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          padding: 0 24px;
+          background: var(--ink);
+          border-bottom: 1px solid var(--accent);
+          color: var(--parch);
+          font-family: var(--body);
+          font-size: 12.5px;
+          line-height: 1.2;
+          text-decoration: none;
+          transition: background 200ms var(--ease);
+        }
+        .prebanner.prebanner-link { cursor: pointer; }
+        .prebanner.prebanner-link:hover { background: #15110d; color: var(--parch); }
+        .prebanner-eyebrow {
+          font-family: var(--eyebrow);
+          font-size: 10px;
+          letter-spacing: 0.32em;
+          text-transform: uppercase;
+          font-weight: 600;
+          color: var(--accent);
+          white-space: nowrap;
+        }
+        .prebanner-sep {
+          width: 1px;
+          height: 14px;
+          background: var(--parch-line);
+        }
+        .prebanner-text {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 75vw;
+          color: var(--parch-soft);
+        }
+        .prebanner-link:hover .prebanner-text { color: var(--parch); }
+        @media (max-width: 640px) {
+          .prebanner { gap: 10px; padding: 0 14px; font-size: 11.5px; }
+          .prebanner-eyebrow { letter-spacing: 0.24em; }
+          .prebanner-text { max-width: 60vw; }
+        }
+      `}</style>
+    </Tag>
+  );
+};
+
+
+// ───────────────────────────────────────────────────────────────────
+// ACTUALITÉS — section éditoriale juste après le hero.
+// SectionLabel numéroté + titre display + 1-N cartes en grille.
+// Click sur une carte → ouvre un modal détaillé (body HTML + galerie + liens).
+// ───────────────────────────────────────────────────────────────────
+const Actualites = () => {
+  const c = window.useContent('actualites') || {};
+  const items = (c.items || []).filter((it) => it && (it.title || it.desc));
+  const [openIdx, setOpenIdx] = React.useState(null);
+
+  if (items.length === 0) return null;
+
+  const layoutClass =
+    items.length === 1 ? 'actu-1' :
+    items.length === 2 ? 'actu-2' :
+    'actu-3';
+
+  const openItem = openIdx != null ? items[openIdx] : null;
+
+  return (
+    <section
+      id="actualites"
+      data-screen-label="00 Actualités"
+      style={{
+        position: 'relative',
+        padding: '140px 0 160px',
+        background: 'var(--ink)',
+        borderTop: '1px solid var(--parch-line)',
+      }}
+    >
+      <div className="container">
+        <Reveal>
+          <SectionLabel number={c.eyebrowNumber || 0} name={c.eyebrowLabel || 'Actualités'} />
+        </Reveal>
+
+        <div className="section-head">
+          <Reveal>
+            <h2
+              className="display"
+              style={{
+                fontSize: 'clamp(44px, 4.8vw, 76px)',
+                lineHeight: 0.98,
+                margin: 0,
+              }}
+            >
+              {c.titleLine1 || 'Ce qui'}
+              <br />
+              <em style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent)' }}>
+                {c.titleLine2 || 'se passe en ce moment.'}
+              </em>
+            </h2>
+          </Reveal>
+          {c.lede && (
+            <Reveal delay={120}>
+              <p
+                className="lede-col"
+                style={{
+                  margin: 0,
+                  fontSize: 16,
+                  lineHeight: 1.7,
+                  color: 'var(--parch-mute)',
+                }}
+              >
+                {c.lede}
+              </p>
+            </Reveal>
+          )}
+        </div>
+
+        <div className={`actu-grid ${layoutClass}`}>
+          {items.map((it, i) => (
+            <Reveal key={it.id || i} delay={120 + i * 80} style={{ height: '100%' }}>
+              <ActuCard
+                item={it}
+                variant={items.length === 1 ? 'feature' : 'compact'}
+                onOpen={() => setOpenIdx(i)}
+              />
+            </Reveal>
+          ))}
+        </div>
+      </div>
+
+      {openItem && (
+        <ActuModal item={openItem} onClose={() => setOpenIdx(null)} />
+      )}
+
+      <style>{`
+        .actu-grid {
+          display: grid;
+          gap: 28px;
+        }
+        .actu-grid.actu-1 { grid-template-columns: 1fr; }
+        .actu-grid.actu-2 { grid-template-columns: 1fr 1fr; }
+        .actu-grid.actu-3 { grid-template-columns: repeat(3, 1fr); }
+        @media (max-width: 1000px) {
+          .actu-grid.actu-3 { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 700px) {
+          .actu-grid.actu-2, .actu-grid.actu-3 { grid-template-columns: 1fr; gap: 20px; }
+        }
+
+        /* ─── Carte compacte ─── */
+        .actu-card {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          background: transparent;
+          border: 1px solid var(--parch-line);
+          cursor: pointer;
+          text-align: left;
+          padding: 0;
+          color: inherit;
+          font: inherit;
+          transition: border-color 280ms var(--ease), transform 280ms var(--ease), background 280ms var(--ease);
+          isolation: isolate;
+        }
+        .actu-card::after {
+          content: '';
+          position: absolute;
+          left: -1px; right: -1px; top: -1px;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--ember-hot) 70%, transparent);
+          opacity: 0;
+          transition: opacity 280ms var(--ease);
+          pointer-events: none;
+          z-index: 3;
+        }
+        .actu-card:hover, .actu-card:focus-visible {
+          border-color: rgba(224,85,44,0.55);
+          background: rgba(224,85,44,0.025);
+          transform: translateY(-3px);
+          outline: none;
+        }
+        .actu-card:hover::after, .actu-card:focus-visible::after { opacity: 1; }
+
+        .actu-card-photo {
+          position: relative;
+          overflow: hidden;
+          background: var(--coal);
+          aspect-ratio: 16 / 10;
+        }
+        .actu-card-photo img {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          filter: saturate(0.88) contrast(1.04) brightness(0.92);
+          transition: transform 700ms var(--ease), filter 320ms var(--ease);
+        }
+        .actu-card:hover .actu-card-photo img,
+        .actu-card:focus-visible .actu-card-photo img {
+          transform: scale(1.04);
+          filter: saturate(1) contrast(1.06) brightness(1);
+        }
+        .actu-card-photo::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, transparent 55%, rgba(8,7,10,0.55) 100%);
+          pointer-events: none;
+        }
+        .actu-card-body {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 26px 28px 28px;
+          flex: 1;
+        }
+        .actu-card-eyebrow {
+          font-family: var(--eyebrow);
+          font-size: 10.5px;
+          letter-spacing: 0.28em;
+          text-transform: uppercase;
+          color: var(--accent);
+          font-weight: 600;
+        }
+        .actu-card-title {
+          margin: 0;
+          font-family: var(--display);
+          font-size: clamp(22px, 2.2vw, 30px);
+          line-height: 1.12;
+          font-weight: 500;
+          color: var(--parch);
+          letter-spacing: -0.005em;
+        }
+        .actu-card-desc {
+          margin: 0;
+          font-family: var(--body);
+          font-size: 14.5px;
+          line-height: 1.6;
+          color: var(--parch-soft);
+          flex: 1;
+        }
+        .actu-card-more {
+          margin-top: 6px;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          font-family: var(--eyebrow);
+          font-size: 10.5px;
+          letter-spacing: 0.26em;
+          text-transform: uppercase;
+          font-weight: 600;
+          color: var(--accent);
+          padding-bottom: 3px;
+          border-bottom: 1px solid transparent;
+          transition: border-color 200ms var(--ease);
+          align-self: flex-start;
+        }
+        .actu-card:hover .actu-card-more,
+        .actu-card:focus-visible .actu-card-more {
+          border-bottom-color: var(--accent);
+        }
+
+        /* ─── Carte feature (quand 1 seul item) ─── */
+        .actu-card.actu-card-feature {
+          flex-direction: row;
+          min-height: 360px;
+        }
+        .actu-card.actu-card-feature .actu-card-photo {
+          flex: 0 0 56%;
+          aspect-ratio: auto;
+        }
+        .actu-card.actu-card-feature .actu-card-body {
+          justify-content: center;
+          padding: 56px 56px;
+          gap: 18px;
+        }
+        .actu-card.actu-card-feature .actu-card-title {
+          font-size: clamp(28px, 3.4vw, 46px);
+        }
+        .actu-card.actu-card-feature .actu-card-desc {
+          font-size: 16px;
+          flex: 0 1 auto;
+          max-width: 56ch;
+        }
+        @media (max-width: 800px) {
+          .actu-card.actu-card-feature {
+            flex-direction: column;
+            min-height: 0;
+          }
+          .actu-card.actu-card-feature .actu-card-photo {
+            flex: 1 1 auto;
+            aspect-ratio: 16/10;
+          }
+          .actu-card.actu-card-feature .actu-card-body {
+            padding: 28px 28px 30px;
+          }
+        }
+      `}</style>
+    </section>
+  );
+};
+
+const ActuCard = ({ item, variant, onOpen }) => {
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onOpen();
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      onKeyDown={onKeyDown}
+      className={`actu-card${variant === 'feature' ? ' actu-card-feature' : ''}`}
+      aria-label={`Ouvrir l'actualité : ${item.title || ''}`}
+    >
+      {item.image && (
+        <div className="actu-card-photo">
+          <img src={item.image} alt={item.imageAlt || item.title || ''} loading="lazy" decoding="async" />
+        </div>
+      )}
+      <div className="actu-card-body">
+        {item.eyebrow && <div className="actu-card-eyebrow">{item.eyebrow}</div>}
+        {item.title && <h3 className="actu-card-title">{item.title}</h3>}
+        {item.desc && <p className="actu-card-desc">{item.desc}</p>}
+        <span className="actu-card-more">
+          Lire la suite
+          <ArrowGlyph size={10} color="currentColor" />
+        </span>
+      </div>
+    </button>
+  );
+};
+
+
+// ───────────────────────────────────────────────────────────────────
+// MODAL d'actualité — overlay détaillé au clic sur une carte.
+// Style aligné sur le legal-modal existant (même classes réutilisées
+// quand possible) pour rester cohérent avec la DA.
+// ───────────────────────────────────────────────────────────────────
+const ActuModal = ({ item, onClose }) => {
+  React.useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  const gallery = Array.isArray(item.gallery) ? item.gallery.filter((g) => g && g.src) : [];
+  const links = Array.isArray(item.links) ? item.links.filter((l) => l && l.href) : [];
+
+  return (
+    <div
+      className="actu-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="actu-modal-title"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="actu-modal-panel" role="document">
+        {item.image && (
+          <div className="actu-modal-hero">
+            <img src={item.image} alt={item.imageAlt || item.title || ''} />
+            <button
+              type="button"
+              onClick={onClose}
+              className="actu-modal-close"
+              aria-label="Fermer"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="square">
+                <path d="M6 6L18 18M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+        )}
+        {!item.image && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="actu-modal-close actu-modal-close-floating"
+            aria-label="Fermer"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="square">
+              <path d="M6 6L18 18M18 6L6 18" />
+            </svg>
+          </button>
+        )}
+
+        <div className="actu-modal-body">
+          {item.eyebrow && <div className="actu-modal-eyebrow">{item.eyebrow}</div>}
+          {item.title && (
+            <h2 id="actu-modal-title" className="actu-modal-title">{item.title}</h2>
+          )}
+          {item.desc && <p className="actu-modal-lede">{item.desc}</p>}
+          {item.bodyHtml && (
+            <div className="actu-modal-content" dangerouslySetInnerHTML={{ __html: item.bodyHtml }} />
+          )}
+
+          {gallery.length > 0 && (
+            <div className="actu-modal-gallery">
+              {gallery.map((g, i) => (
+                <figure key={i}>
+                  <img src={g.src} alt={g.alt || ''} loading="lazy" />
+                  {g.caption && <figcaption>{g.caption}</figcaption>}
+                </figure>
+              ))}
+            </div>
+          )}
+
+          {links.length > 0 && (
+            <div className="actu-modal-links">
+              {links.map((l, i) => (
+                <a
+                  key={i}
+                  href={l.href}
+                  target={/^https?:/.test(l.href) ? '_blank' : undefined}
+                  rel={/^https?:/.test(l.href) ? 'noopener noreferrer' : undefined}
+                  className={i === 0 ? 'btn' : 'btn btn--secondary'}
+                >
+                  {l.label || l.href}
+                  <ArrowGlyph size={11} color="currentColor" />
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        .actu-modal {
+          position: fixed;
+          inset: 0;
+          z-index: 200;
+          background: rgba(8, 7, 10, 0.78);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          padding: 60px 24px;
+          overflow-y: auto;
+          animation: actu-modal-fade 220ms var(--ease);
+        }
+        @keyframes actu-modal-fade {
+          from { opacity: 0; } to { opacity: 1; }
+        }
+        .actu-modal-panel {
+          position: relative;
+          width: 100%;
+          max-width: 880px;
+          background: var(--ink);
+          border: 1px solid var(--parch-line);
+          color: var(--parch);
+          animation: actu-modal-rise 320ms var(--ease);
+          box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+        }
+        @keyframes actu-modal-rise {
+          from { transform: translateY(20px); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
+        .actu-modal-hero {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 16 / 7;
+          overflow: hidden;
+          background: var(--coal);
+        }
+        .actu-modal-hero img {
+          width: 100%; height: 100%;
+          object-fit: cover;
+          filter: saturate(0.92) contrast(1.04);
+        }
+        .actu-modal-hero::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, transparent 55%, rgba(8,7,10,0.55) 100%);
+          pointer-events: none;
+        }
+
+        .actu-modal-close {
+          position: absolute;
+          top: 18px;
+          right: 18px;
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(10,9,8,0.6);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid rgba(236,232,222,0.18);
+          border-radius: 999px;
+          color: var(--parch);
+          cursor: pointer;
+          z-index: 4;
+          transition: background 200ms var(--ease), border-color 200ms var(--ease);
+        }
+        .actu-modal-close:hover { background: rgba(10,9,8,0.9); border-color: var(--accent); color: var(--accent); }
+        .actu-modal-close-floating {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+        }
+
+        .actu-modal-body {
+          padding: 48px clamp(28px, 5vw, 60px) 56px;
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+        .actu-modal-eyebrow {
+          font-family: var(--eyebrow);
+          font-size: 11px;
+          letter-spacing: 0.3em;
+          text-transform: uppercase;
+          color: var(--accent);
+          font-weight: 600;
+        }
+        .actu-modal-title {
+          margin: 0;
+          font-family: var(--display);
+          font-size: clamp(30px, 4vw, 52px);
+          line-height: 1.04;
+          font-weight: 500;
+          letter-spacing: -0.012em;
+          color: var(--parch);
+        }
+        .actu-modal-lede {
+          margin: 0;
+          font-family: var(--body);
+          font-size: 17px;
+          line-height: 1.6;
+          color: var(--parch-soft);
+          max-width: 60ch;
+        }
+        .actu-modal-content {
+          margin-top: 6px;
+          font-family: var(--body);
+          font-size: 15.5px;
+          line-height: 1.75;
+          color: var(--parch-soft);
+        }
+        .actu-modal-content p { margin: 0 0 14px; }
+        .actu-modal-content p:last-child { margin-bottom: 0; }
+        .actu-modal-content strong { color: var(--parch); font-weight: 500; }
+        .actu-modal-content em { color: var(--accent); font-style: italic; }
+        .actu-modal-content a { color: var(--accent); border-bottom: 1px solid currentColor; }
+        .actu-modal-content ul, .actu-modal-content ol { margin: 0 0 14px; padding-left: 22px; }
+
+        .actu-modal-gallery {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 10px;
+          margin-top: 8px;
+        }
+        .actu-modal-gallery figure { margin: 0; }
+        .actu-modal-gallery img {
+          width: 100%;
+          aspect-ratio: 4 / 3;
+          object-fit: cover;
+          background: var(--coal);
+          filter: saturate(0.88) contrast(1.04) brightness(0.92);
+          transition: filter 300ms var(--ease);
+        }
+        .actu-modal-gallery img:hover { filter: saturate(1) contrast(1.06) brightness(1); }
+        .actu-modal-gallery figcaption {
+          margin-top: 6px;
+          font-family: var(--body);
+          font-size: 12.5px;
+          color: var(--parch-mute);
+          font-style: italic;
+        }
+
+        .actu-modal-links {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-top: 18px;
+          padding-top: 18px;
+          border-top: 1px solid var(--parch-line);
+        }
+      `}</style>
+    </div>
+  );
+};
+
+
+// ───────────────────────────────────────────────────────────────────
 // MANIFESTO — treatise drawing right, large pull-quote left.
 // Editorial spread feel, alludes to historical sources.
 // ───────────────────────────────────────────────────────────────────
@@ -1727,6 +2362,8 @@ const Partenaires = () => {
 
 Object.assign(window, {
   SectionsStyles,
+  PreHeaderBanner,
+  Actualites,
   Manifesto,
   Club,
   Encadrement,
