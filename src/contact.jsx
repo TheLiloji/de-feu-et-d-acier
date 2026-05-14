@@ -263,17 +263,16 @@ const Footer = () => (
     <div className="container">
       {/* Marquee-style large brand line */}
       <div className="footer-marquee">
-        De Feu
+        De <span style={{ color: 'var(--accent)' }}>Feu</span>
         <em
           style={{
             fontStyle: 'italic',
             fontWeight: 300,
-            color: 'var(--accent)',
           }}
         >
           &nbsp;et d'&nbsp;
         </em>
-        Acier
+        <span style={{ color: 'var(--accent)' }}>Acier</span>
       </div>
 
       <div className="footer-grid">
@@ -415,6 +414,7 @@ const ContactStyles = () => (
       border-bottom: 1px solid var(--parch-line);
       align-items: start;
     }
+    .rejoindre-pillar:last-child { border-bottom: none; }
     .rejoindre-pillar-eyebrow {
       font-family: var(--eyebrow);
       font-size: 10.5px;
@@ -496,8 +496,9 @@ const ContactStyles = () => (
       gap: 2px;
     }
     .rejoindre-map-name {
-      font-family: var(--display);
-      font-size: 16px;
+      font-family: var(--body);
+      font-size: 15px;
+      font-weight: 500;
       color: var(--parch);
       line-height: 1.3;
     }

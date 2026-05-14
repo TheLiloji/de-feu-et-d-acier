@@ -354,7 +354,7 @@ const Club = () => (
             </h2>
             <p
               style={{
-                fontSize: 16.5,
+                fontSize: 16,
                 lineHeight: 1.7,
                 color: 'var(--parch-mute)',
                 maxWidth: 520,
@@ -554,7 +554,16 @@ const Encadrement = () => {
                 <div className="prof-content">
                   <div className="prof-eyebrow">{p.eyebrow}</div>
                   <h3 className="prof-name">{p.name}</h3>
-                  <div className="prof-punch">{p.punch}</div>
+                  <div className="prof-punch">
+                    {p.featured && p.punch.includes(' · ') ? (
+                      <>
+                        <span className="prof-punch-shine">
+                          {p.punch.split(' · ')[0]}
+                        </span>
+                        {' · ' + p.punch.split(' · ').slice(1).join(' · ')}
+                      </>
+                    ) : p.punch}
+                  </div>
                   <p className="prof-body">{p.body}</p>
                   {p.link && (
                     <a
@@ -675,6 +684,38 @@ const Encadrement = () => {
         }
         .prof-card--featured .prof-punch {
           color: var(--parch);
+        }
+        /* Effet "brillance dorée" sur la mention Top 1 % mondial */
+        .prof-punch-shine {
+          font-weight: 600;
+          background-image: linear-gradient(
+            100deg,
+            #b8893f 0%,
+            #b8893f 40%,
+            #ffe7a0 47%,
+            #fff5cc 50%,
+            #ffe7a0 53%,
+            #b8893f 60%,
+            #b8893f 100%
+          );
+          background-size: 250% 100%;
+          background-position: 100% 0;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          animation: prof-punch-shine 4.4s var(--ease) infinite;
+        }
+        @keyframes prof-punch-shine {
+          0%   { background-position: 100% 0; }
+          45%  { background-position: 0% 0; }
+          100% { background-position: 0% 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .prof-punch-shine {
+            animation: none !important;
+            background-position: 100% 0 !important;
+          }
         }
         .prof-body {
           margin: 0;
@@ -1471,7 +1512,7 @@ const Tournois = () => (
             <p
               style={{
                 margin: '0 0 36px',
-                fontSize: 16.5,
+                fontSize: 16,
                 lineHeight: 1.7,
                 color: 'var(--parch-soft)',
                 maxWidth: 580,
@@ -1820,6 +1861,7 @@ const Partenaires = () => {
           border-bottom: 1px solid var(--parch-line);
           align-items: center;
         }
+        .partenaire-row:last-child { border-bottom: none; }
         .partenaire-row-logo {
           display: inline-flex;
           align-items: center;
