@@ -26,6 +26,7 @@ const DESKTOP_VIDEO_WEBM = 'assets/Hero.webm'; // optionnel — sera ignoré si 
 const DESKTOP_POSTER = 'assets/hero-studio.avif';
 
 const Hero = () => {
+  const content = window.useContent('hero') || {};
   const desktopVideoRef = React.useRef(null);
   const mobileVideoRef = React.useRef(null);
 
@@ -194,8 +195,8 @@ const Hero = () => {
       >
         <Reveal delay={80}>
           <img
-            src="assets/logo.png?v=2"
-            alt="De Feu et d'Acier — logo"
+            src={content.logo}
+            alt={content.logoAlt}
             className="hero-logo"
             style={{
               width: 'clamp(64px, 8vw, 110px)',
@@ -217,19 +218,19 @@ const Hero = () => {
               color: 'var(--parch)',
             }}
           >
-            De <span className="brand-feu">Feu</span>
+            {content.titleStart} <span className="brand-feu">{content.titleFeu}</span>
             <br />
             <span style={{ fontStyle: 'italic', fontWeight: 300, paddingLeft: '0.35em' }}>
-              et d'
+              {content.titleConnector}
             </span>
-            <span className="brand-acier">Acier</span>
+            <span className="brand-acier">{content.titleAcier}</span>
           </h1>
         </Reveal>
 
         <Reveal delay={360}>
           <h2 className="hero-h2">
-            <span className="hero-h2-line">Arts Martiaux Historiques Européens</span>
-            <span className="hero-h2-place">à Clermont-Ferrand</span>
+            <span className="hero-h2-line">{content.subtitleLine}</span>
+            <span className="hero-h2-place">{content.subtitlePlace}</span>
           </h2>
         </Reveal>
 
