@@ -207,21 +207,22 @@ const Hero = () => {
 
         <Reveal delay={200}>
           <h1
-            className="display forge-title"
+            className="display hero-brand"
             style={{
               margin: 0,
               fontSize: 'clamp(48px, 10vw, 168px)',
               lineHeight: 0.88,
               letterSpacing: '-0.022em',
               fontWeight: 500,
+              color: 'var(--parch)',
             }}
           >
-            De Feu
+            De <span style={{ color: 'var(--accent)' }}>Feu</span>
             <br />
             <span style={{ fontStyle: 'italic', fontWeight: 300, paddingLeft: '0.35em' }}>
               et d'
             </span>
-            Acier
+            <span style={{ color: 'var(--accent)' }}>Acier</span>
           </h1>
         </Reveal>
 
@@ -233,42 +234,20 @@ const Hero = () => {
         </Reveal>
 
         <Reveal delay={560}>
-          <div className="hero-ctas">
-            <a href="#creneaux" className="btn hero-cta-primary">
-              Venir essayer gratuitement
-              <ArrowGlyph size={11} color="currentColor" />
-            </a>
-            <a href="#creneaux" className="btn btn--secondary">
-              Voir les créneaux
-              <ArrowGlyph size={11} color="currentColor" />
-            </a>
-          </div>
+          <a
+            href="#disciplines"
+            className="hero-scroll-cue"
+            aria-label="Faire défiler"
+          >
+            <span className="hero-scroll-line">
+              <span className="hero-scroll-drop" />
+            </span>
+          </a>
         </Reveal>
       </div>
 
-      {/* Effet titre forge + responsive hero compact */}
+      {/* Responsive hero compact */}
       <style>{`
-        .forge-title {
-          background: linear-gradient(
-            180deg,
-            #d6c9ad 0%,
-            #c1a37c 18%,
-            #9a6a44 38%,
-            #6a2e1a 58%,
-            #a83321 76%,
-            #d24a26 92%,
-            #ec6a32 100%
-          );
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-          color: transparent;
-          filter:
-            drop-shadow(0 4px 14px rgba(0,0,0,0.6))
-            drop-shadow(0 12px 30px rgba(224,85,44,0.26))
-            drop-shadow(0 0 90px rgba(224,85,44,0.16));
-        }
-
         /* H2 hero : 2 lignes, "Clermont-Ferrand" mis en avant (ember, plus gros, capitales letter-spacing) */
         .hero-h2 {
           margin: 0;
@@ -296,33 +275,58 @@ const Hero = () => {
           letter-spacing: -0.005em;
         }
 
-        .hero-ctas {
-          display: flex;
-          gap: 14px;
-          flex-wrap: wrap;
+        /* Scroll cue : trait vertical fin avec segment lumineux qui descend en boucle */
+        .hero-scroll-cue {
+          display: inline-flex;
+          align-items: center;
           justify-content: center;
-          margin-top: clamp(8px, 1.6vh, 20px);
+          padding: 8px 16px;
+          margin-top: clamp(12px, 2.4vh, 28px);
+          opacity: 0.7;
+          transition: opacity 240ms var(--ease);
         }
-        .hero-cta-primary {
-          box-shadow:
-            0 1px 0 rgba(255,255,255,0.08) inset,
-            0 10px 32px -10px rgba(224, 85, 44, 0.7),
-            0 0 0 0 rgba(224, 85, 44, 0.6);
-          animation: hero-cta-pulse 2.8s var(--ease) infinite;
+        .hero-scroll-cue:hover,
+        .hero-scroll-cue:focus-visible {
+          opacity: 1;
+          outline: none;
         }
-        @keyframes hero-cta-pulse {
-          0%, 100% { box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 10px 32px -10px rgba(224, 85, 44, 0.7), 0 0 0 0 rgba(224, 85, 44, 0.4); }
-          50%      { box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 10px 32px -10px rgba(224, 85, 44, 0.85), 0 0 0 8px rgba(224, 85, 44, 0); }
+        .hero-scroll-line {
+          position: relative;
+          display: block;
+          width: 1px;
+          height: 56px;
+          background: rgba(229, 217, 194, 0.22);
+          overflow: hidden;
+        }
+        .hero-scroll-drop {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: -14px;
+          height: 14px;
+          background: linear-gradient(
+            180deg,
+            rgba(229, 217, 194, 0) 0%,
+            var(--parch) 60%,
+            rgba(229, 217, 194, 0) 100%
+          );
+          animation: hero-scroll-drop 2.4s var(--ease) infinite;
+        }
+        @keyframes hero-scroll-drop {
+          0%   { transform: translateY(0); opacity: 0; }
+          15%  { opacity: 1; }
+          85%  { opacity: 1; }
+          100% { transform: translateY(70px); opacity: 0; }
         }
 
         @media (prefers-reduced-motion: reduce) {
           .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
-          .hero-cta-primary { animation: none !important; }
+          .hero-scroll-drop { animation: none !important; top: 50%; transform: translateY(-50%); opacity: 0.8; }
         }
 
-        /* Responsive vertical : sur petit écran, on serre tout pour que les CTA restent visibles au-dessus du fold */
         @media (max-height: 720px) {
           .hero-logo { width: clamp(54px, 7vh, 90px) !important; }
+          .hero-scroll-line { height: 44px; }
         }
         @media (max-width: 900px) {
           .hero-stage { padding: 96px 22px 24px !important; }
@@ -331,19 +335,11 @@ const Hero = () => {
           .hero-h2 { gap: 6px; }
           .hero-h2-line { font-size: 14px; letter-spacing: 0.01em; }
           .hero-h2-place { font-size: 26px; }
-          .hero-ctas {
-            flex-direction: column !important;
-            align-items: stretch !important;
-            width: 100%;
-            max-width: 320px;
-            margin: 18px auto 0 !important;
-          }
-          .hero-ctas .btn { justify-content: center; min-height: 48px; }
         }
         /* Très petit écran vertical (téléphones bas/clavier ouvert) — réduit encore le H1 */
         @media (max-height: 600px) {
           .hero-logo { width: 48px !important; }
-          .forge-title { font-size: clamp(38px, 8vw, 64px) !important; }
+          .hero-brand { font-size: clamp(38px, 8vw, 64px) !important; }
           .hero-stage { gap: 10px !important; padding-top: 80px !important; }
         }
       `}</style>
