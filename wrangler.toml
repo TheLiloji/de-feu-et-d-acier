@@ -3,3 +3,28 @@ compatibility_date = "2026-05-13"
 
 [assets]
 directory = "./"
+
+# ─────────────────────────────────────────────────────────────
+# CMS bindings — créer ces ressources sur Cloudflare puis coller
+# les IDs ci-dessous (voir README section "CMS · déploiement").
+# ─────────────────────────────────────────────────────────────
+
+# Stockage du contenu éditable (1 clé par section : "hero", "disciplines"…).
+# Création : `wrangler kv namespace create CONTENT_KV`
+[[kv_namespaces]]
+binding = "CONTENT_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Bucket pour les images uploadées via /admin.
+# Création : `wrangler r2 bucket create dfda-images`
+[[r2_buckets]]
+binding = "IMAGES_R2"
+bucket_name = "dfda-images"
+
+# ─────────────────────────────────────────────────────────────
+# Variables d'environnement à définir dans le dashboard Cloudflare
+# (Pages → Settings → Environment variables, en "Secret") :
+#   ADMIN_PASSWORD  → mot de passe partagé pour /admin
+#   SESSION_SECRET  → chaîne aléatoire ≥ 32 caractères pour signer les cookies
+# Ne JAMAIS les mettre ici ni dans le repo.
+# ─────────────────────────────────────────────────────────────
