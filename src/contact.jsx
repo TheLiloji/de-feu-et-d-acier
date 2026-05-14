@@ -263,7 +263,7 @@ const Footer = () => (
     <div className="container">
       {/* Marquee-style large brand line */}
       <div className="footer-marquee">
-        De <span style={{ color: 'var(--accent)' }}>Feu</span>
+        De <span className="brand-feu">Feu</span>
         <em
           style={{
             fontStyle: 'italic',
@@ -272,7 +272,7 @@ const Footer = () => (
         >
           &nbsp;et d'&nbsp;
         </em>
-        <span style={{ color: 'var(--accent)' }}>Acier</span>
+        <span className="brand-acier">Acier</span>
       </div>
 
       <div className="footer-grid">
