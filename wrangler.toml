@@ -5,6 +5,19 @@ compatibility_date = "2026-05-13"
 directory = "./"
 
 # ─────────────────────────────────────────────────────────────
+# Dev local : ATTENTION — wrangler pages dev rebundle en boucle
+# si on laisse le state Miniflare dans `.wrangler/state/` (le
+# watcher détecte les écritures permanentes des .sqlite-shm
+# d'env. KV/R2/Cache). Passer --persist-to vers un chemin
+# hors du repo dans la commande :
+#   npx wrangler pages dev . --port 8788 \
+#     --persist-to /tmp/wrangler-dfda-state \
+#     --kv CONTENT_KV --r2 IMAGES_R2 \
+#     -b ADMIN_PASSWORD=motdepasse \
+#     -b SESSION_SECRET=local-dev-secret-changeme-32-chars-min
+# ─────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────
 # CMS bindings — créer ces ressources sur Cloudflare puis coller
 # les IDs ci-dessous (voir README section "CMS · déploiement").
 # ─────────────────────────────────────────────────────────────

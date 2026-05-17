@@ -26,7 +26,34 @@ const SectionsStyles = () => (
     }
     .pillar:first-child { border-left: none; }
 
-    /* Disciplines card strip */
+    /* Disciplines card strip — wrapper porte le swipe-hint mobile */
+    .disc-strip-wrap { position: relative; }
+    .disc-swipe-hint {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 12px 22px 6px;
+      font-family: var(--eyebrow);
+      font-size: 10.5px;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: var(--parch-mute);
+      font-weight: 500;
+      animation: disc-swipe-nudge 2.8s var(--ease) infinite;
+    }
+    .disc-swipe-hint-line {
+      width: 22px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent));
+    }
+    @keyframes disc-swipe-nudge {
+      0%, 70%, 100% { transform: translateX(0); opacity: 0.85; }
+      35% { transform: translateX(8px); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .disc-swipe-hint { animation: none !important; }
+    }
     .disc-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; width: 100%; height: 620px; border-top: 1px solid var(--parch-line); }
     .disc-card {
       position: relative;
@@ -96,8 +123,8 @@ const SectionsStyles = () => (
     }
 
     /* Section title + lede 2-col header */
-    .section-head { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: end; margin-bottom: 80px; }
-    .section-head.short-gap { margin-bottom: 64px; }
+    .section-head { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: end; margin-bottom: 64px; }
+    .section-head.short-gap { margin-bottom: 48px; }
     .section-head .lede-col { max-width: 460px; justify-self: end; }
 
     /* Footer */
@@ -118,7 +145,7 @@ const SectionsStyles = () => (
 
     /* ── Tablet: 900px and below ── */
     @media (max-width: 900px) {
-      section { padding: 100px 0 110px !important; }
+      section { padding: 68px 0 76px !important; }
       .editorial-split { grid-template-columns: 1fr !important; gap: 40px !important; align-items: start !important; }
       .editorial-split .lede-col, .editorial-split img { justify-self: start !important; }
       .section-head { grid-template-columns: 1fr !important; gap: 28px !important; margin-bottom: 56px !important; align-items: start !important; }
@@ -137,9 +164,10 @@ const SectionsStyles = () => (
       .contact-info-row { grid-template-columns: 1fr !important; gap: 6px; }
       .footer-grid { grid-template-columns: 1fr 1fr !important; gap: 40px !important; }
       .footer-grid > div:first-child { grid-column: 1 / -1; }
-      /* Disciplines: horizontal scroll-snap row */
+      /* Disciplines: horizontal scroll-snap row + swipe hint visible */
       .disc-strip { grid-template-columns: repeat(5, 78%) !important; height: 480px !important; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
       .disc-card { scroll-snap-align: start; }
+      .disc-swipe-hint { display: inline-flex !important; }
       /* Salle table → cards */
       .salle-table-header { display: none !important; }
       .salle-table-row { grid-template-columns: 1fr !important; gap: 6px !important; padding: 22px 0 !important; }
@@ -147,10 +175,14 @@ const SectionsStyles = () => (
 
     /* ── Phone: 640px and below ── */
     @media (max-width: 640px) {
-      .footer-grid { grid-template-columns: 1fr !important; }
+      section { padding: 56px 0 62px !important; }
+      .section-head { margin-bottom: 36px !important; gap: 18px !important; }
+      .footer-grid { grid-template-columns: 1fr !important; padding-top: 40px; margin-bottom: 40px; gap: 32px !important; }
       .footer-grid > div:first-child { grid-column: auto; }
       section h2.display { font-size: clamp(40px, 11vw, 64px) !important; }
-      .galerie-grid { grid-auto-rows: 120px !important; }
+      .galerie-grid { grid-auto-rows: 120px !important; gap: 8px !important; }
+      .pillars { grid-template-columns: 1fr !important; }
+      .pillar { padding: 28px 0 !important; }
     }
   `}</style>
 );
@@ -268,7 +300,7 @@ const Actualites = () => {
       data-screen-label="00 Actualités"
       style={{
         position: 'relative',
-        padding: '140px 0 160px',
+        padding: '110px 0 120px',
         background: 'var(--ink)',
         borderTop: '1px solid var(--parch-line)',
       }}
@@ -803,7 +835,7 @@ const Manifesto = () => {
     data-screen-label="05 La rigueur"
     style={{
       position: 'relative',
-      padding: '160px 0 180px',
+      padding: '120px 0 130px',
       background: 'var(--ink)',
     }}
   >
@@ -940,7 +972,7 @@ const Club = () => {
     data-screen-label="04 Le club"
     style={{
       position: 'relative',
-      padding: '160px 0 180px',
+      padding: '120px 0 130px',
       background: 'var(--coal)',
       borderTop: '1px solid var(--parch-line)',
     }}
@@ -950,7 +982,7 @@ const Club = () => {
         <SectionLabel number={c.eyebrowNumber || 3} name={c.eyebrowLabel || ''} />
       </Reveal>
 
-      <div className="editorial-split split-085-115 center" style={{ marginBottom: 100 }}>
+      <div className="editorial-split split-085-115 center" style={{ marginBottom: 72 }}>
         <Reveal>
           <div>
             <h2
@@ -1072,7 +1104,7 @@ const Encadrement = () => {
       data-screen-label="03 Profs"
       style={{
         position: 'relative',
-        padding: '140px 0 160px',
+        padding: '110px 0 120px',
         background: 'var(--ink)',
         borderTop: '1px solid var(--parch-line)',
       }}
@@ -1210,12 +1242,21 @@ const Encadrement = () => {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          filter: saturate(0.85) contrast(1.04) brightness(0.95);
-          transition: filter 400ms var(--ease), transform 700ms var(--ease);
+          /* Traitement N&B uniformisé sur les 3 portraits (les photos source ont
+             des traitements différents — grain, couleur, neutre). Au hover, on
+             réchauffe légèrement avec une touche de couleur. */
+          filter: grayscale(1) contrast(1.06) brightness(0.92);
+          transition: filter 500ms var(--ease), transform 700ms var(--ease);
         }
         .prof-card:hover .prof-photo img {
-          filter: saturate(1) contrast(1.06) brightness(1);
+          filter: grayscale(0.55) saturate(0.85) contrast(1.06) brightness(0.96);
           transform: scale(1.03);
+        }
+        .prof-card--featured .prof-photo img {
+          filter: grayscale(0.85) sepia(0.12) contrast(1.08) brightness(0.95);
+        }
+        .prof-card--featured:hover .prof-photo img {
+          filter: grayscale(0.4) sepia(0.06) saturate(0.95) contrast(1.08) brightness(1);
         }
         /* Voile sombre en bas de la photo pour rattacher visuellement au texte */
         .prof-photo::after {
@@ -1321,7 +1362,9 @@ const Encadrement = () => {
 
         @media (max-width: 1100px) {
           .prof-grid { gap: 18px; }
-          .prof-card { padding: 26px 22px 22px; }
+          /* Pas de padding sur .prof-card en mobile : la photo doit aller
+             jusqu'aux bords de la carte ; le texte a déjà son propre padding
+             dans .prof-content (26px 26px 24px). */
         }
         @media (max-width: 900px) {
           .prof-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
@@ -1404,6 +1447,14 @@ const Disciplines = () => {
         </div>
       </div>
 
+      {/* Wrapper qui héberge la strip + l'indice "swipe" visible uniquement
+          en mobile (où la strip devient un carousel à scroll horizontal). */}
+      <div className="disc-strip-wrap">
+        <div className="disc-swipe-hint" aria-hidden="true">
+          <span className="disc-swipe-hint-line" />
+          <span className="disc-swipe-hint-label">Glisser pour explorer</span>
+          <ArrowGlyph size={12} color="currentColor" />
+        </div>
       {/* Card row — full bleed. Grid template suit le nombre d'items (édition CMS). */}
       <div
         className="disc-strip"
@@ -1570,6 +1621,7 @@ const Disciplines = () => {
           );
         })}
       </div>
+      </div>
     </section>
   );
 };
@@ -1583,6 +1635,7 @@ const Salle = () => {
   const headers = c.scheduleHeaders || ['Jour', 'Horaire', 'Discipline', 'Niveau'];
   const p1 = c.pillar1 || {};
   const p2 = c.pillar2 || {};
+  const venue = c.venue || {};
 
   return (
     <section
@@ -1590,7 +1643,7 @@ const Salle = () => {
       data-screen-label="06 Nous rejoindre"
       style={{
         position: 'relative',
-        padding: '160px 0 180px',
+        padding: '120px 0 130px',
         background: 'var(--coal)',
         borderTop: '1px solid var(--parch-line)',
       }}
@@ -1624,38 +1677,118 @@ const Salle = () => {
           </h2>
         </Reveal>
 
-        {/* ─── Horaires ─── */}
+        {/* ─── Lieu + contact direct. Réutilise le pattern .tournois-facts
+              (label eyebrow ember + value, grid 200/1fr, bords parch-line)
+              pour rester aligné graphiquement avec le reste du site.
+              L'eyebrow "Pratique" délimite ce bloc des horaires en dessous. ─── */}
+        {(venue.name || venue.contactEmail) && (
+          <Reveal delay={60}>
+            <div
+              style={{
+                fontFamily: 'var(--eyebrow)',
+                fontSize: 10.5,
+                letterSpacing: '0.32em',
+                color: 'var(--accent)',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                marginBottom: 18,
+              }}
+            >
+              {c.venueEyebrow || 'Pratique'}
+            </div>
+            <ul className="tournois-facts">
+              {venue.name && (
+                <li>
+                  <span className="tournois-fact-l">{venue.eyebrow || 'Lieu'}</span>
+                  <span className="tournois-fact-v">
+                    {venue.name}
+                    {venue.address && (
+                      <>
+                        <br />
+                        <span style={{ color: 'var(--parch-soft)' }}>{venue.address}</span>
+                      </>
+                    )}
+                  </span>
+                </li>
+              )}
+              {(venue.contactEmail || venue.contactPhone) && (
+                <li>
+                  <span className="tournois-fact-l">{venue.contactEyebrow || 'Contact'}</span>
+                  <span className="tournois-fact-v" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {venue.contactEmail && (
+                      <a
+                        href={`mailto:${venue.contactEmail}`}
+                        style={{ color: 'var(--parch)', textDecoration: 'none', borderBottom: '1px solid var(--parch-line)', alignSelf: 'flex-start' }}
+                      >
+                        {venue.contactEmail}
+                      </a>
+                    )}
+                    {venue.contactPhone && (
+                      <a
+                        href={venue.contactPhoneHref || `tel:${venue.contactPhone.replace(/\s+/g, '')}`}
+                        style={{ color: 'var(--parch-soft)', textDecoration: 'none' }}
+                      >
+                        {venue.contactPhone}
+                      </a>
+                    )}
+                  </span>
+                </li>
+              )}
+            </ul>
+          </Reveal>
+        )}
+
+        {/* ─── Horaires — l'eyebrow "Créneaux" sert de marqueur visuel pour
+              séparer ce bloc des infos Lieu/Contact au-dessus (qui partagent
+              le même langage de lignes horizontales). ─── */}
         <Reveal delay={100}>
-          <div
-            style={{
-              borderTop: '1px solid var(--parch-line)',
-              borderBottom: '1px solid var(--parch-line)',
-            }}
-          >
-            <div className="salle-table-header">
-              {headers.map((h, i) => (
-                <div
-                  key={i}
-                  style={{
-                    fontFamily: 'var(--eyebrow)',
-                    fontSize: 10,
-                    letterSpacing: '0.32em',
-                    color: 'var(--parch-mute)',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {h}
-                </div>
+          <div style={{ marginTop: 24 }}>
+            <div
+              style={{
+                fontFamily: 'var(--eyebrow)',
+                fontSize: 10.5,
+                letterSpacing: '0.32em',
+                color: 'var(--accent)',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                marginBottom: 18,
+              }}
+            >
+              {c.scheduleEyebrow || 'Créneaux hebdomadaires'}
+            </div>
+            <div
+              style={{
+                borderTop: '1px solid var(--parch-line)',
+                borderBottom: '1px solid var(--parch-line)',
+              }}
+            >
+              <div className="salle-table-header">
+                {headers.map((h, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      fontFamily: 'var(--eyebrow)',
+                      fontSize: 10,
+                      letterSpacing: '0.32em',
+                      color: 'var(--parch-mute)',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {h}
+                  </div>
+                ))}
+              </div>
+
+              {slots.map((s, i) => (
+                <SlotRow key={i} slot={s} />
               ))}
             </div>
-
-            {slots.map((s, i) => (
-              <SlotRow key={i} slot={s} />
-            ))}
           </div>
         </Reveal>
 
-        {/* ─── 2 piliers texte : viens essayer · continuer ensuite ─── */}
+        {/* ─── 2 piliers texte : viens essayer · continuer ensuite.
+              Volontairement collé à la note débutant pour grouper visuellement
+              "créneaux → recommandation → viens essayer". ─── */}
         <Reveal delay={140}>
           <div className="rejoindre-pillars">
             <article className="rejoindre-pillar">
@@ -1681,7 +1814,7 @@ const Salle = () => {
                     href={p1.cta.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn rejoindre-pillar-cta"
+                    className="btn btn--secondary rejoindre-pillar-cta"
                   >
                     {p1.cta.label}
                     <ArrowGlyph size={11} color="currentColor" />
@@ -1792,7 +1925,7 @@ const Faq = () => {
       data-screen-label="09 FAQ"
       style={{
         position: 'relative',
-        padding: '160px 0 180px',
+        padding: '120px 0 130px',
         background: 'var(--ink)',
         borderTop: '1px solid var(--parch-line)',
       }}
@@ -1820,17 +1953,30 @@ const Faq = () => {
             </h2>
           </Reveal>
           <Reveal delay={120}>
-            <p
-              className="lede-col"
-              style={{
-                margin: 0,
-                fontSize: 16,
-                lineHeight: 1.7,
-                color: 'var(--parch-mute)',
-              }}
-            >
-              {c.lede}
-            </p>
+            {c.ledeHtml ? (
+              <p
+                className="lede-col faq-lede"
+                style={{
+                  margin: 0,
+                  fontSize: 16,
+                  lineHeight: 1.7,
+                  color: 'var(--parch-mute)',
+                }}
+                dangerouslySetInnerHTML={{ __html: c.ledeHtml }}
+              />
+            ) : (
+              <p
+                className="lede-col faq-lede"
+                style={{
+                  margin: 0,
+                  fontSize: 16,
+                  lineHeight: 1.7,
+                  color: 'var(--parch-mute)',
+                }}
+              >
+                {c.lede}
+              </p>
+            )}
           </Reveal>
         </div>
 
@@ -1868,26 +2014,46 @@ const Faq = () => {
       </div>
 
       <style>{`
-        .faq-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--parch-line); }
-        .faq-item { border-bottom: 1px solid var(--parch-line); }
+        .faq-lede a {
+          color: var(--parch);
+          border-bottom: 1px solid var(--parch-line);
+          transition: color 200ms var(--ease), border-color 200ms var(--ease);
+        }
+        .faq-lede a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+        .faq-list {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          border-top: 1px solid rgba(236, 232, 222, 0.22);
+        }
+        .faq-item {
+          border-bottom: 1px solid rgba(236, 232, 222, 0.22);
+          transition: background 200ms var(--ease);
+        }
+        .faq-item:hover { background: rgba(236, 232, 222, 0.025); }
+        .faq-item[data-open="true"] { background: rgba(224, 85, 44, 0.03); }
         .faq-q {
           width: 100%;
           background: transparent;
           border: 0;
-          padding: 26px 8px 26px 0;
+          padding: 26px 16px 26px 16px;
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 32px;
           cursor: pointer;
           color: var(--parch);
-          font-family: var(--display);
-          font-size: 22px;
-          line-height: 1.3;
+          font-family: var(--body);
+          font-size: 17px;
+          font-weight: 500;
+          letter-spacing: -0.005em;
+          line-height: 1.4;
           text-align: left;
           transition: color 200ms var(--ease);
         }
         .faq-q:hover { color: var(--accent); }
+        .faq-q-icon { color: var(--parch-soft); transition: color 200ms var(--ease); }
+        .faq-q:hover .faq-q-icon { color: var(--accent); }
         .faq-q-text { flex: 1; }
         .faq-q-icon {
           position: relative;
@@ -1908,7 +2074,7 @@ const Faq = () => {
         .faq-item[data-open="true"] .faq-q { color: var(--accent); }
         .faq-item[data-open="true"] .faq-q-icon::after { transform: rotate(90deg); opacity: 0; }
         .faq-a {
-          padding: 0 8px 28px 0;
+          padding: 0 16px 28px 16px;
         }
         .faq-a p {
           margin: 0;
@@ -1919,7 +2085,8 @@ const Faq = () => {
           color: var(--parch-soft);
         }
         @media (max-width: 640px) {
-          .faq-q { font-size: 18px; padding: 22px 4px 22px 0; gap: 20px; }
+          .faq-q { font-size: 15.5px; padding: 22px 12px; gap: 20px; }
+          .faq-a { padding: 0 12px 24px; }
           .faq-a p { font-size: 14.5px; }
         }
       `}</style>
@@ -1940,7 +2107,7 @@ const Tournois = () => {
     data-screen-label="07 Tournois"
     style={{
       position: 'relative',
-      padding: '160px 0 180px',
+      padding: '120px 0 130px',
       background: 'var(--ink)',
       borderTop: '1px solid var(--parch-line)',
     }}
@@ -2110,7 +2277,7 @@ const Galerie = () => {
     data-screen-label="08 Galerie"
     style={{
       position: 'relative',
-      padding: '160px 0 180px',
+      padding: '120px 0 130px',
       background: 'var(--coal)',
       borderTop: '1px solid var(--parch-line)',
     }}
@@ -2149,7 +2316,7 @@ const Galerie = () => {
               href={c.facebookHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn--secondary lede-col"
+              className="btn galerie-fb-cta lede-col"
               style={{ justifySelf: 'end' }}
             >
               {c.facebookLabel || 'Voir sur Facebook'}
@@ -2189,7 +2356,7 @@ const Partenaires = () => {
       data-screen-label="10 Partenaires"
       style={{
         position: 'relative',
-        padding: '160px 0 140px',
+        padding: '120px 0 110px',
         background: 'var(--coal)',
         borderTop: '1px solid var(--parch-line)',
       }}

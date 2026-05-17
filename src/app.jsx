@@ -30,7 +30,7 @@ function App() {
       <Nav scrolled={scrolled} />
       <Hero />
       <Actualites />
-      {/* Nouvelle hiérarchie 2026-05 :
+      {/* Hiérarchie :
           1 Disciplines · 2 Profs · 3 Club · 4 Rigueur · 5 Nous rejoindre ·
           6 Tournois · 7 Galerie · 8 FAQ */}
       <Disciplines />
@@ -44,6 +44,7 @@ function App() {
       <Partenaires />
       <LegalNotes />
       <Footer />
+      <MobileActionBar />
 
       <TweaksPanel title="Tweaks · D.F.D.A">
         <TweakSection label="Identité">

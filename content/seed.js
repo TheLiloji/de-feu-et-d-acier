@@ -36,6 +36,9 @@ window.CONTENT_SEED = {
     titleAcier: 'Acier',
     subtitleLine: 'Arts Martiaux Historiques Européens',
     subtitlePlace: 'à Clermont-Ferrand',
+    ctaLabel: 'Venir essayer',
+    ctaHref: '#creneaux',
+    scrollLabel: 'Découvrir le club',
   },
 
   disciplines: {
@@ -157,11 +160,20 @@ window.CONTENT_SEED = {
       ],
       cta: { label: 'Adhérer · HelloAsso', href: 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026' },
     },
+    venue: {
+      eyebrow: 'Lieu',
+      name: 'Gymnase Robert Pras',
+      address: '3 rue Jean Monnet · 63100 Clermont-Ferrand',
+      contactEyebrow: 'Contact',
+      contactEmail: 'c.sillac@protonmail.com',
+      contactPhone: '06 31 58 54 60',
+      contactPhoneHref: 'tel:+33631585460',
+    },
     map: {
       name: 'Gymnase Robert Pras',
       address: '3 rue Jean Monnet · 63100 Clermont-Ferrand',
-      iframeSrc: 'https://www.openstreetmap.org/export/embed.html?bbox=3.0397%2C45.7808%2C3.0957%2C45.8048&layer=mapnik&marker=45.7928%2C3.0677',
-      openLink: 'https://www.openstreetmap.org/?mlat=45.7928&mlon=3.0677#map=17/45.7928/3.0677',
+      iframeSrc: 'https://www.openstreetmap.org/export/embed.html?bbox=3.0617%2C45.7898%2C3.0737%2C45.7958&layer=mapnik&marker=45.7928%2C3.0677',
+      openLink: 'https://www.openstreetmap.org/?mlat=45.7928&mlon=3.0677#map=18/45.7928/3.0677',
     },
   },
 
@@ -193,7 +205,7 @@ window.CONTENT_SEED = {
     eyebrowLabel: 'Galerie',
     titleLine1: 'Quelques',
     titleLine2: 'images de salle.',
-    facebookLabel: 'Voir sur Facebook',
+    facebookLabel: 'Suivre sur Facebook',
     facebookHref: 'https://www.facebook.com/63AMHE/',
     tiles: [
       { src: 'assets/duel-reflection.webp', alt: 'Combat sur piste avec reflet dans une flaque', focal: '50% 50%', cap: 'Reflets de salle', col: 'span 7', row: 'span 3' },
@@ -210,8 +222,8 @@ window.CONTENT_SEED = {
     eyebrowLabel: 'Questions fréquentes',
     titleLine1: "Tout ce qu'on",
     titleLine2: 'nous demande.',
-    lede:
-      "Les questions qu'on entend le plus souvent au premier contact. Si la vôtre n'y est pas, écrivez-nous — on répond.",
+    ledeHtml:
+      "Les questions qu'on entend le plus souvent au premier contact. Si la vôtre n'y est pas, <a href=\"mailto:c.sillac@protonmail.com\">écrivez-nous</a> — on répond.",
     items: [
       { q: "Faut-il déjà faire du sport ou de l'escrime ?", a: "Non. La séance accueille tous niveaux et l'encadrement prend le temps avec les débutants — on commence par comprendre le geste avant de l'enchaîner. Aucun pré-requis sportif ou martial." },
       { q: "C'est dangereux ?", a: "On s'entraîne en tenue de sport, masque d'escrime et protections modernes, avec des armes d'entraînement adaptées à chaque discipline. Le travail est progressif : drills, sentiment du fer, puis assauts encadrés. Pas d'arme tranchante en main, pas de contact sans équipement." },
@@ -270,7 +282,7 @@ window.CONTENT_SEED = {
       "Section AMHE de l'USAM Clermont-Ferrand, affiliée à la FFAMHE. Arts martiaux historiques européens au cœur du Puy-de-Dôme.",
     columns: [
       { label: 'Le club',   items: [['La rigueur', '#rigueur'], ['Disciplines', '#disciplines'], ['FAQ', '#faq'], ['Tournois', '#tournois'], ['Galerie', '#galerie']] },
-      { label: 'Pratique',  items: [['Nous rejoindre', '#creneaux'], ['Adhésion', 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026'], ['HelloAsso', 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand']] },
+      { label: 'Pratique',  items: [['Nous rejoindre', '#creneaux'], ['Adhésion', 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026'], ['Nous écrire', 'mailto:c.sillac@protonmail.com'], ['HelloAsso', 'https://www.helloasso.com/associations/usam-amhe-clermont-ferrand']] },
       { label: 'Suivre',    items: [['Facebook', 'https://www.facebook.com/63AMHE/'], ['HEMA Ratings', 'https://hemaratings.com/clubs/details/1155/'], ['USAM Clermont', 'https://usam-clermont-ferrand.com/amhe-arts-martiaux-historiques-europeens'], ['FFAMHE', 'https://ffamhe.fr']] },
     ],
     copyright: "© 2026 · De Feu et d'Acier · Clermont-Ferrand",

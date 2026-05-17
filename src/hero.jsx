@@ -84,7 +84,8 @@ const Hero = () => {
       style={{
         position: 'relative',
         width: '100%',
-        minHeight: '100svh',
+        height: '100svh',
+        maxHeight: '100svh',
         overflow: 'hidden',
         background: 'var(--ink)',
         display: 'flex',
@@ -184,13 +185,14 @@ const Hero = () => {
           position: 'relative',
           zIndex: 5,
           flex: 1,
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           textAlign: 'center',
-          padding: 'clamp(80px, 12vh, 140px) 24px clamp(40px, 8vh, 80px)',
-          gap: 'clamp(16px, 2.4vh, 28px)',
+          padding: 'clamp(40px, 8vh, 120px) 24px clamp(28px, 5vh, 64px)',
+          gap: 'clamp(8px, 1.6vh, 24px)',
         }}
       >
         <Reveal delay={80}>
@@ -199,7 +201,7 @@ const Hero = () => {
             alt={content.logoAlt}
             className="hero-logo"
             style={{
-              width: 'clamp(64px, 8vw, 110px)',
+              width: 'clamp(40px, 7vmin, 110px)',
               height: 'auto',
               background: 'transparent',
             }}
@@ -211,8 +213,8 @@ const Hero = () => {
             className="display hero-brand"
             style={{
               margin: 0,
-              fontSize: 'clamp(48px, 10vw, 168px)',
-              lineHeight: 0.88,
+              fontSize: 'clamp(34px, 10vmin, 168px)',
+              lineHeight: 0.92,
               letterSpacing: '-0.022em',
               fontWeight: 500,
               color: 'var(--parch)',
@@ -234,21 +236,55 @@ const Hero = () => {
           </h2>
         </Reveal>
 
-        <Reveal delay={560}>
-          <a
-            href="#disciplines"
-            className="hero-scroll-cue"
-            aria-label="Faire défiler"
-          >
-            <span className="hero-scroll-line">
-              <span className="hero-scroll-drop" />
-            </span>
-          </a>
-        </Reveal>
+        {content.ctaLabel && (
+          <Reveal delay={520}>
+            <a
+              href={content.ctaHref || '#creneaux'}
+              className="btn btn--secondary hero-cta"
+            >
+              <span>{content.ctaLabel}</span>
+              <ArrowGlyph size={11} color="currentColor" />
+            </a>
+          </Reveal>
+        )}
+
       </div>
+
+      {/* Scroll cue — suggestion discrète, pas une CTA. Chevron flèche fin
+          + label minuscule en dessous, le tout à faible opacité. Devient
+          un peu plus présent au hover/focus. PAS enrobé dans <Reveal> car
+          le rootMargin de useReveal exclut le bas de la viewport. */}
+      <a
+        href="#disciplines"
+        className="hero-scroll-cue"
+        aria-label={content.scrollLabel || 'Découvrir le club'}
+      >
+        <svg
+          className="hero-scroll-arrow"
+          viewBox="0 0 24 14"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path
+            d="M2 2 L12 12 L22 2"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="hero-scroll-label">
+          {content.scrollLabel || 'Découvrir le club'}
+        </span>
+      </a>
 
       {/* Responsive hero compact */}
       <style>{`
+        /* Le hero gère son propre padding via .hero-stage ; on neutralise
+           la règle générique "section { padding: ... }" appliquée aux autres sections. */
+        .hero-section { padding: 0 !important; }
+
         /* "Feu" : dégradé vertical façon flamme (jaune chaud en bas → braise en haut) + halo qui respire */
         .brand-feu {
           background-image: linear-gradient(
@@ -297,20 +333,21 @@ const Hero = () => {
           100% { background-position: 0% 0; }
         }
 
-        /* H2 hero : 2 lignes, "Clermont-Ferrand" mis en avant (ember, plus gros, capitales letter-spacing) */
+        /* H2 hero : 2 lignes. Toutes les tailles scalent en vmin pour
+           garantir que le contenu rétrécit en landscape mobile. */
         .hero-h2 {
           margin: 0;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 8px;
+          gap: clamp(2px, 0.6vh, 8px);
           max-width: 880px;
         }
         .hero-h2-line {
           font-family: var(--display);
           font-weight: 400;
-          font-size: clamp(18px, 2.1vw, 26px);
-          line-height: 1.3;
+          font-size: clamp(13px, 2.2vmin + 0.4vw, 26px);
+          line-height: 1.25;
           color: var(--parch-soft);
           letter-spacing: 0;
         }
@@ -318,80 +355,87 @@ const Hero = () => {
           font-family: var(--display);
           font-weight: 500;
           font-style: italic;
-          font-size: clamp(28px, 3.4vw, 48px);
+          font-size: clamp(20px, 3.8vmin + 0.6vw, 48px);
           line-height: 1.1;
           color: var(--accent);
           letter-spacing: -0.005em;
         }
 
-        /* Scroll cue : trait vertical fin avec segment lumineux qui descend en boucle */
+        /* CTA hero — bouton outlined sobre. Le scroll-cue ci-dessous porte
+           l'invitation dominante. Pas d'animation ostentatoire ici. */
+        .hero-cta {
+          padding: 0 clamp(16px, 3vw, 30px);
+          min-height: clamp(38px, 6.5vh, 50px);
+          font-size: clamp(10px, 1.5vmin + 0.3vw, 12px);
+          letter-spacing: 0.18em;
+          font-weight: 500;
+          white-space: nowrap;
+          /* hérite btn--secondary : border parch, fond transparent */
+        }
+
+        /* Scroll cue — suggestion discrète. Chevron flèche en haut + label
+           minuscule en dessous, le tout à faible opacité. Hover/focus le
+           ramène à pleine opacité. Animation ponctuelle (un "nudge" du
+           chevron toutes les 3.6s) pour rester suggéré sans agressivité. */
         .hero-scroll-cue {
+          position: absolute;
+          bottom: clamp(18px, 3vh, 36px);
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 6;
           display: inline-flex;
+          flex-direction: column;
           align-items: center;
-          justify-content: center;
+          gap: 6px;
           padding: 8px 16px;
-          margin-top: clamp(12px, 2.4vh, 28px);
-          opacity: 0.7;
-          transition: opacity 240ms var(--ease);
+          opacity: 0.45;
+          color: var(--parch-soft);
+          transition: opacity 280ms var(--ease), transform 280ms var(--ease);
+          text-decoration: none;
         }
         .hero-scroll-cue:hover,
         .hero-scroll-cue:focus-visible {
           opacity: 1;
+          transform: translateX(-50%) translateY(2px);
           outline: none;
         }
-        .hero-scroll-line {
-          position: relative;
+        .hero-scroll-arrow {
           display: block;
-          width: 1px;
-          height: 56px;
-          background: rgba(229, 217, 194, 0.22);
-          overflow: hidden;
+          width: clamp(16px, 2.4vmin, 22px);
+          height: auto;
+          color: currentColor;
+          animation: hero-scroll-arrow-nudge 3.6s var(--ease) infinite;
         }
-        .hero-scroll-drop {
-          position: absolute;
-          left: 0;
-          right: 0;
-          top: -14px;
-          height: 14px;
-          background: linear-gradient(
-            180deg,
-            rgba(229, 217, 194, 0) 0%,
-            var(--parch) 60%,
-            rgba(229, 217, 194, 0) 100%
-          );
-          animation: hero-scroll-drop 2.4s var(--ease) infinite;
+        @keyframes hero-scroll-arrow-nudge {
+          0%, 70%, 100% { transform: translateY(0); opacity: 1; }
+          85%           { transform: translateY(4px); opacity: 0.7; }
         }
-        @keyframes hero-scroll-drop {
-          0%   { transform: translateY(0); opacity: 0; }
-          15%  { opacity: 1; }
-          85%  { opacity: 1; }
-          100% { transform: translateY(70px); opacity: 0; }
+        .hero-scroll-label {
+          font-family: var(--eyebrow);
+          font-size: clamp(8.5px, 1vmin + 0.1vw, 10px);
+          letter-spacing: 0.3em;
+          text-transform: uppercase;
+          color: currentColor;
+          font-weight: 400;
         }
-
         @media (prefers-reduced-motion: reduce) {
           .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
-          .hero-scroll-drop { animation: none !important; top: 50%; transform: translateY(-50%); opacity: 0.8; }
+          .hero-scroll-arrow { animation: none !important; }
           .brand-feu { animation: none !important; filter: drop-shadow(0 0 16px rgba(232, 90, 40, 0.20)) !important; }
           .brand-acier { animation: none !important; background-position: 50% 0 !important; }
         }
 
-        @media (max-height: 720px) {
-          .hero-logo { width: clamp(54px, 7vh, 90px) !important; }
-          .hero-scroll-line { height: 44px; }
+        /* Hauteurs restreintes : sous 520px on masque le label (chevron seul),
+           sous 380px on cache complètement le cue car il chevaucherait le CTA. */
+        @media (max-height: 520px) {
+          .hero-scroll-label { display: none; }
+          .hero-scroll-cue { bottom: 8px; gap: 0; padding: 4px 12px; }
         }
-        @media (max-width: 900px) {
-          .hero-stage { padding: 96px 22px 24px !important; }
+        @media (max-height: 380px) {
+          .hero-scroll-cue { display: none; }
         }
-        @media (max-width: 640px) {
-          .hero-h2 { gap: 6px; }
-          .hero-h2-line { font-size: 14px; letter-spacing: 0.01em; }
-          .hero-h2-place { font-size: 26px; }
-        }
-        /* Très petit écran vertical (téléphones bas/clavier ouvert) — réduit encore le H1 */
-        @media (max-height: 600px) {
-          .hero-logo { width: 48px !important; }
-          .hero-brand { font-size: clamp(38px, 8vw, 64px) !important; }
-          .hero-stage { gap: 10px !important; padding-top: 80px !important; }
+        @media (max-width: 360px) {
+          .hero-cta { letter-spacing: 0.12em; }
         }
       `}</style>
     </section>

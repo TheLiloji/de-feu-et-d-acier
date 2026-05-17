@@ -74,9 +74,9 @@ const RejoindreMap = () => {
             href={map.openLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="rejoindre-map-osm"
+            className="btn btn--tertiary rejoindre-map-osm"
           >
-            Ouvrir sur OSM
+            Voir sur la carte
             <ArrowGlyph size={10} color="currentColor" />
           </a>
         )}
@@ -412,8 +412,9 @@ const ContactStyles = () => (
       background: #0d0c0b;
     }
     .rejoindre-map iframe {
-      /* Dim & desaturate les tuiles OSM pour matcher la palette du site */
-      filter: invert(0.92) hue-rotate(180deg) saturate(0.55) brightness(0.95) contrast(0.95);
+      /* Dark-mode des tuiles OSM (tile light → dark via invert+hue-rotate),
+         tuned pour garder rues, libellés et marker lisibles. */
+      filter: invert(0.86) hue-rotate(180deg) saturate(0.75) brightness(1.02) contrast(1.08);
     }
     .rejoindre-map-placeholder {
       width: 100%;
@@ -451,20 +452,16 @@ const ContactStyles = () => (
       color: var(--parch-soft);
       line-height: 1.4;
     }
-    .rejoindre-map-osm {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-family: var(--eyebrow);
-      font-size: 10px;
+    /* Variante locale du tertiary pour s'adapter au footer compact de la carte
+       (taille un cran plus petite que le tertiary global, alignée avec
+       l'eyebrow "Ouvrir sur OSM" — sinon le bouton domine le bloc d'info). */
+    .rejoindre-map-osm.btn.btn--tertiary {
+      font-size: 10.5px;
       letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--parch-mute);
-      font-weight: 500;
-      padding: 4px 0;
-      transition: color 200ms var(--ease);
+      color: var(--parch-soft);
+      min-height: 28px;
     }
-    .rejoindre-map-osm:hover { color: var(--accent); }
+    .rejoindre-map-osm.btn.btn--tertiary:hover { color: var(--accent); }
 
     @media (max-width: 820px) {
       .rejoindre-pillar {

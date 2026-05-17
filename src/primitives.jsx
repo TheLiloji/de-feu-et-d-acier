@@ -37,21 +37,28 @@ const SectionLabel = ({ number, name }) => (
     style={{
       display: 'flex',
       alignItems: 'center',
-      gap: 18,
+      gap: 16,
       fontFamily: 'var(--eyebrow)',
-      fontSize: 11,
-      letterSpacing: '0.32em',
-      color: 'var(--parch-mute)',
+      fontSize: 12.5,
+      letterSpacing: '0.28em',
+      color: 'var(--parch-soft)',
       textTransform: 'uppercase',
-      paddingBottom: 24,
-      borderBottom: '1px solid var(--parch-line)',
-      marginBottom: 64,
+      fontWeight: 600,
+      paddingBottom: 22,
+      borderBottom: '1px solid rgba(236, 232, 222, 0.18)',
+      marginBottom: 56,
     }}
   >
-    <span style={{ color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>
+    <span
+      style={{
+        color: 'var(--accent)',
+        fontVariantNumeric: 'tabular-nums',
+        fontWeight: 600,
+      }}
+    >
       {String(number).padStart(2, '0')}
     </span>
-    <Diamond size={4} color="var(--parch-mute)" />
+    <Diamond size={5} color="var(--accent)" />
     <span>{name}</span>
   </div>
 );
@@ -168,6 +175,10 @@ const Nav = ({ scrolled }) => {
   ];
   const [open, setOpen] = React.useState(false);
   const [activeId, setActiveId] = React.useState(null);
+  // Le CTA du hero est-il visible ? Si oui, on cache le CTA de la navbar pour
+  // ne pas redonder l'action et garder le hero comme zone d'appel unique.
+  // Dès que le bouton sort de la viewport (scroll), le CTA navbar prend le relais.
+  const [heroCtaVisible, setHeroCtaVisible] = React.useState(true);
 
   React.useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
@@ -178,6 +189,17 @@ const Nav = ({ scrolled }) => {
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  React.useEffect(() => {
+    const cta = document.querySelector('.hero-cta');
+    if (!cta) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setHeroCtaVisible(entry.isIntersecting),
+      { threshold: 0.1 }
+    );
+    io.observe(cta);
+    return () => io.disconnect();
   }, []);
 
   // Scroll-spy : surligne l'item dont la section traverse le plus la viewport.
@@ -206,19 +228,24 @@ const Nav = ({ scrolled }) => {
       <nav
         className="site-nav"
         data-scrolled={scrolled ? 'true' : 'false'}
+        data-hero-cta-visible={heroCtaVisible ? 'true' : 'false'}
         aria-label="Navigation principale"
       >
-        {/* Zone gauche — marque */}
-        <a className="site-nav-brand" href="#top" onClick={() => setOpen(false)}>
+        {/* Zone gauche — marque. 3 affichages selon viewport :
+            • Desktop : blason + "De Feu et d'Acier"
+            • Tablette étroite : blason + "DFDA" (sigle compact)
+            • Très petit mobile (≤380px) : blason seul (le nom prendrait 2 lignes) */}
+        <a className="site-nav-brand" href="#top" onClick={() => setOpen(false)} aria-label="De Feu et d'Acier — accueil">
           <img
             src="assets/logo.png?v=2"
             alt=""
             aria-hidden="true"
             width="28"
             height="28"
-            style={{ display: 'block', objectFit: 'contain' }}
+            style={{ display: 'block', objectFit: 'contain', flexShrink: 0 }}
           />
-          <span className="site-nav-title">De Feu et d'Acier</span>
+          <span className="site-nav-title site-nav-title--full">De Feu et d'Acier</span>
+          <span className="site-nav-title site-nav-title--short" aria-hidden="true">DFDA</span>
         </a>
 
         {/* Zone centre — items centrés visuellement */}
@@ -240,9 +267,10 @@ const Nav = ({ scrolled }) => {
           })}
         </ul>
 
-        {/* Zone droite — CTA "Essayer" (toujours visible, action principale) */}
+        {/* Zone droite — CTA "Venir essayer" (toujours visible, action principale).
+            Label aligné avec le bouton du hero pour une promesse unique. */}
         <a href="#creneaux" className="btn site-nav-cta">
-          Essayer
+          Venir essayer
           <ArrowGlyph size={11} color="currentColor" />
         </a>
 
@@ -328,6 +356,12 @@ const Nav = ({ scrolled }) => {
           line-height: 1;
           letter-spacing: 0.005em;
           font-weight: 500;
+          white-space: nowrap;
+        }
+        .site-nav-title--short {
+          display: none;
+          letter-spacing: 0.08em;
+          font-weight: 600;
         }
         .site-nav-list {
           display: flex;
@@ -369,6 +403,22 @@ const Nav = ({ scrolled }) => {
           min-height: 38px;
           padding: 0 18px;
           font-size: 10.5px;
+          transition: opacity 280ms var(--ease), transform 280ms var(--ease);
+        }
+        /* CTA navbar caché tant que le bouton du hero est dans la viewport ;
+           dès qu'il sort, on le révèle en fade + slide. Une seule action visible
+           à la fois pour clarifier la hiérarchie. */
+        .site-nav[data-hero-cta-visible="true"] .site-nav-cta {
+          opacity: 0;
+          transform: translateY(-4px);
+          pointer-events: none;
+          visibility: hidden;
+        }
+        .site-nav[data-hero-cta-visible="false"] .site-nav-cta {
+          opacity: 1;
+          transform: translateY(0);
+          pointer-events: auto;
+          visibility: visible;
         }
         .site-nav-toggle {
           display: none;
@@ -458,13 +508,124 @@ const Nav = ({ scrolled }) => {
         @media (max-width: 900px) {
           .site-nav {
             grid-template-columns: 1fr auto;
-            padding: 14px 22px;
+            padding: 10px 18px;
           }
           .site-nav-list, .site-nav-cta { display: none !important; }
-          .site-nav-toggle { display: inline-flex; }
+          .site-nav-toggle { display: inline-flex; width: 40px; height: 40px; }
+          .site-nav-brand img { width: 26px; height: 26px; }
         }
-        @media (max-width: 480px) {
-          .site-nav-title { font-size: 15.5px; }
+        @media (max-width: 540px) {
+          .site-nav-title--full { display: none; }
+          .site-nav-title--short { display: inline; font-size: 14px; }
+        }
+        @media (max-width: 380px) {
+          .site-nav-title--short { display: none; }
+          .site-nav-brand { gap: 0; }
+        }
+      `}</style>
+    </>
+  );
+};
+
+// ───────────────────────────────────────────────────────────────────
+// MOBILE ACTION BAR — Sticky bottom (Tel · Mail · Essayer).
+// Affichée uniquement sous 900px de large. Donne accès permanent aux
+// 3 actions principales sans avoir à scroller. Padding-bottom du body
+// géré ici aussi (sinon le contenu se cache derrière la barre).
+// ───────────────────────────────────────────────────────────────────
+const MobileActionBar = () => {
+  const venue = (window.useContent && window.useContent('rejoindre')?.venue) || {};
+  const tel = venue.contactPhoneHref || 'tel:+33631585460';
+  const mail = venue.contactEmail
+    ? `mailto:${venue.contactEmail}?subject=${encodeURIComponent("Première séance d'essai — De Feu et d'Acier")}`
+    : 'mailto:c.sillac@protonmail.com';
+
+  return (
+    <>
+      <div className="mobile-actionbar" role="region" aria-label="Actions rapides">
+        <a href={tel} aria-label="Appeler le club">
+          <span className="mab-ico" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z" />
+            </svg>
+          </span>
+          <span className="mab-lbl-long">Appeler</span>
+          <span className="mab-lbl-short">Tel</span>
+        </a>
+        <a href={mail} aria-label="Écrire au club">
+          <span className="mab-ico" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+          </span>
+          <span className="mab-lbl-long">Écrire</span>
+          <span className="mab-lbl-short">Mail</span>
+        </a>
+        <a href="#creneaux" className="mab-cta">
+          <span className="mab-lbl-long">Venir essayer</span>
+          <span className="mab-lbl-short">Essayer</span>
+          <ArrowGlyph size={11} color="currentColor" />
+        </a>
+      </div>
+
+      <style>{`
+        /* La barre n'existe qu'en mobile/tablette ≤ 900px ; sur desktop,
+           le CTA est déjà accessible via la nav (qui réapparaît au scroll). */
+        .mobile-actionbar { display: none; }
+        @media (max-width: 900px) {
+          .mobile-actionbar {
+            position: fixed;
+            left: 0; right: 0; bottom: 0;
+            z-index: 70;
+            display: grid;
+            grid-template-columns: 1fr 1fr 2fr;
+            background: rgba(10,9,8,0.92);
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            border-top: 1px solid var(--parch-line);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+          }
+          .mobile-actionbar a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            height: 64px;
+            font-family: var(--eyebrow);
+            font-size: 11px;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--parch);
+            text-decoration: none;
+            border-right: 1px solid var(--parch-line);
+            transition: background 200ms var(--ease);
+          }
+          .mobile-actionbar a:active { background: rgba(236,232,222,0.05); }
+          .mobile-actionbar .mab-cta {
+            background: var(--accent);
+            color: #160806;
+            border-right: none;
+            box-shadow: 0 -4px 14px -8px rgba(224,85,44,0.6) inset;
+          }
+          .mobile-actionbar .mab-cta:active { background: var(--ember-hot); }
+          .mobile-actionbar .mab-ico {
+            display: inline-flex;
+            width: 16px; height: 16px;
+            align-items: center; justify-content: center;
+            flex-shrink: 0;
+          }
+          .mobile-actionbar .mab-lbl-short { display: none; }
+          /* Padding-bottom du body pour que le contenu ne soit pas caché
+             par la barre (64px + safe area). On évite le hero qui gère
+             sa propre hauteur 100svh — c'est seulement le footer/legal qui
+             aurait pu être masqué. */
+          body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+        }
+        @media (max-width: 360px) {
+          .mobile-actionbar .mab-lbl-long { display: none; }
+          .mobile-actionbar .mab-lbl-short { display: inline; }
         }
       `}</style>
     </>
@@ -481,4 +642,5 @@ Object.assign(window, {
   Reveal,
   useReveal,
   Nav,
+  MobileActionBar,
 });
