@@ -220,9 +220,69 @@ function ImageLibrary({ images, onSelect, onClose, onReload }) {
 }
 
 // ───────────────────────────────────────────────────────────────────
-// Field renderer récursif (par type)
+// FocalPicker — picker visuel pour le focal point d'une image. Affiche
+// l'image (lue depuis le champ frère `imageKey`), un réticule à la
+// position courante, et permet de cliquer pour déplacer le focal point.
+// Tombe en simple input texte si aucune image n'est dispo.
+// Format de valeur : "X% Y%" (ex. "50% 40%").
 // ───────────────────────────────────────────────────────────────────
-function Field({ field, value, onChange }) {
+function parseFocal(s) {
+  if (!s) return null;
+  const m = String(s).match(/^\s*(\d+(?:\.\d+)?)\s*%\s+(\d+(?:\.\d+)?)\s*%\s*$/);
+  if (!m) return null;
+  return { x: Number(m[1]), y: Number(m[2]) };
+}
+
+function FocalPicker({ value, onChange, imageUrl }) {
+  const handleClick = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
+    onChange(`${clamp(x)}% ${clamp(y)}%`);
+  };
+  const pt = parseFocal(value);
+
+  return (
+    <div className="focal-picker">
+      {imageUrl ? (
+        <div
+          className="focal-stage"
+          onClick={handleClick}
+          title="Clic = définir le focal point"
+        >
+          <img src={imageUrl} alt="" />
+          {pt && (
+            <span
+              className="focal-marker"
+              style={{ left: `${pt.x}%`, top: `${pt.y}%` }}
+              aria-hidden="true"
+            />
+          )}
+        </div>
+      ) : (
+        <div className="focal-empty small muted">Renseigne d'abord une image au-dessus.</div>
+      )}
+      <div className="focal-row">
+        <input
+          type="text"
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="50% 50%"
+        />
+        <button type="button" onClick={() => onChange('50% 50%')} title="Centrer">Centrer</button>
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────
+// Field renderer récursif (par type)
+// `parent` : objet parent (item d'array, object schema, ou section root).
+// Utilisé pour les types qui doivent lire un champ frère, ex. 'focal'
+// qui lit `parent[field.imageKey]` pour afficher la bonne image.
+// ───────────────────────────────────────────────────────────────────
+function Field({ field, value, onChange, parent }) {
   const t = field.type;
 
   if (t === 'string' || t === 'url') {
@@ -288,6 +348,14 @@ function Field({ field, value, onChange }) {
     return (
       <FieldShell label={field.label} help={field.help}>
         <ImagePicker value={value} onChange={onChange} />
+      </FieldShell>
+    );
+  }
+  if (t === 'focal') {
+    const imageUrl = parent ? parent[field.imageKey] : null;
+    return (
+      <FieldShell label={field.label} help={field.help || 'Clic sur l\'image pour définir le focal point.'}>
+        <FocalPicker value={value} onChange={onChange} imageUrl={imageUrl} />
       </FieldShell>
     );
   }
@@ -358,6 +426,7 @@ function Field({ field, value, onChange }) {
             key={sub.key}
             field={sub}
             value={obj[sub.key]}
+            parent={obj}
             onChange={(v) => onChange({ ...obj, [sub.key]: v })}
           />
         ))}
@@ -417,7 +486,7 @@ function Field({ field, value, onChange }) {
 function defaultFor(fields) {
   const obj = {};
   for (const f of fields) {
-    if (f.type === 'string' || f.type === 'url' || f.type === 'longtext' || f.type === 'html' || f.type === 'image') obj[f.key] = '';
+    if (f.type === 'string' || f.type === 'url' || f.type === 'longtext' || f.type === 'html' || f.type === 'image' || f.type === 'focal') obj[f.key] = '';
     else if (f.type === 'number') obj[f.key] = 0;
     else if (f.type === 'boolean') obj[f.key] = false;
     else if (f.type === 'paragraphs') obj[f.key] = [];
@@ -460,6 +529,7 @@ function ArrayItem({ index, total, labelFn, item, onChange, onMove, onRemove, it
                 key={sub.key}
                 field={sub}
                 value={item?.[sub.key]}
+                parent={item || {}}
                 onChange={(v) => onChange({ ...(item || {}), [sub.key]: v })}
               />
             ))
@@ -570,6 +640,7 @@ function SectionEditor({ sectionKey }) {
             key={f.key}
             field={f}
             value={state.data[f.key]}
+            parent={state.data}
             onChange={(v) => update(f.key, v)}
           />
         ))}
