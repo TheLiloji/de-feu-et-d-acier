@@ -32,6 +32,46 @@ export const lireLegal = () => reader.singletons.legal.readOrThrow();
 export const lireDisciplines = () => reader.collections.disciplines.all();
 export const lirePartenaires = () => reader.collections.partenaires.all();
 export const lireFaqGenerale = () => reader.collections.faq.all();
+export const lireTraites = () => reader.collections.traites.all();
+
+// ── Les sources (traités historiques) ──────────────────────────────────────
+
+/**
+ * Les traités dans l'ordre voulu par le CMS.
+ *
+ * `all()` rend les entrées dans l'ordre du système de fichiers — alphabétique,
+ * donc arbitraire pour une section qui va de I.33 (vers 1320) à Fabris (1606).
+ * Le champ « Ordre d'affichage » tranche ; à égalité, le titre départage, pour
+ * que deux traités saisis avec le même numéro ne changent pas de place d'un
+ * build à l'autre. Un ordre non renseigné passe en dernier plutôt qu'en
+ * premier : une fiche à peine créée ne s'invite pas en tête de section.
+ */
+export async function traitesTries() {
+  const traites = await lireTraites();
+  return [...traites].sort(
+    (a, b) =>
+      (a.entry.ordre ?? Number.MAX_SAFE_INTEGER) - (b.entry.ordre ?? Number.MAX_SAFE_INTEGER) ||
+      a.entry.titre.localeCompare(b.entry.titre, 'fr'),
+  );
+}
+
+/**
+ * Les traités qui portent une arme donnée, triés — de quoi bâtir l'encadré
+ * « La source » d'une fiche arme sans que la page ait à filtrer elle-même.
+ *
+ * @param arme Slug de discipline (`epee-longue`, `epee-bocle`…), tel que le
+ *             CMS l'enregistre dans « Armes concernées ».
+ */
+export async function traitesDeLArme(arme: string) {
+  return (await traitesTries()).filter((t) => t.entry.armes.includes(arme));
+}
+
+/** Les planches signalées « majestueuses », tous traités confondus. */
+export async function planchesMajestueuses() {
+  return (await traitesTries()).flatMap((t) =>
+    t.entry.planches.filter((p) => p.majestueuse).map((planche) => ({ traite: t, planche })),
+  );
+}
 
 // ── Contenu d'école ────────────────────────────────────────────────────────
 //
@@ -64,3 +104,5 @@ export type Annonce = Awaited<ReturnType<typeof annoncesDe>>[number];
 export type Article = Awaited<ReturnType<typeof articlesDe>>[number];
 export type QuestionFaq = Awaited<ReturnType<typeof lireFaqGenerale>>[number];
 export type Album = Awaited<ReturnType<typeof albumsDe>>[number];
+export type Traite = Awaited<ReturnType<typeof lireTraites>>[number];
+export type PlancheTraite = Traite['entry']['planches'][number];

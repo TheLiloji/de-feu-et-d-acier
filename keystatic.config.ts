@@ -770,6 +770,148 @@ const collectionsCommunes = {
     },
   }),
 
+  traites: collection({
+    label: 'Les sources (traités historiques)',
+    path: 'src/content/commun/traites/*',
+    slugField: 'titre',
+    format: { data: 'yaml', contentField: 'presentation' },
+    entryLayout: 'content',
+    columns: ['titre', 'auteur', 'annee'],
+    schema: {
+      titre: fields.slug({
+        name: {
+          label: 'Titre du traité',
+          description:
+            'Le titre tel qu’il figure sur l’ouvrage. Ex. « Fechtbuch von 1467 », « La noble science des joueurs d’espée ».',
+          validation: { isRequired: true },
+        },
+        slug: {
+          label: 'Adresse de la fiche',
+          description:
+            'La fin de l’adresse web, et le nom du fichier. Ex. « talhoffer-1467 ». À ne plus changer une fois la fiche en ligne : les liens déjà partagés cesseraient de fonctionner.',
+        },
+      }),
+      auteur: fields.text({
+        label: 'Auteur',
+        description:
+          'Le nom du maître d’armes, ou « Anonyme » suivi de ce que l’on sait. L’imprimeur ou le traducteur peuvent être précisés à la suite.',
+      }),
+      annee: fields.text({
+        label: 'Année',
+        description:
+          'Texte libre, pour pouvoir rester prudent : « 1467 », « vers 1470 », « vers 1300-1330 ».',
+      }),
+      tradition: fields.text({
+        label: 'Tradition / école',
+        multiline: true,
+        description:
+          'À quelle école d’escrime le traité appartient. Ex. « Tradition germanique de Johannes Liechtenauer », « École bolonaise ».',
+      }),
+      bibliotheque: fields.text({
+        label: 'Bibliothèque de conservation',
+        description: 'L’institution qui conserve l’exemplaire numérisé. Ex. « Bibliothèque nationale de France ».',
+      }),
+      cote: fields.text({
+        label: 'Cote',
+        description: 'Le numéro d’inventaire du document dans cette bibliothèque. Ex. « Cgm 582 », « MS I.33 ».',
+      }),
+      urlNumerisation: fields.text({
+        label: 'Lien vers la numérisation',
+        description:
+          'L’adresse de la numérisation en ligne, chez la bibliothèque. C’est le lien « consulter la source » de la fiche.',
+      }),
+      licence: fields.object(
+        {
+          resume: fields.text({
+            label: 'Ce que la licence autorise, en clair',
+            multiline: true,
+            description:
+              'Une ou deux phrases en français simple. Ex. « Domaine public : copie et diffusion libres, la bibliothèque demande seulement d’être citée. »',
+          }),
+          url: fields.text({
+            label: 'Adresse de la licence',
+            description:
+              'Obligatoire : le lien vers le texte de la licence ou les conditions d’utilisation de la bibliothèque. Sans lui, le site n’est plus en règle et le build s’arrête.',
+          }),
+        },
+        {
+          label: 'Droits d’utilisation',
+          description:
+            'Ce qui autorise le club à publier les planches. Ne rien saisir ici sans avoir lu la page de conditions de la bibliothèque.',
+        },
+      ),
+      armes: fields.multiRelationship({
+        label: 'Armes concernées',
+        collection: 'disciplines',
+        description:
+          'Les disciplines qui travaillent ce traité. La fiche du traité remonte alors sur la fiche de chacune de ces armes. L’épée-bocle est sélectionnable même si elle n’a pas de carte sur l’accueil.',
+      }),
+      extraitCitation: fields.text({
+        label: 'Court extrait du traité (facultatif)',
+        multiline: true,
+        description:
+          'Quelques lignes seulement, dans la langue d’origine (moyen français, allemand…), au titre de la courte citation. Jamais un chapitre entier, jamais une traduction moderne dont on n’a pas les droits.',
+      }),
+      extraitCredit: fields.text({
+        label: 'Crédit de l’extrait',
+        description:
+          'Qui a établi le texte cité. Ex. « Transcription ARDAMHE, hébergée par la FFAMHE ». Obligatoire dès qu’un extrait est saisi.',
+      }),
+      extraitUrl: fields.text({
+        label: 'Lien vers la page de l’extrait',
+        description: 'L’adresse exacte de la page d’où l’extrait est repris.',
+      }),
+      planches: fields.array(
+        fields.object({
+          image: imageEditoriale(
+            'Fichier de la planche',
+            'commun/sources',
+            'La planche déjà préparée : 2400 px maximum sur le grand côté, moins de 1,5 Mo. Ne jamais déposer le fichier brut téléchargé chez la bibliothèque.',
+          ),
+          alt: fields.text({
+            label: 'Description de la planche',
+            multiline: true,
+            description:
+              'Obligatoire. Ce que la gravure montre, lu à voix haute par les lecteurs d’écran. Ex. « Deux escrimeurs à l’épée longue, épées croisées au-dessus de leurs têtes ». Sans elle, le build s’arrête.',
+          }),
+          legende: fields.text({
+            label: 'Légende',
+            multiline: true,
+            description:
+              'Le texte affiché sous la planche : ce qu’elle représente, et ce qu’elle apprend. Ne décrire que ce que l’on voit.',
+          }),
+          folio: fields.text({
+            label: 'Folio ou page',
+            description: 'L’emplacement de la planche dans l’ouvrage. Ex. « 33r », « f. 25v », « p. 51 ».',
+          }),
+          credit: fields.text({
+            label: 'Crédit de la planche',
+            multiline: true,
+            description:
+              'Obligatoire. La ligne de crédit exigée par la bibliothèque, à recopier telle quelle et à NE PAS modifier : elle contient le folio, la cote et la licence, et c’est elle qui rend la publication légale. En retirer un mot (par exemple « digitalisiert von Google ») met le club en faute. Sans elle, le build s’arrête.',
+          }),
+          majestueuse: fields.checkbox({
+            label: 'Planche majestueuse',
+            description:
+              'À cocher pour la planche la plus spectaculaire du traité : c’est elle qui sera affichée en grand format.',
+            defaultValue: false,
+          }),
+        }),
+        {
+          label: 'Planches',
+          description:
+            'Les images du traité affichées sur le site. Chacune doit porter sa description et son crédit.',
+          itemLabel: (p) => p.fields.folio.value || p.fields.alt.value || 'Planche',
+        },
+      ),
+      presentation: texteRiche(
+        'Présentation',
+        'Trois à six phrases : de quelle tradition vient ce traité, ce qu’il contient, et pourquoi il parle aux armes travaillées au club. Rester sur ce que la source dit — pas d’enjolivement historique.',
+      ),
+      ordre,
+    },
+  }),
+
   partenaires: collection({
     label: 'Partenaires',
     path: 'src/content/commun/partenaires/*',
@@ -1291,7 +1433,7 @@ function navigation(): Record<string, CleNav[]> {
     return {
       Publier: [k('annonces', e), k('articles', e)],
       'L’école': [k('ecole', e), k('profs', e)],
-      Enseignement: ['disciplines'],
+      Enseignement: ['disciplines', 'traites'],
       Contenus: [k('galerie', e), k('faq', e), 'faq', 'partenaires'],
       'Textes des pages': [...TEXTES_DES_PAGES],
       Réglages: [...REGLAGES],
@@ -1309,7 +1451,7 @@ function navigation(): Record<string, CleNav[]> {
       k('faq', e),
     ];
   }
-  groupes['Contenus communs'] = ['disciplines', 'faq', 'partenaires'];
+  groupes['Contenus communs'] = ['disciplines', 'traites', 'faq', 'partenaires'];
   groupes['Textes des pages'] = [...TEXTES_DES_PAGES];
   groupes['Réglages'] = [...REGLAGES];
   return groupes;
