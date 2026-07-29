@@ -1,0 +1,160 @@
+---
+/**
+ * Pastille arrondie — badge d'époque, tag de fiche, durée de vidéo, bouton rond.
+ *
+ * Douze occurrences, quatre habillages (design-spec §9.10). Toutes partagent le
+ * rayon 99, un fond noir semi-opaque et un texte `$eyebrow` 9 px graisse 600.
+ *
+ * | Variante  | Fond            | Bordure         | Rembourrage | Usage                    |
+ * |-----------|-----------------|-----------------|-------------|--------------------------|
+ * | `epoque`  | `--veil-ink-65` | `--line-strong` | 6 / 10      | `MÉDIÉVALE · XIVᵉ — XVᵉ` |
+ * | `tag`     | `--veil-ink-65` | `--line-strong` | 6 / 11      | `FICHE ARME`             |
+ * | `duree`   | `--veil-ink-80` | —               | 4 / 9       | `04:12` sur une vignette |
+ * | `ronde`   | `--veil-ink-50` | `--line-strong` | carré 34-36 | retour, réseau social    |
+ *
+ * Une pastille `ronde` n'affiche qu'une icône : elle **doit** recevoir un
+ * `titre`, sinon rien ne l'annonce à un lecteur d'écran.
+ *
+ * Exemples :
+ *   <Pill libelle="Médiévale · XIVᵉ — XVᵉ s." />
+ *   <Pill variante="duree" libelle="04:12" />
+ *   <Pill variante="ronde" icone="arrow-left" href="/armes/" titre="Retour aux armes" />
+ *   <Pill variante="ronde" icone="facebook" href={url} externe titre="Facebook" bordure="fine" />
+ */
+import Icon from './Icon.astro';
+import type { NomIcone } from './icones';
+
+interface Props {
+  /** Habillage. Défaut `epoque`. */
+  variante?: 'epoque' | 'tag' | 'duree' | 'ronde';
+  /** Texte. Écrit normalement : la CSS pose les capitales. */
+  libelle?: string;
+  /** Icône. Seule sur une pastille `ronde`, devant le texte sinon. */
+  icone?: NomIcone;
+  /** Côté de la pastille `ronde`, en px. Défaut 34 (36 pour le bouton retour). */
+  cote?: number;
+  /** Épaisseur visuelle de la bordure. Défaut : `forte` (sauf `duree`). */
+  bordure?: 'forte' | 'fine' | 'aucune';
+  /** Cible. Présent ⇒ `<a>`, absent ⇒ `<span>`. */
+  href?: string | undefined;
+  /** Lien sortant : nouvel onglet + `rel` de sécurité. */
+  externe?: boolean;
+  /** Nom accessible — obligatoire sur une pastille `ronde`. */
+  titre?: string;
+  class?: string;
+  [attribut: `data-${string}`]: string | number | boolean | undefined;
+}
+
+const {
+  variante = 'epoque',
+  libelle,
+  icone,
+  cote = 34,
+  bordure,
+  href,
+  externe = false,
+  titre,
+  class: classe,
+  ...reste
+} = Astro.props;
+
+if (variante === 'ronde' && !icone) {
+  throw new Error('Pill.astro : une pastille « ronde » attend une prop « icone ».');
+}
+if (variante === 'ronde' && !titre) {
+  throw new Error(
+    'Pill.astro : une pastille « ronde » n\'a pas de texte visible — elle attend un « titre » ' +
+      'qui sera son nom accessible.',
+  );
+}
+
+const trait = bordure ?? (variante === 'duree' ? 'aucune' : 'forte');
+const Balise = href ? 'a' : 'span';
+---
+
+<Balise
+  class:list={['pastille', `pastille--${variante}`, `pastille--bordure-${trait}`, classe]}
+  style={variante === 'ronde' ? `--pastille-cote:${cote}px` : undefined}
+  href={href}
+  target={externe && href ? '_blank' : undefined}
+  rel={externe && href ? 'noopener noreferrer' : undefined}
+  aria-label={variante === 'ronde' ? titre : undefined}
+  title={variante === 'ronde' ? titre : undefined}
+  {...reste}
+>{icone && <span class="pastille__icone"><Icon name={icone} /></span>}{variante !== 'ronde' && <span class="pastille__libelle"><slot>{libelle}</slot></span>}</Balise>
+
+<style>
+  .pastille {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: var(--radius-pill);
+    color: var(--parch);
+    font-family: var(--font-eyebrow);
+    font-size: 9px; /* identique desktop et mobile (design-spec §9.10) */
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      border-color var(--transition),
+      color var(--transition);
+  }
+
+  .pastille--epoque {
+    padding: 6px 10px;
+    background: var(--veil-ink-65);
+  }
+
+  .pastille--tag {
+    padding: 6px 11px;
+    background: var(--veil-ink-65);
+  }
+
+  .pastille--duree {
+    padding: 4px 9px;
+    background: var(--veil-ink-80);
+    letter-spacing: 0.05em; /* chiffres : l'interlettrage large nuit à la lecture */
+  }
+
+  .pastille--ronde {
+    width: var(--pastille-cote, 34px);
+    height: var(--pastille-cote, 34px);
+    padding: 0;
+    background: var(--veil-ink-50);
+  }
+
+  .pastille--bordure-forte {
+    border: 1px solid var(--line-strong);
+  }
+
+  .pastille--bordure-fine {
+    border: var(--filet);
+    background: none;
+    color: var(--parch-mute);
+  }
+
+  .pastille--bordure-aucune {
+    border: 0;
+  }
+
+  .pastille__icone {
+    display: inline-flex;
+    flex: none;
+    --icone-cote: var(--pastille-icone, 13px);
+  }
+
+  .pastille--ronde .pastille__icone {
+    --icone-cote: var(--pastille-icone, 15px);
+  }
+
+  /* Les pastilles cliquables (retour, réseaux) réagissent ; les autres non. */
+  a.pastille:hover,
+  a.pastille:focus-visible {
+    border-color: var(--ember-hot);
+    color: var(--parch);
+  }
+</style>

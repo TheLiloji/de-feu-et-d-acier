@@ -1,0 +1,44 @@
+{
+  // Configuration Cloudflare Workers du site « De Feu et d'Acier ».
+  // Neuve : aucune ressource de l'ancien compte n'est reprise (l'ancien
+  // wrangler.toml référençait un namespace KV appartenant à un autre compte).
+  // Cf. ARCHITECTURE.md §7 et stack-notes.md §2.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+
+  "name": "dfda-amhe",
+
+  // Entrypoint fourni par l'adaptateur Astro (v14+, Workers uniquement).
+  "main": "@astrojs/cloudflare/entrypoints/server",
+
+  // Date explicite, jamais « latest » : wrangler ne l'accepte pas.
+  "compatibility_date": "2026-07-01",
+
+  // Requis : le Reader Keystatic importe node:fs / node:path.
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Le site public est pré-rendu : tout est servi en assets statiques.
+  // Le Worker n'est réveillé que pour les motifs listés dans `run_worker_first`
+  // (l'admin Keystatic, son API, et le passe-plat d'images de l'adaptateur).
+  //
+  // ⚠️ Les deux clés ci-dessous sont **conjointement** nécessaires, et il ne
+  // faut jamais n'en poser qu'une :
+  //   - sans `run_worker_first`, `not_found_handling` intercepte /keystatic et
+  //     y sert la page 404 (l'admin devient inaccessible) ;
+  //   - sans `not_found_handling`, le routage statique reste désactivé et toute
+  //     URL inconnue réveille quand même le Worker.
+  // `/_image` est dans la liste parce qu'astro.config.mjs y câble délibérément
+  // le passe-plat de l'adaptateur : sans lui, une URL /_image restée dans un
+  // cache recevrait la page 404 au lieu de l'image d'origine.
+  "assets": {
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/keystatic", "/keystatic/*", "/api/keystatic/*", "/_image"]
+  },
+
+  // Aucun binding KV : les sessions Astro sont neutralisées côté astro.config.mjs
+  // (driver mémoire). Ne pas réintroduire de binding SESSION sans besoin réel.
+
+  "observability": {
+    "enabled": true
+  }
+}

@@ -1,0 +1,172 @@
+---
+/**
+ * Titre de section — deux ou trois lignes, dont une accentuée.
+ *
+ * Le motif central de la maquette (design-spec §9.3, 11 occurrences) : du
+ * Cormorant en graisse normale, interligne 1, et **une** ligne — ou un
+ * fragment — en `$ember`, graisse 300, italique.
+ *
+ *     Trois encadrants,
+ *     trois écoles.          ← ember, italique, w300
+ *
+ * La coupure des lignes est éditoriale, donc portée par le contenu :
+ *
+ *   `texte` — une chaîne, retours à la ligne pour couper, `*…*` pour accentuer.
+ *             C'est la forme attendue depuis le CMS.
+ *
+ *       <SectionTitle texte={"Trois encadrants,\n*trois écoles.*"} />
+ *       <SectionTitle texte="Les deux séances sont *gratuites*, alors ?" />
+ *
+ *   `lignes` (alias `lines`) — la forme explicite, quand la page compose elle-
+ *             même le titre (titres auto-calculés, par exemple) :
+ *
+ *       <SectionTitle lignes={[{ texte: 'Trois encadrants,' },
+ *                              { texte: 'trois écoles.', accent: true }]} />
+ *
+ * `\*` écrit une astérisque littérale. Rien d'autre n'est interprété.
+ *
+ * Le composant ne décide pas du niveau de titre : `balise` vaut `h2` par
+ * défaut, met `h1` sur un hero de fiche et `p` là où le titre est décoratif.
+ */
+import { normaliserLignes, analyserTitre, type EntreeLigne, type LigneTitre } from './titre';
+
+interface Props {
+  /** Titre complet : `\n` coupe les lignes, `*…*` accentue. */
+  texte?: string;
+  /** Forme explicite. Prioritaire sur `texte`. */
+  lignes?: EntreeLigne[];
+  /** Alias anglais de `lignes`. */
+  lines?: EntreeLigne[];
+  /**
+   * Corps du display :
+   *   `xl` 27→76 (Disciplines, Rigueur, Galerie, FAQ) ·
+   *   `l` 25→70 (défaut : Profs, Nous rejoindre, Partenaires) ·
+   *   `m` 27→42 (accroches de pilier, noms d'arme) ·
+   *   `s` 18→34 (noms de prof) ·
+   *   `fiche` 36→90 (H1 de fiche) · `hero` 62→96.
+   */
+  taille?: 'xl' | 'l' | 'm' | 's' | 'fiche' | 'hero';
+  /**
+   * `colonne` (défaut) empile les lignes ; `inline` les enchaîne sur une même
+   * ligne et laisse le texte se replier — c'est la variante des piliers
+   * « Nous rejoindre » et de « Essayer » en mobile.
+   */
+  disposition?: 'colonne' | 'inline';
+  /** Élément rendu. Défaut `h2`. */
+  balise?: 'h1' | 'h2' | 'h3' | 'h4' | 'p' | 'div';
+  /** Centre le titre (hero, bande CTA). */
+  centre?: boolean;
+  /** `id`, pour un `aria-labelledby` posé sur la `<section>`. */
+  id?: string;
+  class?: string;
+  [attribut: `data-${string}`]: string | number | boolean | undefined;
+}
+
+const {
+  texte,
+  lignes,
+  lines,
+  taille = 'l',
+  disposition = 'colonne',
+  balise = 'h2',
+  centre = false,
+  id,
+  class: classe,
+  ...reste
+} = Astro.props;
+
+const explicite = lignes ?? lines;
+const contenu: LigneTitre[] = explicite
+  ? normaliserLignes(explicite)
+  : texte
+    ? analyserTitre(texte)
+    : [];
+
+if (contenu.length === 0) {
+  throw new Error(
+    'SectionTitle.astro : titre vide. Passer « texte » (avec \\n et *accent*) ou « lignes ».',
+  );
+}
+
+const Balise = balise;
+---
+
+<Balise
+  class:list={[
+    'titre-section',
+    `titre-section--${taille}`,
+    `titre-section--${disposition}`,
+    { 'titre-section--centre': centre },
+    classe,
+  ]}
+  id={id}
+  {...reste}
+>{contenu.map((ligne) => <span class="titre-section__ligne">{ligne.map((fragment) => (fragment.accent ? <em class="titre-section__accent">{fragment.texte}</em> : <span>{fragment.texte}</span>))}</span>)}</Balise>
+
+<style>
+  .titre-section {
+    margin: 0;
+    color: var(--parch);
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: var(--titre-fs);
+    line-height: var(--titre-lh, var(--lh-display));
+    /* Les coupures sont voulues : pas de rééquilibrage automatique par-dessus. */
+    text-wrap: pretty;
+  }
+
+  .titre-section--colonne {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .titre-section--inline .titre-section__ligne {
+    display: inline;
+  }
+
+  .titre-section--inline .titre-section__ligne + .titre-section__ligne::before {
+    content: ' ';
+  }
+
+  .titre-section--centre {
+    align-items: center;
+    text-align: center;
+  }
+
+  /* Ligne accentuée : ember, italique, graisse 300 — les trois ensemble,
+     jamais l'une sans les autres (design-spec §9.3). */
+  .titre-section__accent {
+    color: var(--ember);
+    font-style: italic;
+    font-weight: 300;
+  }
+
+  .titre-section--xl {
+    --titre-fs: var(--fs-display-xl);
+  }
+
+  .titre-section--l {
+    --titre-fs: var(--fs-display-l);
+  }
+
+  .titre-section--m {
+    --titre-fs: var(--fs-display-m);
+    --titre-lh: 1.1;
+  }
+
+  .titre-section--s {
+    --titre-fs: var(--fs-display-s);
+    --titre-lh: 1.1;
+  }
+
+  .titre-section--fiche {
+    --titre-fs: var(--fs-display-fiche);
+    --titre-lh: var(--lh-display-tight);
+  }
+
+  .titre-section--hero {
+    --titre-fs: var(--fs-display-hero);
+    --titre-lh: var(--lh-display-tight);
+  }
+</style>

@@ -1,0 +1,148 @@
+---
+/**
+ * Fil d'Ariane de la fiche arme — design-spec §5.1 (bloc 1) et §5.3.
+ *
+ * Rangée `space_between` sous filet : à gauche « ← RETOUR », à droite le chemin
+ * `LES ARMES / ÉPÉE LONGUE`.
+ *
+ * En mobile, la maquette remplace ce bandeau par la pastille ronde incrustée
+ * dans le hero (§5.2). Ce n'est pas une perte de contenu — c'est le même lien
+ * de retour, présenté autrement : le bandeau disparaît donc sous 820 px, et
+ * `ArmeHero` prend le relais.
+ */
+import Icon from '../ui/Icon.astro';
+
+export interface Props {
+  /** Nom de l'arme courante — dernier maillon, non cliquable. */
+  nom: string;
+  /** Cible du retour et du maillon parent. Ex. `/#disciplines`. */
+  retourHref: string;
+  /** Libellé du maillon parent. */
+  racine?: string;
+}
+
+const { nom, retourHref, racine = 'Les armes' } = Astro.props;
+---
+
+<nav class="fil" aria-label="Fil d’Ariane">
+  <div class="gouttiere fil__ligne">
+    <a class="fil__retour" href={retourHref}>
+      <Icon name="arrow-left" />
+      <span>Retour</span>
+    </a>
+
+    <ol class="fil__chemin" role="list">
+      <li class="fil__maillon"><a href={retourHref}>{racine}</a></li>
+      <li class="fil__separateur" aria-hidden="true">/</li>
+      <li class="fil__maillon fil__maillon--courant"><span aria-current="page">{nom}</span></li>
+    </ol>
+  </div>
+</nav>
+
+<style>
+  .fil {
+    border-bottom: var(--filet);
+  }
+
+  .fil__ligne {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esp-item);
+    padding-block: 22px;
+  }
+
+  .fil__retour,
+  .fil__chemin {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow);
+    font-weight: 600;
+    letter-spacing: 0.21em;
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+  }
+
+  .fil__retour {
+    /* `Icon.astro` se dimensionne par `--icone-cote` : son style scopé
+       l'emporterait sur un `:global(svg)` écrit ici. */
+    --icone-cote: 16px;
+    gap: 10px;
+    color: var(--parch);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .fil__retour :global(svg) {
+    transition: transform var(--transition);
+  }
+
+  .fil__retour:hover,
+  .fil__retour:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  .fil__retour:hover :global(svg) {
+    transform: translateX(-3px);
+  }
+
+  .fil__chemin {
+    gap: 12px;
+    list-style: none;
+    min-width: 0;
+  }
+
+  .fil__maillon {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+    color: var(--parch-mute);
+  }
+
+  .fil__maillon a {
+    color: inherit;
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .fil__maillon a:hover,
+  .fil__maillon a:focus-visible {
+    color: var(--parch);
+  }
+
+  .fil__maillon--courant {
+    font-weight: 600;
+    color: var(--parch);
+  }
+
+  .fil__separateur {
+    flex: none;
+    font-family: var(--font-body);
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--parch-mute);
+  }
+
+  /* Sous 820 px, c'est la pastille de retour du hero qui porte la navigation. */
+  @media (max-width: 819.98px) {
+    .fil {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fil__retour,
+    .fil__retour :global(svg) {
+      transition: none;
+    }
+
+    .fil__retour:hover :global(svg) {
+      transform: none;
+    }
+  }
+</style>

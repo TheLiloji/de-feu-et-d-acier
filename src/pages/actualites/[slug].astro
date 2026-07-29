@@ -1,0 +1,1006 @@
+---
+/**
+ * `/actualites/<slug>/` — la page d'un article. Gabarit NON maquetté
+ * (design-spec §10.2), calqué sur le gabarit « Fiche arme » qui, lui, l'est :
+ *
+ *   1. fil d'Ariane à filet bas — « Retour » à gauche, chemin à droite (§5.3) ;
+ *   2. tête : ligne « era » (tiret ember + catégorie + · + date), H1 Cormorant
+ *      en `--fs-display-fiche`, chapô en `$body` 18 / lh 1.4 / `$parch-soft` ;
+ *   3. couverture pleine largeur, rayon 3, crédit photo en légende ;
+ *   4. corps markdoc rendu en HTML, mesure bornée à 58ch (~80 signes) ;
+ *   5. blocs facultatifs « Photos » et « Liens utiles », avec la tête à filet
+ *      du « Mini-cours » (eyebrow ember ◆ précision `$parch-mute`) ;
+ *   6. pied à filet haut : retour à la liste + articles voisins ;
+ *   7. barre d'onglets mobile : chrome global, rendue sur toutes les pages.
+ *
+ * Toute la page est en `$ink` : sur une page de détail, le rythme vient des
+ * filets et de l'espacement, pas de l'alternance de fonds (design-spec §5.1).
+ *
+ * **Brouillons** : `getStaticPaths` ne génère que les articles `statut:
+ * publie`. Un brouillon n'a donc **pas d'URL sur le site** : rien à `noindex`,
+ * aucun lien deviné n'y mène. Ce n'est pas pour autant confidentiel — le texte
+ * est écrit dans le dépôt dès l'enregistrement, et le dépôt est public. Un
+ * brouillon est « pas encore publié », pas « secret ».
+ *
+ * ⚠️ Rendu Markdoc — voir la note « MARKDOC » plus bas : le dépôt n'a pas
+ * encore de composant de texte riche partagé, celui-ci est local à la page.
+ */
+import { getImage, Picture } from 'astro:assets';
+import Base from '../../layouts/Base.astro';
+import Footer from '../../components/sections/Footer.astro';
+import Nav from '../../components/sections/Nav.astro';
+import Button from '../../components/ui/Button.astro';
+import Icon from '../../components/ui/Icon.astro';
+import SectionTitle from '../../components/ui/SectionTitle.astro';
+import TabBar from '../../components/ui/TabBar.astro';
+import { estNomIcone } from '../../components/ui/icones';
+import {
+  articlesDe,
+  lireDisciplines,
+  lireHero,
+  lireIdentite,
+  lireMenus,
+  profsDe,
+  type Article,
+} from '../../lib/contenu';
+import { getEcolePrincipale } from '../../lib/ecoles';
+import { cadrageCss, creditAffiche, largeursSrcset, resoudrePhoto } from '../../lib/images';
+import { typographieFr } from '../../lib/typographie';
+import { estExterne, lien, lienArticle, lienProf } from '../../lib/liens';
+import { contexteDe, resoudre } from '../../lib/raccourcis';
+
+/**
+ * Une URL par article publié. Aucune route n'est créée pour les brouillons.
+ *
+ * L'école principale est la seule servie à la racine aujourd'hui : le jour où
+ * une deuxième salle ouvre, c'est une route `/[ecole]/actualites/[slug]` qui
+ * apparaît, sans toucher à ce fichier (ARCHITECTURE.md §3, multi-ecoles §6.4).
+ */
+export async function getStaticPaths() {
+  const ecole = await getEcolePrincipale();
+  const articles = await articlesDe(ecole);
+  return articles
+    .filter((a) => a.entry.statut === 'publie')
+    .map((a) => ({ params: { slug: a.slug } }));
+}
+
+const { slug } = Astro.params;
+
+const ecole = await getEcolePrincipale();
+const [identite, hero, menus, articles, profs, disciplines] = await Promise.all([
+  lireIdentite(),
+  lireHero(),
+  lireMenus(),
+  articlesDe(ecole),
+  profsDe(ecole),
+  lireDisciplines(),
+]);
+
+// Contexte des raccourcis : le corps d'un article est un champ de texte riche
+// comme la biographie d'un prof ou une réponse de FAQ, et « {email} » doit s'y
+// résoudre pareil. Mêmes compteurs que l'accueil (ARCHITECTURE.md §4).
+// À noter : `{arme}` et `{prof}` n'existent que sur une fiche — les employer
+// ici fait échouer le build avec le nom du fichier, ce qui est le comportement
+// voulu (ARCHITECTURE.md §7), pas un affichage littéral en production.
+const ctx = contexteDe(ecole.fiche, {
+  nbArmes: disciplines.filter((d) => d.entry.affichee).length,
+  nbProfs: profs.filter((p) => p.entry.visible).length,
+});
+
+// Barre d'onglets mobile : c'est du chrome global, présent sur toutes les pages
+// du site. Aucun onglet n'est actif sur un article — la barre n'a pas d'entrée
+// « Actualités » —, et l'onglet central mis en exergue reste celui des épées
+// croisées, repéré par son icône et non par sa position.
+const onglets = (menus.barreMobile ?? []).map((onglet) => ({
+  libelle: onglet.libelle,
+  href: lien(ecole, onglet.lien),
+  icone: estNomIcone(onglet.icone) ? onglet.icone : 'house',
+  exergue: onglet.icone === 'swords',
+}));
+
+const parDate = (a: Article, b: Article) => (b.entry.date ?? '').localeCompare(a.entry.date ?? '');
+
+// Ordre strictement antéchronologique : c'est lui qui définit « plus récent »
+// et « plus ancien » en pied de page (l'épinglage ne concerne que la liste).
+const chronologie = [...articles].filter((a) => a.entry.statut === 'publie').sort(parDate);
+
+const rang = chronologie.findIndex((a) => a.slug === slug);
+if (rang === -1) {
+  throw new Error(
+    `Article introuvable pour « /actualites/${slug}/ ».\n` +
+      'La page n’est générée que pour les articles au statut « Publié » ' +
+      `(src/content/ecoles/${ecole.slug}/articles/).`,
+  );
+}
+
+const article = chronologie[rang]!;
+const entree = article.entry;
+
+const plusRecent = rang > 0 ? chronologie[rang - 1] : null;
+const plusAncien = rang < chronologie.length - 1 ? chronologie[rang + 1] : null;
+
+// ── Habillage ───────────────────────────────────────────────────────────────
+
+/** Libellés des catégories du CMS (`keystatic.config.ts`, collection articles). */
+const CATEGORIES: Record<string, string> = {
+  'vie-du-club': 'Vie du club',
+  tournoi: 'Tournoi',
+  stage: 'Stage',
+  sources: 'Sources & technique',
+  materiel: 'Matériel',
+};
+
+const FORMAT_DATE = new Intl.DateTimeFormat('fr-FR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/** « 2026-07-28 » → « 28 juillet 2026 ». Midi UTC : aucun décalage de jour. */
+const dateLisible = (iso?: string | null) =>
+  iso ? FORMAT_DATE.format(new Date(`${iso}T12:00:00Z`)) : '';
+
+/** Politique de largeurs commune (src/lib/images.ts) : les candidats trop
+    grands sont écartés, mais la largeur native est alors servie. */
+const largeurs = (image: ImageMetadata, souhaitees: number[]) =>
+  largeursSrcset(image, { largeurs: souhaitees });
+
+const categorie = CATEGORIES[entree.categorie ?? ''] ?? '';
+const date = dateLisible(entree.date);
+// Titre, chapô et signature sont des champs libres du CMS : sans raccourcis,
+// donc sans passage par `resoudre()`. Leur typographie se pose ici — c'est le
+// H1 de l'article, son `<title>`, son fil d'Ariane et sa méta description.
+const titreArticle = typographieFr(entree.titre);
+const chapo = typographieFr(entree.chapo);
+
+const couverture = resoudrePhoto(entree.couverture?.fichier);
+const couvertureAlt = entree.couverture?.alt ?? '';
+const couvertureCadrage = cadrageCss(entree.couverture?.cadrage);
+const couvertureCredit = creditAffiche(entree.couverture?.credit);
+
+const auteur = entree.auteur ? (profs.find((p) => p.slug === entree.auteur) ?? null) : null;
+const auteurVisible = auteur && auteur.entry.visible ? auteur : null;
+
+interface PhotoGalerie {
+  image: ImageMetadata;
+  alt: string;
+  cadrage: string;
+  credit: string;
+}
+
+// `flatMap` plutôt que `map().filter()` : une photo dont le fichier n'a pas
+// (encore) été déposé disparaît de la galerie sans casser le build ni laisser
+// un cadre vide (cf. src/lib/images.ts).
+const galerie: PhotoGalerie[] = (entree.galerie ?? []).flatMap((photo) => {
+  const image = resoudrePhoto(photo?.fichier);
+  if (!image) return [];
+  return [
+    {
+      image,
+      alt: photo?.alt ?? '',
+      cadrage: cadrageCss(photo?.cadrage),
+      credit: creditAffiche(photo?.credit),
+    },
+  ];
+});
+
+const liensUtiles = (entree.liens ?? []).filter((l) => l?.libelle && l?.url);
+
+/** Sortant = nouvel onglet. `mailto:` et `tel:` n'ouvrent pas d'onglet. */
+const estSortant = (url: string) =>
+  estExterne(url) && !url.startsWith('mailto:') && !url.startsWith('tel:');
+
+// ── MARKDOC ─────────────────────────────────────────────────────────────────
+//
+// Le Reader Keystatic rend le corps sous sa forme *analysée* : un arbre Markdoc
+// (`{ node }`), pas du HTML. Il faut donc le parcourir.
+//
+// Ni `@markdoc/markdoc` ni le `DocumentRenderer` de Keystatic ne sont utilisés :
+// le premier n'est pas une dépendance déclarée du projet (il n'arrive
+// qu'indirectement, via `@keystatic/core`), le second est un composant React —
+// or React ne sert QUE l'admin, jamais le site public (ARCHITECTURE.md §2).
+// Ce petit parcours couvre exactement ce que le champ « Contenu » autorise
+// (`corpsRiche` de keystatic.config.ts) : titres h2/h3, gras, italique, liens,
+// citations, listes ordonnées ou non, filets, images.
+//
+// ⚠️ Note d'intégration : les fiches prof (`bio`), les fiches arme
+// (`description`) et les réponses de FAQ emploient le même type de champ. Le
+// jour où deux gabarits en ont besoin, ces trente lignes ont vocation à devenir
+// un `src/components/ui/TexteRiche.astro`. Elles sont volontairement écrites
+// sans dépendance à cette page pour rendre l'extraction triviale.
+
+interface NoeudMarkdoc {
+  type?: string;
+  attributes?: Record<string, unknown> | null;
+  children?: readonly NoeudMarkdoc[] | null;
+}
+
+const echapper = (texte: string) =>
+  texte
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+
+/** Toutes les images citées dans le corps, pour les faire passer par sharp. */
+function collecterImages(noeud: NoeudMarkdoc, dans: Set<string>): void {
+  if (noeud.type === 'image') {
+    const source = noeud.attributes?.src;
+    if (typeof source === 'string' && source) dans.add(source);
+  }
+  for (const enfant of noeud.children ?? []) collecterImages(enfant, dans);
+}
+
+const contenu = await entree.corps();
+const racine = contenu.node as unknown as NoeudMarkdoc;
+
+const sources = new Set<string>();
+collecterImages(racine, sources);
+
+const imagesDuCorps = new Map<string, { src: string; largeur: number; hauteur: number }>();
+for (const source of sources) {
+  const meta = resoudrePhoto(source);
+  if (!meta) continue; // fichier absent : l'image est simplement omise du rendu
+  const largeur = Math.min(meta.width, 1280);
+  const hauteur = Math.round((meta.height * largeur) / meta.width);
+  const optimisee = await getImage({ src: meta, width: largeur, height: hauteur, format: 'webp' });
+  imagesDuCorps.set(source, { src: optimisee.src, largeur, hauteur });
+}
+
+function rendreMarkdoc(noeud: NoeudMarkdoc): string {
+  const attributs = noeud.attributes ?? {};
+  const enfants = () => (noeud.children ?? []).map(rendreMarkdoc).join('');
+
+  switch (noeud.type) {
+    case 'text':
+      return echapper(String(attributs.content ?? ''));
+    case 'code':
+      return `<code>${echapper(String(attributs.content ?? ''))}</code>`;
+    case 'fence':
+      return `<pre><code>${echapper(String(attributs.content ?? ''))}</code></pre>`;
+    case 'heading': {
+      // L'admin n'autorise que h2 et h3 ; on borne quand même, un h1 de corps
+      // entrerait en concurrence avec le titre de l'article.
+      const niveau = Math.min(Math.max(Number(attributs.level) || 2, 2), 4);
+      return `<h${niveau}>${enfants()}</h${niveau}>`;
+    }
+    case 'paragraph':
+      return `<p>${enfants()}</p>`;
+    case 'blockquote':
+      return `<blockquote>${enfants()}</blockquote>`;
+    case 'list':
+      return attributs.ordered ? `<ol>${enfants()}</ol>` : `<ul>${enfants()}</ul>`;
+    case 'item':
+      return `<li>${enfants()}</li>`;
+    case 'strong':
+      return `<strong>${enfants()}</strong>`;
+    case 'em':
+      return `<em>${enfants()}</em>`;
+    case 's':
+      return `<s>${enfants()}</s>`;
+    case 'hr':
+      return '<hr />';
+    case 'hardbreak':
+      return '<br />';
+    case 'softbreak':
+      return ' ';
+    case 'link': {
+      const href = String(attributs.href ?? '');
+      if (!href) return enfants();
+      const sortant = estSortant(href);
+      const titre =
+        typeof attributs.title === 'string' && attributs.title
+          ? ` title="${echapper(attributs.title)}"`
+          : '';
+      const cible = sortant ? ' target="_blank" rel="noopener noreferrer"' : '';
+      return `<a href="${echapper(href)}"${titre}${cible}>${enfants()}</a>`;
+    }
+    case 'image': {
+      const resolue = imagesDuCorps.get(String(attributs.src ?? ''));
+      if (!resolue) return '';
+      const alt = echapper(String(attributs.alt ?? ''));
+      return (
+        `<img src="${echapper(resolue.src)}" alt="${alt}" ` +
+        `width="${resolue.largeur}" height="${resolue.hauteur}" loading="lazy" decoding="async" />`
+      );
+    }
+    // `document`, `inline`, et tout nœud inconnu : on rend les enfants.
+    default:
+      return enfants();
+  }
+}
+
+const corpsHtml = resoudre(
+  rendreMarkdoc(racine),
+  ctx,
+  `src/content/ecoles/${ecole.slug}/articles/${slug}.mdoc — corps`,
+);
+
+const nbPhotos =
+  galerie.length === 1 ? '1 photo' : galerie.length > 1 ? `${galerie.length} photos` : '';
+---
+
+<Base
+  ecole={ecole}
+  identite={identite}
+  titre={titreArticle}
+  description={chapo || undefined}
+  typeOg="article"
+>
+
+  {/* Page sans hero photographique : la barre garde son fond plein dès le
+      chargement (`fond="solide"`, cf. notes du chantier « chrome »). */}
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+    fond="solide"
+  />
+  <nav class="fil" aria-label="Fil d’Ariane">
+    <div class="gouttiere fil__rangee">
+      <a class="fil__retour" href={lien(ecole, '/actualites/')}>
+        <Icon name="arrow-left" size={16} />
+        <span>Retour</span>
+      </a>
+
+      <ol class="fil__chemin" role="list">
+        <li><a class="fil__lien" href={lien(ecole, '/actualites/')}>Actualités</a></li>
+        <li class="fil__oblique" aria-hidden="true">/</li>
+        <li><span class="fil__courant" aria-current="page">{titreArticle}</span></li>
+      </ol>
+    </div>
+  </nav>
+
+  <article class="article">
+    <header class="tete">
+      {/* La mesure est bornée sur un enfant, jamais sur `.gouttiere` : cette
+          dernière porte `margin-inline: auto`, et lui réduire sa largeur
+          recentrerait tout le bloc de tête au lieu de le laisser sur la grille
+          de gauche, comme la couverture et le corps. */}
+      <div class="gouttiere">
+        <div class="tete__bloc">
+          <p class="era">
+            <span class="era__tiret" aria-hidden="true"></span>
+            {categorie && <span class="era__categorie">{categorie}</span>}
+            {categorie && date && (
+              <span class="era__point" aria-hidden="true">·</span>
+            )}
+            {date && <time class="era__date" datetime={entree.date ?? undefined}>{date}</time>}
+          </p>
+
+          <SectionTitle balise="h1" taille="fiche" lignes={[{ texte: titreArticle }]} />
+
+          {chapo && <p class="tete__chapo">{chapo}</p>}
+
+          {
+            auteurVisible && (
+              <p class="tete__auteur">
+                <span class="tete__par">Par</span>
+                <a class="tete__prof" href={lienProf(ecole, auteurVisible.slug)}>
+                  {typographieFr(auteurVisible.entry.nom)}
+                </a>
+              </p>
+            )
+          }
+        </div>
+      </div>
+    </header>
+
+    {
+      couverture && (
+        <figure class="couverture">
+          <div class="gouttiere">
+            <div class="couverture__cadre">
+              <Picture
+                src={couverture}
+                alt={couvertureAlt}
+                formats={['avif', 'webp']}
+                widths={largeurs(couverture, [390, 720, 1000, 1328, 1800, 2400])}
+                sizes="(min-width: 1440px) 1328px, 92vw"
+                loading="eager"
+                decoding="async"
+                style={`object-position:${couvertureCadrage}`}
+              />
+            </div>
+            {couvertureCredit && (
+              <figcaption class="couverture__credit">{couvertureCredit}</figcaption>
+            )}
+          </div>
+        </figure>
+      )
+    }
+
+    <div class="gouttiere">
+      <div class="corps" set:html={corpsHtml} />
+    </div>
+
+    {
+      galerie.length > 0 && (
+        <section class="bloc" aria-labelledby="bloc-photos">
+          <div class="gouttiere">
+            <div class="bloc__tete">
+              <span class="bloc__label" id="bloc-photos">
+                Photos
+              </span>
+              <Icon name="diamond" size={6} />
+              <span class="bloc__precision">{nbPhotos}</span>
+            </div>
+
+            <ul class="galerie" role="list">
+              {galerie.map((photo) => (
+                <li class="galerie__item">
+                  <figure class="galerie__figure">
+                    <div class="galerie__cadre">
+                      <Picture
+                        src={photo.image}
+                        alt={photo.alt}
+                        formats={['avif', 'webp']}
+                        widths={largeurs(photo.image, [280, 340, 500, 680, 900])}
+                        sizes="(min-width: 820px) 30vw, 90vw"
+                        loading="lazy"
+                        decoding="async"
+                        style={`object-position:${photo.cadrage}`}
+                      />
+                    </div>
+                    {photo.credit && (
+                      <figcaption class="galerie__credit">{photo.credit}</figcaption>
+                    )}
+                  </figure>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )
+    }
+
+    {
+      liensUtiles.length > 0 && (
+        <section class="bloc" aria-labelledby="bloc-liens">
+          <div class="gouttiere">
+            <div class="bloc__tete">
+              <span class="bloc__label" id="bloc-liens">
+                Liens utiles
+              </span>
+              <Icon name="diamond" size={6} />
+              <span class="bloc__precision">Pour aller plus loin</span>
+            </div>
+
+            <ul class="liens" role="list">
+              {liensUtiles.map((l) => (
+                <li>
+                  <Button
+                    variante="contour"
+                    taille="petite"
+                    libelle={l.libelle ?? ''}
+                    href={lien(ecole, l.url)}
+                    externe={estSortant(l.url ?? '')}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )
+    }
+
+    <footer class="pied">
+      <div class="gouttiere pied__rangee">
+        <Button
+          variante="contour"
+          libelle="Toutes les actualités"
+          href={lien(ecole, '/actualites/')}
+        />
+
+        {
+          (plusRecent || plusAncien) && (
+            <nav class="voisins" aria-label="Autres articles">
+              {plusRecent && (
+                <a class="voisin" href={lienArticle(ecole, plusRecent.slug)}>
+                  <span class="voisin__label">Plus récent</span>
+                  <span class="voisin__titre">{typographieFr(plusRecent.entry.titre)}</span>
+                </a>
+              )}
+              {plusAncien && (
+                <a class="voisin" href={lienArticle(ecole, plusAncien.slug)}>
+                  <span class="voisin__label">Plus ancien</span>
+                  <span class="voisin__titre">{typographieFr(plusAncien.entry.titre)}</span>
+                </a>
+              )}
+            </nav>
+          )
+        }
+      </div>
+    </footer>
+  </article>
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient après le pied de
+        page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide du site" />
+  </Fragment>
+</Base>
+
+<style>
+  /* ── Fil d'Ariane (design-spec §5.3) ─────────────────────────────────────── */
+
+  .fil {
+    border-bottom: var(--filet);
+  }
+
+  .fil__rangee {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esp-item);
+    padding-block: clamp(16px, 13.771px + 0.5714vw, 22px);
+  }
+
+  .fil__retour,
+  .fil__chemin {
+    display: flex;
+    align-items: center;
+    gap: clamp(8px, 6.514px + 0.381vw, 12px);
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: 0.21em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    list-style: none;
+  }
+
+  .fil__retour {
+    --icone-cote: 16px;
+    flex: none;
+    color: var(--parch);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .fil__retour:hover,
+  .fil__retour:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  .fil__chemin {
+    min-width: 0;
+  }
+
+  .fil__lien,
+  .fil__oblique {
+    color: var(--parch-mute);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .fil__lien:hover,
+  .fil__lien:focus-visible {
+    color: var(--parch);
+  }
+
+  .fil__oblique {
+    flex: none;
+    font-family: var(--font-body);
+    letter-spacing: 0;
+  }
+
+  /* Un titre d'article est bien plus long qu'un nom d'arme : il se tronque
+     plutôt que de pousser le fil d'Ariane sur deux lignes. */
+  .fil__courant {
+    display: block;
+    max-width: min(46ch, 42vw);
+    overflow: hidden;
+    color: var(--parch);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 619px) {
+    .fil__chemin li:not(:last-child) {
+      display: none;
+    }
+
+    .fil__courant {
+      max-width: 52vw;
+    }
+  }
+
+  /* ── Tête de l'article ───────────────────────────────────────────────────── */
+
+  /* Enfant de `.gouttiere`, jamais la gouttière elle-même : celle-ci est
+     centrée par `margin-inline: auto` (global.css), et lui poser un `max-width`
+     de mesure décalait toute la tête vers le centre — à 430 px de la couverture
+     et du corps, calés eux sur la grille de gauche. */
+  .tete__bloc {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(12px, 9.029px + 0.7619vw, 20px);
+    max-width: 60ch;
+    padding-block: clamp(40px, 20.686px + 4.9524vw, 92px)
+      clamp(26px, 16.343px + 2.4762vw, 52px);
+  }
+
+  /* Ligne « era » — tiret ember + catégorie + · + date (design-spec §5.3). */
+  .era {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow);
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .era__tiret {
+    width: 22px;
+    height: 1px;
+    flex: none;
+    background: var(--ember);
+  }
+
+  .era__categorie {
+    color: var(--ember);
+  }
+
+  .era__point,
+  .era__date {
+    color: var(--parch-mute);
+    font-weight: 400;
+    letter-spacing: var(--ls-eyebrow-s);
+  }
+
+  .tete__chapo {
+    max-width: 56ch;
+    margin: 0;
+    font-size: var(--fs-body-lede);
+    line-height: 1.5;
+    color: var(--parch-soft);
+  }
+
+  .tete__auteur {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: var(--fs-body-xs);
+    line-height: 1.4;
+  }
+
+  .tete__par {
+    color: var(--parch-mute);
+  }
+
+  .tete__prof {
+    color: var(--parch);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    transition: color var(--transition);
+  }
+
+  .tete__prof:hover,
+  .tete__prof:focus-visible {
+    color: var(--ember-hot);
+    text-decoration-color: var(--ember-hot);
+  }
+
+  /* ── Couverture ──────────────────────────────────────────────────────────── */
+
+  .couverture {
+    margin: 0;
+  }
+
+  .couverture__cadre {
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-2);
+    background: var(--char);
+  }
+
+  .couverture__cadre :global(picture),
+  .couverture__cadre :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .couverture__cadre :global(img) {
+    object-fit: cover;
+  }
+
+  .couverture__credit {
+    padding-block-start: 10px;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-align: right;
+    color: var(--parch-mute);
+  }
+
+  /* ── Corps de l'article ──────────────────────────────────────────────────── */
+
+  /* Mesure : `ch` est la largeur du zéro, pas celle d'un signe courant — en
+     Inter à 17 px, 1ch ≈ 10,9 px pour ~7,7 px de signe moyen. Les 72ch d'origine
+     valaient donc ~100 signes par ligne. 58ch ramène à ~80 signes et place le
+     corps juste en deçà du chapô (56ch en `--fs-body-lede`), ce qui remet la
+     tête et le corps dans la même colonne de lecture. */
+  .corps {
+    max-width: 58ch;
+    padding-block: clamp(34px, 19.886px + 3.619vw, 72px);
+    font-size: clamp(15px, 14.257px + 0.1905vw, 17px);
+    line-height: var(--lh-body);
+    color: var(--parch-soft);
+  }
+
+  /* Le corps est injecté par `set:html` : ses nœuds n'ont pas l'attribut de
+     portée, d'où `:global()` sur chaque descendant. */
+  .corps :global(h2),
+  .corps :global(h3),
+  .corps :global(h4) {
+    margin-block: clamp(34px, 22.114px + 3.0476vw, 66px) clamp(10px, 8.514px + 0.381vw, 14px);
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--parch);
+    text-wrap: balance;
+  }
+
+  .corps :global(h2) {
+    font-size: var(--fs-display-m);
+  }
+
+  .corps :global(h3) {
+    font-size: var(--fs-display-s);
+  }
+
+  .corps :global(h4) {
+    font-size: clamp(17px, 15.143px + 0.4762vw, 22px);
+  }
+
+  .corps :global(:is(h2, h3, h4):first-child) {
+    margin-block-start: 0;
+  }
+
+  .corps :global(p) {
+    margin-block: 0 1.15em;
+  }
+
+  .corps :global(ul),
+  .corps :global(ol) {
+    margin-block: 0 1.15em;
+    padding-inline-start: 1.4em;
+  }
+
+  .corps :global(li) {
+    margin-block-end: 0.45em;
+  }
+
+  .corps :global(li > p) {
+    margin-block-end: 0.35em;
+  }
+
+  .corps :global(li::marker) {
+    color: var(--ember);
+  }
+
+  .corps :global(strong) {
+    font-weight: 600;
+    color: var(--parch);
+  }
+
+  .corps :global(em) {
+    font-style: italic;
+  }
+
+  .corps :global(a) {
+    color: var(--parch);
+    text-decoration: underline;
+    text-decoration-color: var(--ember);
+    text-underline-offset: 0.25em;
+    transition: color var(--transition);
+  }
+
+  .corps :global(a:hover),
+  .corps :global(a:focus-visible) {
+    color: var(--ember-hot);
+    text-decoration-color: var(--ember-hot);
+  }
+
+  .corps :global(blockquote) {
+    margin: clamp(26px, 17.086px + 2.2857vw, 50px) 0;
+    padding-inline-start: clamp(18px, 13.543px + 1.1429vw, 30px);
+    border-inline-start: 2px solid var(--ember);
+    font-family: var(--font-display);
+    font-size: clamp(19px, 16.4px + 0.6667vw, 26px);
+    font-style: italic;
+    line-height: 1.35;
+    color: var(--parch);
+  }
+
+  .corps :global(blockquote p) {
+    margin-block-end: 0.4em;
+  }
+
+  .corps :global(blockquote p:last-child) {
+    margin-block-end: 0;
+  }
+
+  .corps :global(hr) {
+    margin-block: clamp(34px, 22.114px + 3.0476vw, 66px);
+    border: 0;
+    border-top: var(--filet);
+  }
+
+  .corps :global(img) {
+    width: 100%;
+    height: auto;
+    margin-block: clamp(24px, 16.571px + 1.9048vw, 44px);
+    border-radius: var(--radius-2);
+  }
+
+  .corps :global(code) {
+    font-size: 0.92em;
+    color: var(--parch);
+  }
+
+  .corps :global(pre) {
+    margin-block: 1.15em;
+    padding: clamp(14px, 11.029px + 0.7619vw, 22px);
+    overflow-x: auto;
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    background: var(--surface-1);
+  }
+
+  /* ── Blocs « Photos » / « Liens utiles » (tête du Mini-cours, §5.3) ──────── */
+
+  .bloc {
+    padding-block-end: clamp(34px, 19.886px + 3.619vw, 72px);
+  }
+
+  .bloc__tete {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-block-end: clamp(18px, 16.514px + 0.381vw, 22px);
+    border-bottom: var(--filet);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow);
+    line-height: 1.2;
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .bloc__precision {
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+    color: var(--parch-mute);
+  }
+
+  .galerie {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    padding-block-start: clamp(20px, 14.429px + 1.4286vw, 36px);
+    list-style: none;
+  }
+
+  .galerie__figure {
+    margin: 0;
+  }
+
+  .galerie__cadre {
+    overflow: hidden;
+    aspect-ratio: 3 / 2;
+    border-radius: var(--radius-2);
+    background: var(--char);
+  }
+
+  .galerie__cadre :global(picture),
+  .galerie__cadre :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .galerie__cadre :global(img) {
+    object-fit: cover;
+  }
+
+  .galerie__credit {
+    padding-block-start: 8px;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+    color: var(--parch-mute);
+  }
+
+  .liens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(10px, 8.514px + 0.381vw, 14px);
+    margin: 0;
+    padding: 0;
+    padding-block-start: clamp(20px, 14.429px + 1.4286vw, 36px);
+    list-style: none;
+  }
+
+  /* ── Pied d'article ──────────────────────────────────────────────────────── */
+
+  .pied {
+    border-top: var(--filet);
+  }
+
+  .pied__rangee {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esp-item);
+    padding-block: clamp(34px, 19.886px + 3.619vw, 72px)
+      clamp(60px, 34px + 6.6667vw, 130px);
+  }
+
+  .voisins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(18px, 12.429px + 1.4286vw, 34px);
+  }
+
+  .voisin {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 34ch;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .voisin__label {
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .voisin__titre {
+    font-family: var(--font-display);
+    font-size: clamp(17px, 15.143px + 0.4762vw, 22px);
+    line-height: 1.2;
+    color: var(--parch);
+    transition: color var(--transition);
+  }
+
+  .voisin:hover .voisin__titre,
+  .voisin:focus-visible .voisin__titre {
+    color: var(--ember-hot);
+  }
+
+  @media (max-width: 819px) {
+    .pied__rangee {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .voisins {
+      flex-direction: column;
+    }
+  }
+</style>

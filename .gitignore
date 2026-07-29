@@ -1,0 +1,41 @@
+# Dépendances
+node_modules/
+
+# Sorties de build
+dist/
+.astro/
+.wrangler/
+
+# Secrets locaux (Keystatic, wrangler) — ne jamais committer
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
+
+# Types workerd générés par `wrangler types` (550 ko, régénérables)
+worker-configuration.d.ts
+
+# Matériel de travail / sources brutes
+research/
+uploads/
+
+# Système
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Éditeurs
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Matériaux de travail (masters photos, assets de maquette) — hors dépôt,
+# conservés en local + sauvegarde. Cf. docs/refonte/ARCHITECTURE.md §7.
+nouvelles_photos/
+maquette-assets/

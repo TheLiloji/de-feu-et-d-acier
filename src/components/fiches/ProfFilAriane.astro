@@ -1,0 +1,155 @@
+---
+/**
+ * Fil d'Ariane de la fiche prof — design-spec §6.3.
+ *
+ * Barre de 22 px de rembourrage vertical, filet bas : à gauche « ← RETOUR »,
+ * à droite le chemin « LES PROFS / GABRIEL TARDIO ».
+ *
+ * En dessous de 820 px la maquette remplace cette barre par la pastille de
+ * retour posée sur la photo du hero (§6.4) : la barre est donc masquée là, et
+ * `ProfHero` prend le relais. Aucun contenu éditorial ne disparaît — un fil
+ * d'Ariane est de la navigation, et la pastille mobile porte le même nom
+ * accessible.
+ */
+import Icon from '../ui/Icon.astro';
+
+export interface Props {
+  /** Cible du retour et de la rubrique. Ex. `lien(ecole, '#profs')`. */
+  retour: string;
+  /** Rubrique parente. Ex. « Les profs ». */
+  rubrique?: string;
+  /** Page courante. Ex. « Gabriel Tardio ». */
+  courant: string;
+  /** Libellé du lien de retour. */
+  libelleRetour?: string;
+  class?: string;
+}
+
+const {
+  retour,
+  rubrique = 'Les profs',
+  courant,
+  libelleRetour = 'Retour',
+  class: classe,
+} = Astro.props;
+---
+
+<nav class:list={['ariane', classe]} aria-label="Fil d'Ariane">
+  <div class="gouttiere ariane__rang">
+    <a class="ariane__retour" href={retour}>
+      <Icon name="arrow-left" />
+      <span>{libelleRetour}</span>
+    </a>
+
+    <ol class="ariane__chemin" role="list">
+      <li><a class="ariane__parent" href={retour}>{rubrique}</a></li>
+      <li class="ariane__separateur" aria-hidden="true">/</li>
+      <li><span class="ariane__courant" aria-current="page">{courant}</span></li>
+    </ol>
+  </div>
+</nav>
+
+<style>
+  .ariane {
+    border-bottom: var(--filet);
+  }
+
+  .ariane__rang {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esp-item);
+    padding-block: clamp(14px, 0.6rem + 0.8vw, 22px);
+    font-family: var(--font-eyebrow);
+    font-size: 10.5px;
+    line-height: var(--lh-body-tight);
+    letter-spacing: 0.21em; /* 2.2 px à 10.5 px */
+    text-transform: uppercase;
+  }
+
+  .ariane__retour {
+    /* `Icon.astro` se dimensionne par `--icone-cote` : son style scopé
+       l'emporterait sur un `:global(svg)` écrit ici. */
+    --icone-cote: 16px;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: var(--parch);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .ariane__retour :global(svg) {
+    transition: transform var(--transition);
+  }
+
+  .ariane__retour:hover {
+    color: var(--ember-hot);
+  }
+
+  .ariane__retour:hover :global(svg) {
+    transform: translateX(-3px);
+  }
+
+  .ariane__chemin {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ariane__chemin li {
+    min-width: 0;
+  }
+
+  .ariane__parent {
+    font-weight: 500;
+    color: var(--parch-mute);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .ariane__parent:hover {
+    color: var(--parch);
+  }
+
+  .ariane__separateur {
+    font-family: var(--font-body);
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--parch-mute);
+  }
+
+  .ariane__courant {
+    display: block;
+    overflow: hidden;
+    font-weight: 600;
+    color: var(--parch);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Sous 820 px, c'est la pastille de retour du hero qui prend le relais
+     (design-spec §6.4). */
+  @media (max-width: 819.98px) {
+    .ariane {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ariane__retour,
+    .ariane__retour :global(svg) {
+      transition: none;
+    }
+
+    .ariane__retour:hover :global(svg) {
+      transform: none;
+    }
+  }
+</style>

@@ -1,0 +1,232 @@
+---
+/**
+ * Bandeau d'annonce — le message court épinglé tout en haut du site.
+ *
+ * **Gabarit non maquetté** (design-spec §10.2, ARCHITECTURE §5) : il est donc
+ * écrit dans le langage visuel établi plutôt qu'inventé — filet de 1 px,
+ * sur-titre en capitales lettrées avec son losange `$ember`, lien fléché, et
+ * pour tout fond une teinte `--ember-tint-*` dont la densité suit le ton de
+ * l'annonce. Rien de clignotant, rien de rouge vif : le site reste sombre et
+ * calme même quand il annule une séance.
+ *
+ * | Ton du CMS  | Fond               | Filet bas        |
+ * |-------------|--------------------|------------------|
+ * | `info`      | `--ember-tint-3`   | `--parch-line`   |
+ * | `important` | `--ember-tint-5`   | `--parch-line`   |
+ * | `urgent`    | `--ember-tint-8`   | `--ember-border` |
+ *
+ * Sélection de l'annonce (ARCHITECTURE §4) : parmi les annonces de l'école, on
+ * garde celles qui sont **épinglées en bandeau** et **non expirées**
+ * (`dateFin` absente ou postérieure au jour du build), puis on affiche la plus
+ * récente — c'est la règle annoncée au rédacteur dans l'admin (« Une seule
+ * annonce à la fois : la plus récente gagne »). Le doublon d'épinglage est
+ * signalé par le script de validation du build, pas par ce composant : mieux
+ * vaut une page correcte qu'un site en panne pour deux cases cochées.
+ *
+ * Aucune annonce valable ⇒ **le composant ne rend rien du tout**, pas même un
+ * conteneur vide : le hero remonte alors sous l'en-tête sans décalage.
+ *
+ * Le bandeau reste dans le flux (il défile avec la page) : c'est l'en-tête,
+ * collant, qui prend le relais dès qu'on descend. Cf. `Nav.astro`.
+ *
+ * Exemple d'assemblage :
+ *   <BandeauAnnonce slot="bandeau" ecole={ecole} annonces={annonces} ctx={ctx} />
+ */
+import Eyebrow from '../ui/Eyebrow.astro';
+import TextLink from '../ui/TextLink.astro';
+import type { Ecole } from '../../lib/ecoles';
+import { estExterne, lien } from '../../lib/liens';
+import { contexteDe, resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
+
+/** Forme d'une entrée de la collection « Annonces », telle que lue par Keystatic. */
+export interface AnnonceCms {
+  slug?: string;
+  entry: {
+    titre?: string | null;
+    date?: string | null;
+    message?: string | null;
+    ton?: string | null;
+    lien?: { libelle?: string | null; url?: string | null } | null;
+    bandeau?: boolean | null;
+    dateFin?: string | null;
+  };
+}
+
+export interface Props {
+  /** École servie par la page — pour les liens internes et les raccourcis. */
+  ecole: Ecole;
+  /** Toutes les annonces de l'école (`annoncesDe(ecole)`). Filtrées ici. */
+  annonces?: readonly AnnonceCms[] | null;
+  /** Annonce déjà choisie ailleurs. Court-circuite le filtrage. */
+  annonce?: AnnonceCms | null;
+  /**
+   * Contexte de raccourcis de la page. À passer par l'assembleur : le message
+   * peut contenir `{creneaux}`, `{email}`… Sans lui, un contexte de secours est
+   * construit depuis la fiche école (les compteurs `{nb_armes}` / `{nb_profs}`
+   * n'y sont pas justes — mais ils n'ont rien à faire dans une annonce).
+   */
+  ctx?: ContexteRaccourcis;
+  /** Date de référence pour l'expiration, au format `AAAA-MM-JJ`. Défaut : le jour du build. */
+  aujourdhui?: string;
+  /** Libellés des tons. Surchargeables si le client change de vocabulaire. */
+  libellesTon?: Record<string, string>;
+  class?: string;
+}
+
+const {
+  ecole,
+  annonces,
+  annonce,
+  ctx,
+  aujourdhui = new Date().toISOString().slice(0, 10),
+  libellesTon,
+  class: classe,
+} = Astro.props;
+
+const LIBELLES_TON: Record<string, string> = {
+  info: 'Info',
+  important: 'Important',
+  urgent: 'Urgent',
+  ...libellesTon,
+};
+
+const TONS = ['info', 'important', 'urgent'] as const;
+
+/**
+ * Épinglée, et pas encore périmée. Les dates ISO se comparent en texte.
+ *
+ * ⚠️ Le `.trim()` n'est pas cosmétique : `verifierAnnonces()` (src/lib/
+ * validation.ts) applique exactement ce prédicat pour refuser deux bandeaux
+ * épinglés en même temps. Sans lui, une annonce dont le message ne contient que
+ * des espaces échappait au contrôle de doublon, puis gagnait le tri par date et
+ * affichait un bandeau vide à la place de la vraie annonce.
+ */
+function estAffichable(a: AnnonceCms): boolean {
+  if (!a?.entry?.bandeau) return false;
+  if (!a.entry.message?.trim()) return false;
+  const fin = a.entry.dateFin;
+  return !fin || fin >= aujourdhui;
+}
+
+const candidates = annonce
+  ? [annonce].filter(estAffichable)
+  : [...(annonces ?? [])].filter(estAffichable).sort((a, b) => (b.entry.date ?? '').localeCompare(a.entry.date ?? ''));
+
+const choisie = candidates[0] ?? null;
+
+// Contexte de secours : l'assembleur devrait passer `ctx`, mais un bandeau ne
+// doit pas faire échouer une page pour un raccourci de contact non résolu.
+const contexte: ContexteRaccourcis = ctx ?? contexteDe(ecole.fiche, { nbArmes: 0, nbProfs: 0 });
+
+const ton = choisie && TONS.includes(choisie.entry.ton as (typeof TONS)[number]) ? choisie.entry.ton! : 'info';
+const libelleTon = LIBELLES_TON[ton] ?? LIBELLES_TON.info!;
+
+const source = choisie ? `l’annonce « ${choisie.entry.titre ?? choisie.slug ?? '?'} »` : 'une annonce';
+const message = choisie ? resoudre(choisie.entry.message, contexte, source) : '';
+
+const cible = choisie?.entry.lien?.url ?? '';
+const urlLien = cible ? lien(ecole, cible) : '';
+const libelleLien = choisie?.entry.lien?.libelle?.trim() || 'En savoir plus';
+---
+
+{
+  choisie && (
+    <aside
+      class:list={['bandeau', `bandeau--${ton}`, classe]}
+      aria-label={`Annonce du club — ${libelleTon}`}
+      data-bandeau-annonce
+    >
+      <div class="bandeau__interieur gouttiere">
+        <Eyebrow
+          class="bandeau__ton"
+          texte={libelleTon}
+          marque="diamant"
+          taille="petite"
+          lettrage="serre"
+        />
+        <p class="bandeau__message">{message}</p>
+        {urlLien && (
+          <TextLink
+            class="bandeau__lien"
+            libelle={libelleLien}
+            href={urlLien}
+            externe={estExterne(urlLien)}
+          />
+        )}
+      </div>
+    </aside>
+  )
+}
+
+<style>
+  /*
+   * Pas de `z-index` : le bandeau défile, l'en-tête colle. Dès qu'on descend,
+   * la barre doit passer PAR-DESSUS le bandeau qui s'en va — c'est l'ordre de
+   * peinture naturel (l'en-tête est positionné, avec z-index 50).
+   */
+  .bandeau {
+    position: relative;
+    border-bottom: var(--filet);
+    background: var(--bandeau-fond);
+    color: var(--parch-soft);
+  }
+
+  .bandeau--info {
+    --bandeau-fond: var(--ember-tint-3);
+  }
+
+  .bandeau--important {
+    --bandeau-fond: var(--ember-tint-5);
+  }
+
+  .bandeau--urgent {
+    --bandeau-fond: var(--ember-tint-8);
+    border-bottom-color: var(--ember-border);
+  }
+
+  /* Une seule ligne en desktop, un empilement en mobile — jamais de troncature :
+     un message qui disparaît est pire qu'un bandeau sur deux lignes. */
+  .bandeau__interieur {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px clamp(12px, 9.771px + 0.5714vw, 18px);
+    padding-block: clamp(9px, 8.257px + 0.1905vw, 11px);
+  }
+
+  /* `Eyebrow` et `TextLink` sont des composants : leurs nœuds échappent au
+     scope, d'où `:global` sous un ancêtre, lui, scopé (convention MediaCard). */
+  .bandeau__interieur :global(.bandeau__ton) {
+    flex: none;
+    /* L'aplomb du losange avec la ligne de texte, pas avec la ligne de base. */
+    align-self: center;
+    color: var(--ember);
+  }
+
+  .bandeau__message {
+    flex: 1 1 16ch;
+    min-width: 0;
+    margin: 0;
+    font-size: var(--fs-body-xxs);
+    line-height: var(--lh-body-tight);
+    color: var(--parch-soft);
+  }
+
+  .bandeau__interieur :global(.bandeau__lien) {
+    flex: none;
+    align-self: center;
+  }
+
+  /* Sous 820 px le sur-titre et le lien encadrent le message : le ton se lit en
+     premier, l'action reste atteignable au pouce. */
+  @media (max-width: 819px) {
+    .bandeau__interieur {
+      align-items: flex-start;
+      gap: 4px 12px;
+    }
+
+    .bandeau__message {
+      flex-basis: 100%;
+    }
+  }
+</style>

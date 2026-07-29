@@ -1,0 +1,148 @@
+---
+/**
+ * Lien texte fléché — `DÉCOUVRIR L'ARME →`.
+ *
+ * Huit occurrences dans la maquette (design-spec §9.6) : libellé en capitales
+ * `$eyebrow` graisse 600, interlettrage serré, suivi d'une flèche de la même
+ * couleur. Aucun soulignement : c'est la flèche qui signale le lien.
+ *
+ * Sans `href`, le composant rend un `<span>`. C'est le cas courant à
+ * l'intérieur d'une carte entièrement cliquable (`MediaCard`, `ProfCard`) :
+ * le lien réel est porté par la carte, et imbriquer un `<a>` dans un `<a>`
+ * est invalide.
+ *
+ * Exemples :
+ *   <TextLink libelle="Découvrir l'arme" href={lienArme(ecole, 'epee-longue')} />
+ *   <TextLink libelle="Suivre sur Facebook" href={url} externe />
+ *   <TextLink libelle="Lire l'interview" />        {sans href, dans une carte}
+ */
+import Icon from './Icon.astro';
+import type { NomIcone } from './icones';
+
+interface Props {
+  /** Libellé. Écrit normalement : la CSS pose les capitales. */
+  libelle?: string;
+  /** Cible. Absente ⇒ `<span>` décoratif dans un parent déjà cliquable. */
+  href?: string | undefined;
+  /** Icône de fin. `null` pour aucune. Défaut : `arrow-right`. */
+  icone?: NomIcone | null;
+  /** Lien sortant : nouvel onglet, `arrow-up-right`, mention pour lecteur d'écran. */
+  externe?: boolean;
+  /** Couleur au repos. Défaut `parch`. */
+  ton?: 'parch' | 'ember' | 'soft' | 'mute';
+  /** `normale` = 9.5→10.5 px. `petite` pour les liens de carte mobile. */
+  taille?: 'normale' | 'petite';
+  class?: string;
+  [attribut: `data-${string}`]: string | number | boolean | undefined;
+  [attribut: `aria-${string}`]: string | number | boolean | undefined;
+}
+
+const {
+  libelle,
+  href,
+  icone = 'arrow-right',
+  externe = false,
+  ton = 'parch',
+  taille = 'normale',
+  class: classe,
+  ...reste
+} = Astro.props;
+
+const glyphe: NomIcone | null = icone === null ? null : externe ? 'arrow-up-right' : icone;
+const Balise = href ? 'a' : 'span';
+---
+
+<Balise
+  class:list={['lien-texte', `lien-texte--${ton}`, `lien-texte--${taille}`, classe]}
+  href={href}
+  target={externe && href ? '_blank' : undefined}
+  rel={externe && href ? 'noopener noreferrer' : undefined}
+  {...reste}
+><span class="lien-texte__libelle"><slot>{libelle}</slot>{externe && <span class="hors-ecran"> (nouvel onglet)</span>}</span>{glyphe && <span class="lien-texte__fleche"><Icon name={glyphe} /></span>}</Balise>
+
+<style>
+  .lien-texte {
+    display: inline-flex;
+    align-items: center;
+    gap: clamp(8px, 7.257px + 0.1905vw, 10px);
+    color: var(--lien-couleur-survol, var(--lien-couleur));
+    font-family: var(--font-eyebrow);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .lien-texte--normale {
+    font-size: var(--fs-eyebrow-s);
+  }
+
+  .lien-texte--petite {
+    font-size: var(--fs-body-xxs);
+  }
+
+  .lien-texte--parch {
+    --lien-couleur: var(--parch);
+  }
+
+  .lien-texte--ember {
+    --lien-couleur: var(--ember);
+  }
+
+  .lien-texte--soft {
+    --lien-couleur: var(--parch-soft);
+  }
+
+  .lien-texte--mute {
+    --lien-couleur: var(--parch-mute);
+  }
+
+  /* Ancre la mention « (nouvel onglet) » masquée. */
+  .lien-texte__libelle {
+    position: relative;
+  }
+
+  .lien-texte__fleche {
+    display: inline-flex;
+    flex: none;
+    --icone-cote: 11px;
+    transform: translateX(var(--lien-decalage, 0));
+    transition: transform var(--transition);
+  }
+
+  /*
+   * Survol. Deux cas :
+   *   1. le lien est un `<a>` — il réagit à son propre `:hover` ;
+   *   2. le lien est un `<span>` dans une carte cliquable — la carte pose
+   *      `--lien-couleur-survol` et `--lien-decalage` sur son propre `:hover`,
+   *      les propriétés personnalisées héritant jusqu'ici. Convention à
+   *      respecter par MediaCard / ProfCard :
+   *
+   *      .carte:hover { --lien-couleur-survol: var(--ember-hot); --lien-decalage: 3px; }
+   */
+  a.lien-texte:hover,
+  a.lien-texte:focus-visible {
+    --lien-couleur-survol: var(--ember-hot);
+    --lien-decalage: 3px;
+  }
+
+  .hors-ecran {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lien-texte__fleche {
+      transform: none;
+    }
+  }
+</style>

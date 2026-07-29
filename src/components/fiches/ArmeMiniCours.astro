@@ -1,0 +1,146 @@
+---
+/**
+ * Bloc « Le mini-cours » de la fiche arme — design-spec §5.1 (bloc 3), §5.3, §5.4.
+ *
+ * En-tête sous filet (`LE MINI-COURS` ember ◆ `EXTRAITS · NIVEAU DÉBUTANT`),
+ * puis les vignettes vidéo : trois colonnes de 426,7 px en desktop, une pile de
+ * cartes 346×195 en mobile.
+ *
+ * **Masqué proprement tant qu'il est vide.** ARCHITECTURE.md §1 : le club n'a
+ * rien tourné à ce jour, les leçons sont un tableau vide dans le CMS. Le bloc
+ * ne rend alors strictement rien — pas de titre orphelin, pas d'emplacement
+ * « à venir ». Une leçon compte dès qu'elle a une vidéo **ou** une vignette :
+ * `VideoCard` sait afficher une vignette sans lecteur.
+ */
+import Icon from '../ui/Icon.astro';
+import Reveal from '../ui/Reveal.astro';
+import VideoCard from '../ui/VideoCard.astro';
+import { resoudrePhoto } from '../../lib/images';
+
+export interface Lecon {
+  titre?: string | null;
+  sousTitre?: string | null;
+  duree?: string | null;
+  video?: string | null;
+  vignette?: string | null;
+}
+
+export interface Props {
+  lecons?: readonly Lecon[] | null;
+  /** Ancre visée par le bouton « Voir le mini-cours » du hero. */
+  id?: string;
+  /** Libellé ember de l'en-tête. */
+  libelle?: string;
+  /** Précision à droite du losange. */
+  precision?: string;
+}
+
+const {
+  lecons = [],
+  id = 'mini-cours',
+  libelle = 'Le mini-cours',
+  precision = 'Extraits · niveau débutant',
+} = Astro.props;
+
+const cartes = (lecons ?? [])
+  .filter((l) => Boolean(l?.video || l?.vignette))
+  .map((l) => ({
+    titre: l.titre ?? '',
+    sousTitre: l.sousTitre ?? '',
+    duree: l.duree ?? '',
+    video: l.video ?? '',
+    image: resoudrePhoto(l.vignette),
+  }));
+
+const idTitre = `${id}-titre`;
+---
+
+{
+  cartes.length > 0 && (
+    <section class="mini-cours" id={id} aria-labelledby={idTitre}>
+      <div class="gouttiere">
+        <h2 class="mini-cours__tete" id={idTitre}>
+          <span class="mini-cours__libelle">{libelle}</span>
+          <span class="mini-cours__diamant">
+            <Icon name="diamond" />
+          </span>
+          {precision && <span class="mini-cours__precision">{precision}</span>}
+        </h2>
+
+        <div class="mini-cours__grille">
+          {cartes.map((carte, index) => (
+            <Reveal delai={index * 80}>
+              <VideoCard
+                url={carte.video}
+                image={carte.image}
+                alt={carte.titre}
+                duree={carte.duree}
+                titre={carte.titre}
+                sousTitre={carte.sousTitre}
+                taille="m"
+                ratio="427 / 250"
+                rayon={3}
+                sizes="(min-width: 820px) 33vw, 92vw"
+              />
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .mini-cours {
+    padding-bottom: clamp(36px, 13.714px + 5.714vw, 96px);
+    scroll-margin-top: 96px;
+  }
+
+  .mini-cours__tete {
+    display: flex;
+    align-items: center;
+    gap: clamp(10px, 9.257px + 0.1905vw, 12px);
+    margin: 0;
+    padding-bottom: clamp(16px, 13.771px + 0.5714vw, 22px);
+    border-bottom: var(--filet);
+    font-family: var(--font-eyebrow);
+    font-size: clamp(10px, 9.257px + 0.1905vw, 10.5px);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+  }
+
+  .mini-cours__libelle {
+    letter-spacing: 0.28em;
+    color: var(--ember);
+  }
+
+  .mini-cours__diamant {
+    /* `Icon.astro` se dimensionne par `--icone-cote` : son style scopé
+       l'emporterait sur un `:global(svg)` posé ici. */
+    --icone-cote: 6px;
+    display: inline-flex;
+    flex: none;
+    color: var(--ember);
+  }
+
+  .mini-cours__precision {
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    color: var(--parch-mute);
+  }
+
+  .mini-cours__grille {
+    display: grid;
+    grid-template-columns: 100%;
+    gap: 18px;
+    margin-top: clamp(20px, 10.343px + 2.476vw, 36px);
+  }
+
+  @media (min-width: 820px) {
+    .mini-cours__grille {
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+      gap: 24px;
+    }
+  }
+</style>

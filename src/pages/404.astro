@@ -1,0 +1,149 @@
+---
+/**
+ * Page 404 — toute URL qui ne correspond à aucune page du site.
+ *
+ * Page non maquettée (design-spec §10.2 : « aucune page annexe »), écrite dans
+ * le langage visuel établi et calquée sur `mentions-legales.astro` : fond
+ * `$ink`, sur-titre lettré, titre Cormorant à ligne accentuée, boutons.
+ *
+ * Pourquoi elle est indispensable : le site en remplace un autre, donc les
+ * liens entrants morts sont garantis (anciennes URL Facebook, résultats de
+ * moteur périmés, `/armes/epee-bocle/` — une discipline qui existe dans le
+ * catalogue mais n'est pas affichée). Sans ce fichier, l'adaptateur Cloudflare
+ * sert le gabarit de secours d'Astro : `<html lang="en">`, « 404: Not Found »,
+ * fond violet, aucun lien de retour.
+ *
+ * Astro force les pages de statut à la racine de la sortie même avec
+ * `build.format: 'directory'` : le fichier produit est bien `dist/client/404.html`,
+ * que `not_found_handling: "404-page"` (wrangler.jsonc) sert directement depuis
+ * les assets statiques, sans réveiller le Worker.
+ *
+ * `noIndex` : une page d'erreur n'a rien à faire dans un index.
+ */
+import Base from '../layouts/Base.astro';
+import Footer from '../components/sections/Footer.astro';
+import Nav from '../components/sections/Nav.astro';
+import TabBar from '../components/ui/TabBar.astro';
+import Button from '../components/ui/Button.astro';
+import Eyebrow from '../components/ui/Eyebrow.astro';
+import SectionTitle from '../components/ui/SectionTitle.astro';
+import type { NomIcone } from '../components/ui/icones';
+import { lireHero, lireIdentite, lireMenus } from '../lib/contenu';
+import { getEcolePrincipale } from '../lib/ecoles';
+import { lien } from '../lib/liens';
+
+const ecole = await getEcolePrincipale();
+const [identite, hero, menus] = await Promise.all([lireIdentite(), lireHero(), lireMenus()]);
+
+const onglets = (menus.barreMobile ?? []).map((entree) => ({
+  libelle: entree.libelle,
+  href: lien(ecole, entree.lien),
+  icone: entree.icone as NomIcone,
+  exergue: entree.icone === 'swords',
+}));
+
+const accueil = lien(ecole, '/');
+const armes = lien(ecole, '#disciplines');
+---
+
+<Base
+  ecole={ecole}
+  identite={identite}
+  titre="Page introuvable"
+  description="Cette page n’existe pas ou plus. Revenir à l’accueil du club."
+  noIndex
+>
+  {/* Page sans hero photographique : la barre garde son fond plein dès le
+      chargement, comme les autres pages annexes. */}
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+    fond="solide"
+  />
+
+  {/* La colonne est un enfant de la gouttière : `max-width` posé sur
+      `.gouttiere` (qui porte `margin-inline: auto`) centrait la page à 486 px
+      du bord, alors que la barre de navigation et le pied restent à 56 px. */}
+  <article class="erreur">
+    <div class="gouttiere">
+      <div class="erreur__interieur">
+        <Eyebrow texte="Erreur 404" />
+
+        <SectionTitle
+          lignes={[{ texte: 'Cette page' }, { texte: 'a rompu le fer.', accent: true }]}
+          taille="xl"
+          balise="h1"
+        />
+
+        <p class="erreur__texte lede">
+          L’adresse demandée n’existe pas, ou plus. Le reste du site, lui, est bien là.
+        </p>
+
+        {/* Une hiérarchie, pas deux boutons jumeaux : le retour à l'accueil est
+            l'action attendue d'un visiteur perdu, il porte donc la variante
+            pleine. Le défaut du composant est `contour` — ne rien passer ne
+            « laisse » pas le premier bouton plein. */}
+        <div class="erreur__actions">
+          <Button variante="pleine" libelle="Retour à l’accueil" href={accueil} />
+          <Button variante="contour" libelle="Voir les armes" href={armes} />
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient après le pied de
+        page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide du site" />
+  </Fragment>
+</Base>
+
+<style>
+  .erreur {
+    background: var(--ink);
+    padding-block: clamp(56px, 30px + 6.667vw, 128px) var(--esp-section-y-bas);
+  }
+
+  /* Colonne bornée mais calée à gauche sur la gouttière, comme les pages
+     légales et le reste du site. */
+  .erreur__interieur {
+    display: flex;
+    max-width: 58ch;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--esp-item);
+  }
+
+  .erreur__texte {
+    margin: 0;
+    color: var(--parch-soft);
+  }
+
+  .erreur__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: clamp(8px, 0.5rem + 0.6vw, 16px);
+  }
+
+  /*
+   * Sur les petits écrans, les deux boutons s'empilent : à largeurs propres
+   * ils dessinaient un escalier. Empilés, ils prennent toute la colonne — la
+   * règle de la maquette pour les boutons mobiles (design-spec §9.5).
+   */
+  @media (max-width: 479.98px) {
+    .erreur__actions {
+      flex-direction: column;
+      align-items: stretch;
+      align-self: stretch;
+    }
+
+    .erreur__actions :global(.bouton) {
+      width: 100%;
+    }
+  }
+</style>

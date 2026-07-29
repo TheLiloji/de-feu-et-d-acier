@@ -1,0 +1,95 @@
+---
+/**
+ * Icône SVG inline (bibliothèque lucide).
+ *
+ * Aucune dépendance npm, aucun sprite, aucune requête : le tracé est recopié
+ * dans `icones.ts` et écrit directement dans le HTML. L'icône hérite de la
+ * couleur du texte (`currentColor`), donc elle change de teinte avec son
+ * conteneur — c'est ce qui permet aux boutons, liens fléchés et pastilles de
+ * n'avoir qu'une seule règle de couleur.
+ *
+ * Décoration par défaut : `aria-hidden`. Une icône n'est annoncée que si on lui
+ * donne un `title` — c'est-à-dire si elle porte de l'information qu'aucun texte
+ * voisin ne porte déjà (bouton rond sans libellé, par exemple).
+ *
+ * Exemples :
+ *   <Icon name="arrow-right" size={11} />
+ *   <Icon name="diamond" size={8} />           — plein (cf. REMPLIES_PAR_DEFAUT)
+ *   <Icon name="menu" size={24} title="Ouvrir le menu" />
+ */
+import { ICONES, NOMS_ICONES, REMPLIES_PAR_DEFAUT, type NomIcone } from './icones';
+
+interface Props {
+  /** Nom lucide du glyphe (cf. `icones.ts`). */
+  name: NomIcone;
+  /** Côté du carré, en px si numérique. Défaut : 16. */
+  size?: number | string;
+  /** Alias français de `size` (les deux sont acceptés). */
+  taille?: number | string;
+  /** Force l'aplat (`fill`) ou le tracé (`stroke`). Défaut : cf. catalogue. */
+  filled?: boolean;
+  /** Épaisseur du tracé, en unités du viewBox 24×24. Défaut : 2 (lucide). */
+  strokeWidth?: number;
+  /** Nom accessible. Absent ⇒ icône purement décorative (`aria-hidden`). */
+  title?: string;
+  class?: string;
+  [attribut: `data-${string}`]: string | number | boolean | undefined;
+}
+
+const {
+  name,
+  size,
+  taille,
+  filled,
+  strokeWidth = 2,
+  title,
+  class: classe,
+  ...reste
+} = Astro.props;
+
+const tracé = ICONES[name];
+if (!tracé) {
+  throw new Error(
+    `Icon.astro : icône « ${String(name)} » absente du catalogue. ` +
+      `Disponibles : ${NOMS_ICONES.join(', ')}. ` +
+      `Pour en ajouter une, copier son tracé lucide dans src/components/ui/icones.ts.`,
+  );
+}
+
+// Sans `size`, aucun style en ligne : la taille vient de `--icone-cote` (16 px
+// par défaut). Un parent peut donc dimensionner l'icône en CSS — c'est ce qui
+// permet aux losanges et aux flèches de suivre une valeur fluide en `clamp()`
+// sans que chaque appelant recalcule des pixels.
+const dimension = size ?? taille;
+const cote = typeof dimension === 'number' ? `${dimension}px` : dimension;
+const pleine = filled ?? REMPLIES_PAR_DEFAUT.has(name);
+---
+
+<svg
+  class:list={['icone', classe]}
+  style={cote ? `--icone-cote:${cote}` : undefined}
+  viewBox="0 0 24 24"
+  fill={pleine ? 'currentColor' : 'none'}
+  stroke={pleine ? 'none' : 'currentColor'}
+  stroke-width={pleine ? undefined : strokeWidth}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  role={title ? 'img' : undefined}
+  aria-hidden={title ? undefined : 'true'}
+  focusable="false"
+  {...reste}
+>
+  {title && <title>{title}</title>}
+  <Fragment set:html={tracé} />
+</svg>
+
+<style>
+  .icone {
+    display: inline-block;
+    flex: none;
+    width: var(--icone-cote, 16px);
+    height: var(--icone-cote, 16px);
+    vertical-align: middle;
+    overflow: visible;
+  }
+</style>

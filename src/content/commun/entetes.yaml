@@ -1,0 +1,43 @@
+actualites:
+  eyebrow: Actualités
+  titreLigne1: Ce qui
+  titreLigne2: se passe en ce moment.
+  lede: ''
+disciplines:
+  eyebrow: Les disciplines
+  titreLigne1: '{nb_armes} armes,'
+  titreLigne2: '{nb_armes} grammaires.'
+  lede: >-
+    On peut tout pratiquer, on peut se spécialiser. Chaque arme ouvre une école
+    de pensée et un répertoire technique distincts, étalés sur plusieurs siècles.
+profs:
+  eyebrow: Les profs
+  titreLigne1: '{nb_profs} encadrants,'
+  titreLigne2: '{nb_profs} écoles.'
+  lede: >-
+    Chaque arme a son référent. Tous transmettent à leur rythme, avec une
+    pédagogie qui leur est propre et qui est issue d'une longue expérience de
+    pratiquant, ainsi que de nombreuses heures de lecture des sources.
+galerie:
+  eyebrow: Galerie
+  titreLigne1: Quelques
+  titreLigne2: images de salle.
+  lede: ''
+faq:
+  eyebrow: Questions fréquentes
+  titreLigne1: Tout ce qu'on
+  titreLigne2: nous demande.
+  lede: >-
+    Les questions qu'on entend le plus souvent au premier contact. Si la vôtre
+    n'y est pas, écrivez-nous à {email} — on répond.
+partenaires:
+  eyebrow: Partenaires
+  titreLigne1: Sans eux,
+  titreLigne2: rien de tout ça.
+  lede: >-
+    Un club n'existe pas tout seul. Il existe parce qu'une fédération porte la
+    discipline au niveau national, parce que des artisans fabriquent du matériel
+    pensé pour cette pratique, et parce que ces gens-là partagent la même
+    exigence que nous. Les trois ci-dessous, on ne se contente pas de les
+    mentionner — on les recommande, on travaille avec eux, et on t'invite à
+    aller voir.

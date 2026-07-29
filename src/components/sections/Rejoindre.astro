@@ -1,0 +1,453 @@
+---
+/**
+ * Section « Nous rejoindre » — design-spec §3.6 (desktop) et §4.6 (mobile).
+ *
+ * La section la plus dense de l'accueil : elle empile cinq blocs.
+ *
+ *   1. label numéroté + titre sur deux lignes
+ *   2. bloc `PRATIQUE` — lieu et contact (délégué à `LieuContact`)
+ *   3. bloc `CRÉNEAUX HEBDOMADAIRES` — le vrai tableau (`ScheduleTable`)
+ *   4. pilier `01 · Viens essayer` — accroche, texte, photo du lieu, itinéraire
+ *   5. pilier `02 · Pour continuer` — accroche, texte, bouton d'adhésion
+ *
+ * Deux corrections assumées par rapport à la maquette :
+ *
+ *   - les étiquettes de pilier y sont doublées (« 01 · 01 · VIENS ESSAYER ») ;
+ *     c'est une coquille, on écrit « 01 · Viens essayer » ;
+ *   - la version mobile de la maquette remplaçait le tableau des créneaux par
+ *     quatre lignes condensées. ARCHITECTURE.md §5 impose la parité de contenu :
+ *     le mobile **compacte** (le tableau devient une pile de blocs, les lignes
+ *     de faits prennent leur pastille d'icône, les boutons s'étirent) mais ne
+ *     supprime rien.
+ *
+ * Aucun texte n'est écrit en dur : tout vient de `src/content/commun/rejoindre.yaml`
+ * et de la fiche école, raccourcis (`{essai}`, `{tarif}`, `{email}`…) résolus au
+ * build. Les seuls libellés portés par le code sont structurels — « Lieu »,
+ * « Contact », les jours abrégés, les niveaux — parce qu'aucun champ du CMS ne
+ * les porte.
+ *
+ * Exemple :
+ *   <Rejoindre ecole={ecole} contenu={rejoindre} disciplines={disciplines}
+ *              ctx={ctx} num={6} />
+ */
+import Button from '../ui/Button.astro';
+import ScheduleTable from '../ui/ScheduleTable.astro';
+import SectionLabel from '../ui/SectionLabel.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import Reveal from '../ui/Reveal.astro';
+import LieuContact from './LieuContact.astro';
+import type { Ecole } from '../../lib/ecoles';
+import { estExterne, lien } from '../../lib/liens';
+import {
+  contexteDe,
+  lienTelephone,
+  resoudre,
+  resoudreListe,
+  type ContexteRaccourcis,
+} from '../../lib/raccourcis';
+
+/** Un des deux piliers du singleton « Accueil · Nous rejoindre ». */
+interface BlocRejoindre {
+  eyebrow?: string | null;
+  titre?: string | null;
+  paragraphes?: readonly (string | null | undefined)[] | null;
+  bouton?: { libelle?: string | null; url?: string | null } | null;
+}
+
+/** Forme attendue de `lireRejoindre()` (src/content/commun/rejoindre.yaml). */
+export interface ContenuRejoindre {
+  eyebrow?: string | null;
+  titreLigne1?: string | null;
+  titreLigne2?: string | null;
+  blocEssai?: BlocRejoindre | null;
+  blocAdhesion?: BlocRejoindre | null;
+  note?: string | null;
+}
+
+export interface Props {
+  /** École rendue : créneaux, lieu, contact, tarif, liens. */
+  ecole: Ecole;
+  /** Singleton « Accueil · Nous rejoindre », déjà lu par la page. */
+  contenu: ContenuRejoindre;
+  /**
+   * Catalogue des disciplines (`lireDisciplines()`), pour nommer les armes des
+   * créneaux. Absent, on retombe sur une lecture du slug — donc sans accent.
+   */
+  disciplines?: readonly { slug: string; entry: { nom?: string } }[];
+  /**
+   * Contexte de raccourcis de la page. L'assembleur le calcule une fois (lui
+   * seul connaît le nombre d'armes et d'encadrants affichés). À défaut, un
+   * contexte minimal est reconstruit ici — suffisant pour `{essai}`, `{tarif}`,
+   * `{email}` et `{telephone}`, les seuls que cette section emploie.
+   */
+  ctx?: ContexteRaccourcis;
+  /** Rang de section. Absent ⇒ numérotation automatique ; `false` ⇒ aucun numéro. */
+  num?: number | string | false;
+  /** Fond alterné. La maquette place « Nous rejoindre » sur `$coal`. */
+  fond?: 'ink' | 'coal';
+  /** Filet supérieur. À mettre à `false` après une section de même fond. */
+  filetHaut?: boolean;
+  /** Ancre de la section. Doit rester `rejoindre` (cf. `menus.yaml`). */
+  id?: string;
+  class?: string;
+}
+
+const {
+  ecole,
+  contenu,
+  disciplines,
+  ctx: ctxFourni,
+  num,
+  fond = 'coal',
+  filetHaut = true,
+  id = 'rejoindre',
+  class: classe,
+} = Astro.props;
+
+// Les champs de cette section n'emploient ni {nb_armes} ni {nb_profs} : un
+// contexte de secours reconstruit depuis la fiche école suffit. Les deux
+// raccourcis calculés y restent vides à dessein — seul l'assembleur sait
+// combien d'armes et d'encadrants sont réellement affichés, et un « zéro »
+// inventé serait pire qu'une erreur de build (ARCHITECTURE §7).
+const ctx: ContexteRaccourcis = ctxFourni ?? {
+  ...contexteDe(ecole.fiche, { nbArmes: 0, nbProfs: 0 }),
+  nb_armes: '',
+  nb_profs: '',
+};
+
+const SOURCE = 'src/content/commun/rejoindre.yaml';
+
+// ── En-tête ────────────────────────────────────────────────────────────────
+
+const eyebrow = contenu.eyebrow?.trim() || 'Nous rejoindre';
+const titreLigne1 = resoudre(contenu.titreLigne1, ctx, `${SOURCE} (titre — ligne 1)`);
+const titreLigne2 = resoudre(contenu.titreLigne2, ctx, `${SOURCE} (titre — ligne 2)`);
+
+// Ligne 1 en parchemin, ligne 2 en ember italique : le motif de design-spec §9.3.
+const lignesTitre: { texte: string; accent?: boolean }[] = [];
+if (titreLigne1) lignesTitre.push({ texte: titreLigne1 });
+if (titreLigne2) lignesTitre.push({ texte: titreLigne2, accent: true });
+
+const idTitre = `${id}-titre`;
+
+// ── Créneaux ───────────────────────────────────────────────────────────────
+
+const JOURS_ABREGES: Record<string, string> = {
+  lundi: 'Lun',
+  mardi: 'Mar',
+  mercredi: 'Mer',
+  jeudi: 'Jeu',
+  vendredi: 'Ven',
+  samedi: 'Sam',
+  dimanche: 'Dim',
+};
+
+const NIVEAUX: Record<string, string> = {
+  tous: 'Tous niveaux',
+  debutants: 'Débutants',
+  confirmes: 'Confirmés',
+  libre: 'Sans encadrant',
+};
+
+/** « 18:00 » → « 18h00 », la forme de la maquette (colonne HORAIRE). */
+const heure = (valeur?: string | null) => (valeur ? valeur.replace(':', 'h') : '');
+
+const nomsArmes = new Map<string, string>();
+for (const discipline of disciplines ?? []) {
+  const nom = discipline.entry?.nom;
+  if (typeof nom === 'string' && nom.trim()) nomsArmes.set(discipline.slug, nom.trim());
+}
+
+/** Faute de catalogue, le slug reste lisible — sans accent, mais lisible. */
+const nomArme = (slug: string) => nomsArmes.get(slug) ?? slug.replace(/-/g, ' ');
+
+/** « Épée longue · rapière · messer » : seule la première garde sa capitale. */
+const enumererArmes = (armes: readonly string[]) =>
+  armes
+    .map((slug, index) => {
+      const nom = nomArme(slug);
+      return index === 0 ? nom : nom.charAt(0).toLocaleLowerCase('fr-FR') + nom.slice(1);
+    })
+    .join(' · ');
+
+const creneaux = (ecole.fiche.creneaux ?? []).map((creneau) => ({
+  jour: JOURS_ABREGES[creneau.jour] ?? creneau.jour,
+  horaire: [heure(creneau.heureDebut), heure(creneau.heureFin)].filter(Boolean).join(' — '),
+  // L'intitulé libre prime sur la liste d'armes (« Pratique libre »).
+  discipline: creneau.intitule?.trim() || enumererArmes(creneau.armes ?? []),
+  niveau: NIVEAUX[creneau.niveau] ?? creneau.niveau,
+}));
+
+const ville = ecole.fiche.lieu?.ville || ecole.fiche.ville || ecole.ville;
+
+// ── Piliers ────────────────────────────────────────────────────────────────
+
+/** « 01 · Viens essayer » — la maquette double le numéro, pas nous. */
+const etiquette = (rang: number, libelle: string) =>
+  `${String(rang).padStart(2, '0')} · ${libelle}`;
+
+const essai = contenu.blocEssai;
+const adhesion = contenu.blocAdhesion;
+
+const essaiEtiquette = etiquette(1, essai?.eyebrow?.trim() || 'Viens essayer');
+const essaiTitre = resoudre(essai?.titre, ctx, `${SOURCE} (bloc 01 — titre)`);
+const essaiParagraphes = resoudreListe(essai?.paragraphes, ctx, `${SOURCE} (bloc 01)`);
+
+const adhesionEtiquette = etiquette(2, adhesion?.eyebrow?.trim() || 'Pour continuer');
+const adhesionTitre = resoudre(adhesion?.titre, ctx, `${SOURCE} (bloc 02 — titre)`);
+const adhesionParagraphes = resoudreListe(adhesion?.paragraphes, ctx, `${SOURCE} (bloc 02)`);
+
+// Bouton du pilier 01 : celui du CMS s'il est renseigné, sinon l'itinéraire —
+// c'est `LieuContact` qui applique ce repli, on lui passe la saisie telle quelle.
+const boutonEssai = {
+  libelle: essai?.bouton?.libelle ?? '',
+  url: essai?.bouton?.url ?? '',
+};
+
+// Bouton du pilier 02 : celui du CMS, sinon le lien d'adhésion de l'école.
+// `lien()` laisse une URL externe intacte et préfixe une cible interne par la
+// racine de l'école (multi-ecoles.md, invariant 5).
+const urlAdhesion =
+  adhesion?.bouton?.url?.trim() || ecole.fiche.adhesion?.lienInscription?.trim() || '';
+const boutonAdhesion = {
+  libelle: adhesion?.bouton?.libelle?.trim() || 'Adhérer · HelloAsso',
+  url: lien(ecole, urlAdhesion),
+};
+
+// ── Note de bas de section ─────────────────────────────────────────────────
+// Le texte est saisi en clair (« … écris-nous à {email} … ») : on le rend
+// cliquable après coup, après échappement, plutôt que d'exiger du HTML du CMS.
+
+const email = ecole.fiche.contact?.email ?? '';
+const telephone = ecole.fiche.contact?.telephone ?? '';
+
+const echapper = (texte: string) =>
+  texte
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+function rendreCliquable(texte: string): string {
+  let html = echapper(texte);
+  if (email) {
+    const cible = echapper(email);
+    html = html.split(cible).join(`<a href="mailto:${cible}">${cible}</a>`);
+  }
+  if (telephone) {
+    const cible = echapper(telephone);
+    html = html.split(cible).join(`<a href="${echapper(lienTelephone(telephone))}">${cible}</a>`);
+  }
+  return html;
+}
+
+const note = resoudre(contenu.note, ctx, `${SOURCE} (note)`);
+const noteHtml = note ? rendreCliquable(note) : '';
+---
+
+<section
+  id={id}
+  class:list={[
+    'section',
+    `section--${fond}`,
+    { 'section--sans-filet': !filetHaut },
+    'rejoindre',
+    classe,
+  ]}
+  aria-labelledby={lignesTitre.length > 0 ? idTitre : undefined}
+  aria-label={lignesTitre.length > 0 ? undefined : 'Nous rejoindre'}
+>
+  <div class="gouttiere">
+    <SectionLabel libelle={eyebrow} numero={num} />
+
+    {
+      lignesTitre.length > 0 && (
+        <SectionTitle id={idTitre} lignes={lignesTitre} taille="l" class="rejoindre__titre" />
+      )
+    }
+
+    <LieuContact ecole={ecole} variante="faits" class="rejoindre__pratique" />
+
+    <div class="rejoindre__creneaux" id="creneaux">
+      <ScheduleTable
+        creneaux={creneaux}
+        legende={`Créneaux hebdomadaires — ${ville}`}
+        texteVide="Les créneaux de la saison sont en cours de calage. Écris-nous, on te dit tout."
+      />
+    </div>
+
+    <div class="rejoindre__piliers">
+      <Reveal as="article" class="pilier">
+        <p class="pilier__etiquette">{essaiEtiquette}</p>
+
+        <div class="pilier__contenu">
+          {
+            essaiTitre && (
+              <SectionTitle
+                texte={essaiTitre}
+                taille="m"
+                disposition="inline"
+                balise="h3"
+                class="pilier__accroche"
+              />
+            )
+          }
+
+          {essaiParagraphes.map((paragraphe) => <p class="pilier__para">{paragraphe}</p>)}
+
+          <LieuContact ecole={ecole} variante="visuel" bouton={boutonEssai} class="pilier__lieu" />
+        </div>
+      </Reveal>
+
+      <Reveal as="article" class="pilier" delai={90}>
+        <p class="pilier__etiquette">{adhesionEtiquette}</p>
+
+        <div class="pilier__contenu">
+          {
+            adhesionTitre && (
+              <SectionTitle
+                texte={adhesionTitre}
+                taille="m"
+                disposition="inline"
+                balise="h3"
+                class="pilier__accroche"
+              />
+            )
+          }
+
+          {adhesionParagraphes.map((paragraphe) => <p class="pilier__para">{paragraphe}</p>)}
+
+          {
+            boutonAdhesion.url && (
+              <Button
+                class="pilier__bouton"
+                variante="pleine"
+                taille="petite"
+                libelle={boutonAdhesion.libelle}
+                href={boutonAdhesion.url}
+                externe={estExterne(boutonAdhesion.url)}
+              />
+            )
+          }
+        </div>
+      </Reveal>
+    </div>
+
+    {noteHtml && <p class="rejoindre__note" set:html={noteHtml} />}
+  </div>
+</section>
+
+<style>
+  /* `esp 56` de la maquette, interpolé 390 → 1440 (28 px en mobile). */
+  .rejoindre {
+    --esp-rejoindre: clamp(28px, 17.6px + 2.6667vw, 56px);
+  }
+
+  /* Les deux `esp 56` de la maquette (label → titre, titre → bloc PRATIQUE).
+     Le sélecteur est descendant à dessein : posée seule, `.rejoindre__titre`
+     pèse autant que le `.titre-section { margin: 0 }` de `SectionTitle`, qui
+     arrive plus loin dans la feuille et l'emportait. Passer par `.rejoindre`
+     ajoute le poids qui manquait sans recourir à `!important`. */
+  .rejoindre .rejoindre__titre,
+  .rejoindre .rejoindre__pratique {
+    margin-top: var(--esp-rejoindre);
+  }
+
+  /* `esp 24` entre le bloc PRATIQUE et le sur-titre des créneaux. */
+  .rejoindre__creneaux {
+    margin-top: clamp(18px, 15.771px + 0.5714vw, 24px);
+    scroll-margin-top: 96px;
+  }
+
+  /* `esp 40`, puis le filet haut du groupe de piliers. */
+  .rejoindre__piliers {
+    margin-top: clamp(26px, 20.8px + 1.3333vw, 40px);
+    border-top: var(--filet);
+  }
+
+  .pilier {
+    display: grid;
+    gap: 14px;
+    padding-block: clamp(28px, 20.571px + 1.9048vw, 48px) clamp(26px, 19.314px + 1.7143vw, 44px);
+    border-bottom: var(--filet);
+  }
+
+  .pilier__etiquette {
+    margin: 0;
+    color: var(--parch-mute);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow);
+    font-weight: 500;
+    line-height: var(--lh-body-tight);
+    letter-spacing: var(--ls-eyebrow);
+    text-transform: uppercase;
+  }
+
+  .pilier__contenu {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  /* L'accroche se replie librement, mais pas sur toute la largeur d'un 1440 :
+     au-delà, l'œil perd la ligne entre deux fragments de 42 px. */
+  .pilier__accroche {
+    max-width: 900px;
+  }
+
+  .pilier__para {
+    max-width: 760px;
+    color: var(--parch-soft);
+    font-size: var(--fs-body);
+    line-height: 1.6;
+  }
+
+  /* `esp 8` puis `esp 16` de la maquette, en plus du `gap: 10` de la colonne. */
+  .pilier__lieu {
+    align-self: stretch;
+    margin-top: 8px;
+  }
+
+  .pilier__bouton {
+    margin-top: 6px;
+  }
+
+  .rejoindre__note {
+    max-width: 760px;
+    margin-top: var(--esp-item);
+    color: var(--parch-mute);
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+  }
+
+  .rejoindre__note :global(a) {
+    color: var(--parch);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+  }
+
+  .rejoindre__note :global(a:hover),
+  .rejoindre__note :global(a:focus-visible) {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  /* Sous 820 px : les boutons prennent la largeur, comme dans la maquette
+     mobile — le reste du contenu ne bouge pas, il se resserre. */
+  @media (max-width: 819.98px) {
+    .pilier__bouton {
+      display: flex;
+      width: 100%;
+    }
+  }
+
+  /* Desktop : l'étiquette de pilier passe en colonne bloquée à 220 px. */
+  @media (min-width: 820px) {
+    .pilier {
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 56px;
+    }
+  }
+</style>

@@ -1,0 +1,240 @@
+---
+/**
+ * Politique de confidentialité — `/confidentialite/`.
+ *
+ * Page non maquettée (design-spec §10.2), écrite dans le même gabarit sobre
+ * que les mentions légales : sur-titre lettré, titre Cormorant à ligne
+ * accentuée, colonne de lecture bornée, filets de 1 px.
+ *
+ * Le texte vient du singleton « Mentions légales & confidentialité », rubrique
+ * RGPD. Il tient en peu de lignes parce que le site le mérite : aucun cookie,
+ * aucune mesure d'audience, aucune donnée stockée côté serveur — la carte du
+ * lieu est une image statique et non une iframe, précisément pour tenir cette
+ * promesse (ARCHITECTURE.md §6). L'adresse à laquelle exercer ses droits est
+ * un raccourci `{email}` résolu depuis la fiche école : un seul contact sur
+ * tout le site, mentions comprises.
+ */
+import Base from '../layouts/Base.astro';
+import Footer from '../components/sections/Footer.astro';
+import Nav from '../components/sections/Nav.astro';
+import Eyebrow from '../components/ui/Eyebrow.astro';
+import SectionTitle from '../components/ui/SectionTitle.astro';
+import TabBar from '../components/ui/TabBar.astro';
+import TextLink from '../components/ui/TextLink.astro';
+import Icon from '../components/ui/Icon.astro';
+import { estNomIcone } from '../components/ui/icones';
+import { getEcolePrincipale } from '../lib/ecoles';
+import {
+  lireHero,
+  lireIdentite,
+  lireLegal,
+  lireMenus,
+  lireDisciplines,
+  profsDe,
+} from '../lib/contenu';
+import { contexteDe, resoudre, resoudreListe } from '../lib/raccourcis';
+import { lien } from '../lib/liens';
+
+/** Adresse de cette page, telle qu'elle est saisie dans « Liens légaux ». */
+const CHEMIN = '/confidentialite/';
+/** Libellé de repli si l'entrée a été retirée de l'admin. */
+const TITRE_DEFAUT = 'Confidentialité';
+
+const ecole = await getEcolePrincipale();
+const [identite, hero, legal, menus, disciplines, profs] = await Promise.all([
+  lireIdentite(),
+  lireHero(),
+  lireLegal(),
+  lireMenus(),
+  lireDisciplines(),
+  profsDe(ecole),
+]);
+
+const ctx = contexteDe(ecole.fiche, {
+  nbArmes: disciplines.filter((d) => d.entry.affichee).length,
+  nbProfs: profs.filter((p) => p.entry.visible).length,
+});
+
+const SOURCE = 'src/content/commun/legal.yaml → confidentialité';
+
+const paragraphes = resoudreListe(legal.rgpd?.paragraphes ?? [], ctx, SOURCE).filter(Boolean);
+const note = resoudre(legal.rgpd?.note, ctx, `${SOURCE} → note`);
+
+// ── Titre et navigation entre les deux pages légales ───────────────────────
+const normaliser = (url: string) => url.replace(/[?#].*$/, '').replace(/\/+$/, '') || '/';
+
+const liensLegaux = (menus.liensLegaux ?? []).filter((l) => !!l.libelle && !!l.url);
+const titrePage =
+  liensLegaux.find((l) => normaliser(l.url) === normaliser(CHEMIN))?.libelle?.trim() ||
+  TITRE_DEFAUT;
+const pageVoisine = liensLegaux.find((l) => normaliser(l.url) !== normaliser(CHEMIN));
+
+const mots = titrePage.split(/\s+/).filter(Boolean);
+const lignesTitre =
+  mots.length > 1
+    ? [{ texte: mots.slice(0, -1).join(' ') }, { texte: `${mots[mots.length - 1]}.`, accent: true }]
+    : [{ texte: `${titrePage}.` }];
+
+const description = (paragraphes[0] ?? '').replace(/\s+/g, ' ').trim().slice(0, 200);
+
+// Chrome mobile global : la barre d'onglets est rendue sur toutes les pages,
+// pages légales comprises. Aucun onglet actif — voir `mentions-legales.astro`.
+const onglets = (menus.barreMobile ?? []).map((onglet) => ({
+  libelle: onglet.libelle,
+  href: lien(ecole, onglet.lien),
+  icone: estNomIcone(onglet.icone) ? onglet.icone : 'house',
+  exergue: onglet.icone === 'swords',
+}));
+---
+
+<Base ecole={ecole} identite={identite} titre={titrePage} description={description}>
+  {/* Colonne de lecture portée par un enfant de la gouttière : `max-width` sur
+      `.gouttiere` (qui porte `margin-inline: auto`) centrait la page entière,
+      hors de la grille gauche du site. */}
+  <article class="legal">
+    <div class="gouttiere">
+      <div class="legal__interieur">
+        <a class="legal__retour" href={lien(ecole, '/')}>
+          <Icon name="arrow-left" />
+          <span>Retour à l’accueil</span>
+        </a>
+
+        <header class="legal__entete">
+          <Eyebrow texte="Vos données" />
+          <SectionTitle lignes={lignesTitre} taille="xl" balise="h1" class="legal__titre" />
+        </header>
+
+        <div class="legal__texte">
+          {
+            paragraphes.map((paragraphe, index) => (
+              <p class:list={['legal__para', { lede: index === 0 }]}>{paragraphe}</p>
+            ))
+          }
+        </div>
+
+        {
+          note && (
+            <p class="legal__note">
+              <span class="legal__note-marque" aria-hidden="true" />
+              {note}
+            </p>
+          )
+        }
+
+        {
+          pageVoisine && (
+            <div class="legal__suite">
+              <TextLink libelle={pageVoisine.libelle} href={pageVoisine.url} ton="mute" />
+            </div>
+          )
+        }
+      </div>
+    </div>
+  </article>
+
+  {/* Page sans hero photographique : la barre garde son fond plein dès le
+      chargement (`fond="solide"`, cf. notes du chantier « chrome »). */}
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+    fond="solide"
+  />
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient après le pied de
+        page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide du site" />
+  </Fragment>
+</Base>
+
+<style>
+  /* Même gabarit que `/mentions-legales/` : les deux pages doivent se lire
+     comme une seule rubrique du site. */
+  .legal {
+    background: var(--ink);
+    padding-block: clamp(40px, 25.143px + 3.8095vw, 80px) var(--esp-section-y-bas);
+  }
+
+  /* Colonne de lecture bornée, calée à gauche sur la gouttière — même règle
+     que `/mentions-legales/`. */
+  .legal__interieur {
+    display: flex;
+    flex-direction: column;
+    max-width: 78ch;
+  }
+
+  .legal__retour {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 10px;
+    color: var(--parch-mute);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    text-decoration: none;
+    --icone-cote: 11px;
+    transition: color var(--transition);
+  }
+
+  .legal__retour:hover,
+  .legal__retour:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  .legal__entete {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(14px, 11.771px + 0.5714vw, 20px);
+    margin-block-start: var(--esp-bloc);
+    padding-block-end: clamp(22px, 18.286px + 0.9524vw, 32px);
+    border-bottom: var(--filet);
+  }
+
+  .legal__texte {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(18px, 14.286px + 0.9524vw, 28px);
+    max-width: 66ch;
+    margin-block-start: clamp(24px, 18.429px + 1.4286vw, 34px);
+  }
+
+  .legal__para {
+    color: var(--parch-soft);
+    line-height: 1.7;
+  }
+
+  /* La note RGPD porte le seul appel à l'action de la page : elle est isolée
+     par un filet ember, comme les liens de carte de l'accueil. */
+  .legal__note {
+    position: relative;
+    max-width: 66ch;
+    margin-block-start: var(--esp-bloc);
+    padding-block-start: clamp(18px, 15.771px + 0.5714vw, 24px);
+    color: var(--parch-mute);
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+  }
+
+  .legal__note-marque {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    display: block;
+    width: 36px;
+    height: 1px;
+    background: var(--ember);
+  }
+
+  .legal__suite {
+    margin-block-start: var(--esp-bloc);
+    padding-block-start: clamp(22px, 18.286px + 0.9524vw, 32px);
+    border-top: var(--filet);
+  }
+</style>

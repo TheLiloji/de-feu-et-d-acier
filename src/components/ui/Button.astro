@@ -1,0 +1,240 @@
+---
+/**
+ * Bouton — trois variantes, pas une de plus (design-spec §9.5).
+ *
+ * | Variante  | Fond      | Bordure          | Texte    | Graisse | Occ. |
+ * |-----------|-----------|------------------|----------|---------|------|
+ * | `pleine`  | `$ember`  | —                | `$ink`   | 600     | 8    |
+ * | `contour` | —         | `--btn-border`   | `$parch` | 500     | 12   |
+ * | `lien`    | —         | —                | `$parch` | 500     | 1    |
+ *
+ * Invariants de la maquette, valables sur les trois : rayon 2, libellé en
+ * capitales `$body` 11.5 / interlettrage 1.8, icône `arrow-right` de 11 px
+ * prenant la couleur du texte, contenu centré. Le libellé fait **11.5 px en
+ * desktop comme en mobile** — c'est le seul texte du site qui ne varie pas
+ * (design-spec §1.5), d'où `--fs-button` fixe.
+ *
+ * Rend un `<a>` dès qu'un `href` est fourni, un `<button>` sinon.
+ *
+ * Les états `:hover` / `:focus-visible` ne sont pas maquettés : on applique la
+ * convention actée (ARCHITECTURE §5) — `--ember-hot`, sobre, et la flèche qui
+ * avance de 2 px.
+ *
+ * Exemples :
+ *   <Button variante="pleine" libelle="Adhérer · HelloAsso" href={lien(ecole, '…')} />
+ *   <Button variante="contour" libelle="Itinéraire" icone="navigation" href="…" externe />
+ *   <Button variante="contour" libelle="Venir essayer" taille="grande" pleineLargeur />
+ */
+import Icon from './Icon.astro';
+import type { NomIcone } from './icones';
+
+type VarianteBouton =
+  | 'pleine'
+  | 'contour'
+  | 'lien'
+  /* alias tolérés : les documents d'analyse emploient les deux vocabulaires */
+  | 'fantome'
+  | 'primaire'
+  | 'secondaire';
+
+interface Props {
+  /** Aspect. Défaut : `contour` (la variante la plus fréquente du site). */
+  variante?: VarianteBouton;
+  /** Alias anglais de `variante`. */
+  variant?: VarianteBouton;
+  /** Libellé. Passé en capitales par la CSS : l'écrire normalement. */
+  libelle?: string;
+  /** Cible. Présent ⇒ `<a>`, absent ⇒ `<button>`. */
+  href?: string | undefined;
+  /** Type du `<button>` quand il n'y a pas de `href`. Défaut : `button`. */
+  type?: 'button' | 'submit' | 'reset';
+  /** Hauteur : 44 px / 46→50 px / 52 px (design-spec §9.5). Défaut `normale`. */
+  taille?: 'petite' | 'normale' | 'grande';
+  /** Icône de fin. `null` pour aucune. Défaut : `arrow-right`. */
+  icone?: NomIcone | null;
+  /** Lien sortant : nouvel onglet, `arrow-up-right`, mention pour lecteur d'écran. */
+  externe?: boolean;
+  /** Occupe toute la largeur — c'est la règle sur mobile (design-spec §9.5). */
+  pleineLargeur?: boolean;
+  /** Bouton inactif (`<button>` uniquement). */
+  desactive?: boolean;
+  class?: string;
+  [attribut: `data-${string}`]: string | number | boolean | undefined;
+  [attribut: `aria-${string}`]: string | number | boolean | undefined;
+}
+
+const {
+  variante,
+  variant,
+  libelle,
+  href,
+  type = 'button',
+  taille = 'normale',
+  icone = 'arrow-right',
+  externe = false,
+  pleineLargeur = false,
+  desactive = false,
+  class: classe,
+  ...reste
+} = Astro.props;
+
+const ALIAS: Record<VarianteBouton, 'pleine' | 'contour' | 'lien'> = {
+  pleine: 'pleine',
+  primaire: 'pleine',
+  contour: 'contour',
+  secondaire: 'contour',
+  lien: 'lien',
+  fantome: 'lien',
+};
+
+const aspect = ALIAS[variante ?? variant ?? 'contour'];
+const glyphe: NomIcone | null = icone === null ? null : externe ? 'arrow-up-right' : icone;
+const Balise = href ? 'a' : 'button';
+---
+
+<Balise
+  class:list={['bouton', `bouton--${aspect}`, `bouton--${taille}`, { 'bouton--large': pleineLargeur }, classe]}
+  href={href}
+  type={href ? undefined : type}
+  disabled={href ? undefined : desactive || undefined}
+  target={externe && href ? '_blank' : undefined}
+  rel={externe && href ? 'noopener noreferrer' : undefined}
+  {...reste}
+>
+  <span class="bouton__libelle"><slot>{libelle}</slot>{externe && <span class="hors-ecran"> (nouvel onglet)</span>}</span>
+  {glyphe && <span class="bouton__icone"><Icon name={glyphe} /></span>}
+</Balise>
+
+<style>
+  .bouton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(10px, 9.257px + 0.1905vw, 12px);
+    height: var(--bouton-h);
+    padding-inline: var(--bouton-px);
+    border: 0;
+    border-radius: var(--radius-1);
+    background: none;
+    color: var(--parch);
+    font-family: var(--font-body);
+    font-size: var(--fs-button);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.157em; /* 1.8 px à 11.5 px */
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color var(--transition),
+      border-color var(--transition),
+      color var(--transition);
+  }
+
+  /* Tailles : 44 (section desktop) — 46→50 (hero, CTA de fiche) — 52 (bande CTA). */
+  .bouton--petite {
+    --bouton-h: 44px;
+    --bouton-px: 22px;
+  }
+
+  .bouton--normale {
+    --bouton-h: clamp(46px, 44.514px + 0.381vw, 50px);
+    --bouton-px: clamp(24px, 21.029px + 0.7619vw, 32px);
+  }
+
+  .bouton--grande {
+    --bouton-h: 52px;
+    --bouton-px: clamp(24px, 18.057px + 1.5238vw, 40px);
+  }
+
+  .bouton--large {
+    display: flex;
+    width: 100%;
+    /* Sur mobile la maquette annule le padding des boutons pleine largeur. */
+    --bouton-px: 0px;
+  }
+
+  /* ── Variante pleine ──────────────────────────────────────────────────── */
+  .bouton--pleine {
+    background: var(--ember);
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .bouton--pleine:hover,
+  .bouton--pleine:focus-visible {
+    background: var(--ember-hot);
+  }
+
+  /* ── Variante contour ─────────────────────────────────────────────────── */
+  .bouton--contour {
+    border: 1px solid var(--btn-border);
+  }
+
+  .bouton--contour:hover,
+  .bouton--contour:focus-visible {
+    border-color: var(--ember-hot);
+    background: var(--ember-tint-8);
+    color: var(--parch);
+  }
+
+  /* ── Variante lien (« fantôme » : ni fond ni bordure) ─────────────────── */
+  .bouton--lien {
+    --bouton-px: 0px;
+    color: var(--parch-soft);
+  }
+
+  .bouton--lien:hover,
+  .bouton--lien:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  /* ── Flèche ───────────────────────────────────────────────────────────── */
+  /* 11 px sur toutes les tailles, comme le libellé : la maquette ne fait pas
+     varier l'ornement du bouton entre desktop et mobile. */
+  .bouton__icone {
+    display: inline-flex;
+    flex: none;
+    --icone-cote: 11px;
+    transition: transform var(--transition);
+  }
+
+  .bouton:hover .bouton__icone,
+  .bouton:focus-visible .bouton__icone {
+    transform: translateX(2px);
+  }
+
+  .bouton__libelle {
+    display: inline-block;
+    /* Ancre la mention « (nouvel onglet) » masquée. */
+    position: relative;
+  }
+
+  /* ── Inactif ──────────────────────────────────────────────────────────── */
+  .bouton:disabled,
+  .bouton[aria-disabled='true'] {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .hors-ecran {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bouton:hover .bouton__icone,
+    .bouton:focus-visible .bouton__icone {
+      transform: none;
+    }
+  }
+</style>

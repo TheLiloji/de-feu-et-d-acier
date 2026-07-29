@@ -1,0 +1,34 @@
+eyebrow: Nous rejoindre
+titreLigne1: Une lame, un masque,
+titreLigne2: et l'envie de bien faire.
+blocEssai:
+  eyebrow: Viens essayer
+  titre: >-
+    Les {essai} premières séances sont *gratuites*, alors pourquoi ne pas
+    essayer ?
+  paragraphes:
+    - >-
+      Peu importe que tu n'aies jamais fait de sport, que tu sortes d'un autre
+      art martial ou que tu n'aies rien touché depuis des années — on
+      t'accueille. Tu n'as besoin de rien apporter : on te prête le masque, et
+      l'arme que tu veux tester (épée longue, sabre, dague, rapière…).
+    - Aucun engagement, aucun frais. Viens, ça nous fait plaisir.
+  bouton:
+    libelle: ''
+    url: ''
+blocAdhesion:
+  eyebrow: Pour continuer
+  titre: '{tarif} par an, un masque, des gants coqués. *C''est tout.*'
+  paragraphes:
+    - >-
+      Si tu décides de rester pour l'année, l'adhésion c'est {tarif} — soit
+      littéralement moins qu'un Netflix. À ça, tu ajoutes les deux seules pièces
+      à te procurer pour les séances régulières : un masque d'escrime standard
+      et des gants coqués.
+    - >-
+      Le reste — vestes, protections, armes — on en parle au fil du temps,
+      souvent à prix d'ami chez nos partenaires.
+  bouton:
+    libelle: ''
+    url: ''
+note: 'Une question avant de venir ? Écris-nous à {email} ou appelle le {telephone}.'

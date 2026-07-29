@@ -1,0 +1,536 @@
+---
+/**
+ * Lieu & contact — le bloc « où l'on s'entraîne, et comment nous joindre ».
+ *
+ * design-spec §3.6 le découpe en deux morceaux qui vivent dans la section
+ * « Nous rejoindre » : le bloc `PRATIQUE` (deux `FactRow` : lieu, contact) et,
+ * dans le pilier 01, le visuel du lieu avec son bouton `ITINÉRAIRE`. Les deux
+ * parlent du même sujet et lisent la même fiche école : un seul composant les
+ * porte, la prop `variante` choisit ce qu'il rend.
+ *
+ *   `faits`    — les lignes LIEU / CONTACT seules (bloc PRATIQUE)
+ *   `visuel`   — la photo du lieu (ou sa version compacte) et l'itinéraire
+ *   `complet`  — les deux, pour un usage autonome (page contact, fiche école)
+ *
+ * **Le plan schématique a été retiré.** La maquette posait un cadre `Carte OSM`,
+ * intégré en SVG dessiné à la main pour tenir la promesse RGPD (aucune tuile
+ * distante, donc aucun cookie — ARCHITECTURE.md §6). Le club l'a refusé : un
+ * plan qui n'est pas une carte n'aide personne à trouver la porte. À sa place,
+ * une vraie photo du lieu, saisie dans l'admin. La contrainte RGPD est tenue de
+ * la même façon, en mieux : la photo est servie par le site, l'adresse reste du
+ * texte, et l'itinéraire un lien sortant ouvert seulement si on le demande.
+ *
+ * Trois états, selon ce que le CMS contient — le club ne photographiera le
+ * gymnase qu'à la rentrée de septembre, l'état vide est donc l'état courant :
+ *
+ *   1. **aucune photo** — bloc compact : l'adresse (si les faits ne sont pas
+ *      rendus par la même instance) et le bouton d'itinéraire. Pas de cadre
+ *      vide, pas de gabarit en attente d'image ;
+ *   2. **photo du lieu** — cadre dans le langage `MediaCard` : la photo, un
+ *      voile léger, l'assise en dégradé, l'adresse en surimpression ;
+ *   3. **photo du lieu + photos de l'intérieur** — le cadre devient un bouton
+ *      (« Voir le gymnase · N photos ») qui ouvre `Visionneuse`. Un bouton, pas
+ *      un lien : il n'y a pas de page à atteindre, et le script de la
+ *      visionneuse n'est chargé que dans ce troisième cas.
+ *
+ * Le bloc de faits porte `id="contact"` : c'est la cible de l'entrée « Contact »
+ * des menus et de la barre d'onglets mobile. Une seconde instance sur la même
+ * page doit passer `idFaits={null}`.
+ *
+ * Les attributs non déclarés sont étalés sur la racine (`{...reste}`), comme
+ * partout ailleurs dans `src/components/ui/` : c'est ce qui transmet le
+ * `data-astro-cid-…` de l'appelant, donc ce qui rend vivante une classe passée
+ * en prop (`<LieuContact class="rejoindre__pratique">`).
+ *
+ * Exemples :
+ *   <LieuContact ecole={ecole} variante="faits" />
+ *   <LieuContact ecole={ecole} variante="visuel" bouton={{ libelle: 'Y aller', url: '…' }} />
+ *   <LieuContact ecole={ecole} />
+ */
+import { Picture } from 'astro:assets';
+import Button from '../ui/Button.astro';
+import FactRow from '../ui/FactRow.astro';
+import Icon from '../ui/Icon.astro';
+import Visionneuse from '../ui/Visionneuse.astro';
+import type { Ecole } from '../../lib/ecoles';
+import { largeursSrcset, resoudre, resoudrePhotos } from '../../lib/images';
+import { estExterne, lien } from '../../lib/liens';
+import { lienTelephone } from '../../lib/raccourcis';
+
+interface Props {
+  /** École rendue. Le lieu, le contact et l'itinéraire viennent de sa fiche. */
+  ecole: Ecole;
+  /** Ce que le composant rend. Défaut : tout. */
+  variante?: 'complet' | 'faits' | 'visuel';
+  /** Sur-titre du bloc de faits. `null` pour aucun. */
+  surtitre?: string | null;
+  /**
+   * Bouton d'itinéraire. Absent ⇒ « Itinéraire » vers le lien de la fiche
+   * école (ou, à défaut, un itinéraire Google Maps construit sur l'adresse).
+   * `null` ⇒ aucun bouton.
+   */
+  bouton?: { libelle?: string | null; url?: string | null } | null;
+  /** Libellés structurels, absents du CMS parce qu'ils ne varient pas. */
+  libelles?: { lieu?: string; contact?: string; visionneuse?: string };
+  class?: string;
+  id?: string;
+  /**
+   * Ancre du bloc de coordonnées — la cible de « Contact » dans les menus et
+   * la barre d'onglets mobile. `null` sur une seconde instance de la même page,
+   * pour ne pas dupliquer l'identifiant.
+   */
+  idFaits?: string | null;
+  [attribut: `data-${string}`]: string | number | boolean | undefined;
+}
+
+const {
+  ecole,
+  variante = 'complet',
+  surtitre = 'Pratique',
+  bouton,
+  libelles,
+  class: classe,
+  id,
+  idFaits = 'contact',
+  ...reste
+} = Astro.props;
+
+const lieu = ecole.fiche.lieu;
+const contact = ecole.fiche.contact;
+
+const ville = lieu?.ville || ecole.fiche.ville || ecole.ville;
+const codePostalVille = [lieu?.codePostal, ville].filter(Boolean).join(' ');
+// « 3 rue Jean Monnet · 63100 Clermont-Ferrand » — le point médian est celui de
+// la maquette, et c'est aussi la forme du raccourci {adresse}.
+const adresse = [lieu?.adresse, codePostalVille].filter(Boolean).join(' · ');
+
+const nomLieu = lieu?.nom ?? '';
+const email = contact?.email ?? '';
+const telephone = contact?.telephone ?? '';
+
+const afficheFaits = variante !== 'visuel';
+const afficheVisuel = variante !== 'faits';
+
+// ── Itinéraire ─────────────────────────────────────────────────────────────
+// La fiche école porte un lien saisi à la main. S'il manque, on le reconstruit
+// sur l'adresse : mieux vaut un itinéraire approximatif qu'un bouton absent.
+const destination = [nomLieu, lieu?.adresse, codePostalVille].filter(Boolean).join(', ');
+const itineraireAuto = destination
+  ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
+  : '';
+
+// Les URL du CMS passent par `lien()` : une adresse externe est laissée intacte,
+// une cible interne est préfixée par la racine de l'école (multi-ecoles.md,
+// invariant 5 — aucune ancre en dur dans un composant).
+const urlSaisie = bouton?.url?.trim() ?? '';
+const urlFiche = lieu?.itineraire?.trim() ?? '';
+const urlItineraire = urlSaisie
+  ? lien(ecole, urlSaisie)
+  : urlFiche
+    ? lien(ecole, urlFiche)
+    : itineraireAuto;
+
+const boutonFinal =
+  bouton === null
+    ? null
+    : {
+        libelle: bouton?.libelle?.trim() || 'Itinéraire',
+        url: urlItineraire,
+      };
+const afficheBouton = boutonFinal !== null && boutonFinal.url !== '';
+
+// ── Photos du lieu (CMS) ───────────────────────────────────────────────────
+// Les photos de l'intérieur ne se montrent qu'accrochées à la photo du lieu :
+// c'est elle qui porte le bouton d'ouverture. Sans elle, il n'y aurait rien à
+// cliquer — on ne les résout donc même pas.
+const photoLieu = resoudre(lieu?.photo);
+const photosInterieur = photoLieu ? resoudrePhotos(lieu?.photosInterieur) : [];
+const aVisionneuse = photosInterieur.length > 0;
+
+// Un identifiant par école : deux instances de ce composant sur la même page
+// le dupliqueraient, comme `idFaits`. Le cas ne se présente pas aujourd'hui.
+const idVisionneuse = `visionneuse-lieu-${ecole.slug}`;
+const titreVisionneuse = ['Photos', nomLieu].filter(Boolean).join(' — ');
+const libelleVisionneuse =
+  `${libelles?.visionneuse ?? 'Voir le gymnase'} · ` +
+  `${photosInterieur.length} photo${photosInterieur.length > 1 ? 's' : ''}`;
+
+// Le cadre est plafonné à 760 px (la largeur du bloc dans la maquette). Il
+// l'atteint au-delà de 1240 px ; entre 820 et 1240 il occupe la colonne de
+// droite du pilier (l'étiquette de 220 px et sa gouttière de 56 px en moins) ;
+// sous 820 px, toute la largeur utile.
+const SIZES =
+  '(min-width: 1240px) 760px, (min-width: 820px) calc(100vw - 340px), calc(100vw - 44px)';
+const LARGEURS = [380, 570, 760, 1140, 1520];
+
+// Bloc compact : l'adresse n'y est reprise que si la même instance ne rend pas
+// déjà la ligne LIEU des faits, sinon elle s'afficherait deux fois de suite.
+const adresseCompacte = !afficheFaits && Boolean(nomLieu || adresse);
+const afficheCompact = adresseCompacte || afficheBouton;
+
+const aQuoiMontrer = Boolean(nomLieu || adresse || email || telephone);
+---
+
+{
+  aQuoiMontrer && (
+    <div class:list={['lieu-contact', `lieu-contact--${variante}`, classe]} id={id} {...reste}>
+      {afficheFaits && (
+        <div class="lieu-contact__faits" id={idFaits ?? undefined}>
+          {surtitre && <p class="lieu-contact__surtitre">{surtitre}</p>}
+
+          {/* Conteneur dédié : `FactRow` pose son filet haut sur `:first-child`,
+              le sur-titre ne doit donc pas partager le même parent. */}
+          <div class="lieu-contact__lignes">
+            {(nomLieu || adresse) && (
+              <FactRow
+                libelle={libelles?.lieu ?? 'Lieu'}
+                icone="map-pin"
+                valeur={nomLieu}
+                secondaire={adresse}
+              />
+            )}
+
+            {(email || telephone) && (
+              <FactRow libelle={libelles?.contact ?? 'Contact'} icone="phone">
+                {email && (
+                  <a class="lieu-contact__lien" href={`mailto:${email}`}>
+                    {email}
+                  </a>
+                )}
+                {telephone && (
+                  <a
+                    class="lieu-contact__lien lieu-contact__lien--second"
+                    href={lienTelephone(telephone)}
+                  >
+                    {telephone}
+                  </a>
+                )}
+              </FactRow>
+            )}
+          </div>
+        </div>
+      )}
+
+      {afficheVisuel && (photoLieu || afficheCompact) && (
+        <div class:list={['lieu-visuel', { 'lieu-visuel--compact': !photoLieu }]}>
+          {photoLieu ? (
+            <div class="lieu-visuel__cadre" style={`--lieu-position:${photoLieu.objectPosition}`}>
+              <div class="lieu-visuel__media">
+                <Picture
+                  src={photoLieu.source}
+                  alt={photoLieu.alt}
+                  formats={['avif', 'webp']}
+                  widths={largeursSrcset(photoLieu.source, { largeurs: LARGEURS })}
+                  sizes={SIZES}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+
+              <div class="lieu-visuel__voile" aria-hidden="true" />
+              <div class="lieu-visuel__assise" aria-hidden="true" />
+
+              {aVisionneuse && (
+                <button
+                  type="button"
+                  class="lieu-visuel__declencheur"
+                  data-ouvrir-visionneuse
+                  aria-controls={idVisionneuse}
+                  aria-haspopup="dialog"
+                >
+                  <span class="lieu-visuel__indice">
+                    <Icon name="image" />
+                    {libelleVisionneuse}
+                  </span>
+                </button>
+              )}
+
+              {(nomLieu || adresse) && (
+                <p class="lieu-visuel__legende">
+                  {nomLieu && <span class="lieu-visuel__nom">{nomLieu}</span>}
+                  {adresse && <span class="lieu-visuel__rue">{adresse}</span>}
+                </p>
+              )}
+            </div>
+          ) : (
+            adresseCompacte && (
+              <p class="lieu-visuel__adresse">
+                <Icon name="map-pin" />
+                <span class="lieu-visuel__texte">
+                  {nomLieu && <span class="lieu-visuel__nom">{nomLieu}</span>}
+                  {adresse && <span class="lieu-visuel__rue">{adresse}</span>}
+                </span>
+              </p>
+            )
+          )}
+
+          {afficheBouton && (
+            <Button
+              class="lieu-visuel__bouton"
+              variante="contour"
+              taille="petite"
+              libelle={boutonFinal!.libelle}
+              href={boutonFinal!.url}
+              icone="navigation"
+              externe={estExterne(boutonFinal!.url)}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+{
+  aQuoiMontrer && afficheVisuel && aVisionneuse && (
+    <Visionneuse id={idVisionneuse} titre={titreVisionneuse} photos={photosInterieur} />
+  )
+}
+
+<style>
+  .lieu-contact {
+    display: flex;
+    flex-direction: column;
+    gap: var(--esp-bloc);
+  }
+
+  /* ── Bloc « PRATIQUE » ─────────────────────────────────────────────────── */
+
+  /* Cible de l'ancre `#contact` : la nav collante ne doit pas recouvrir le
+     sur-titre à l'arrivée (même cale que `.rejoindre__creneaux`). */
+  .lieu-contact__faits {
+    scroll-margin-top: 96px;
+  }
+
+  /* Même sur-titre que celui de `ScheduleTable` : les deux blocs se suivent
+     dans la section « Nous rejoindre » et doivent s'aligner à l'œil. */
+  .lieu-contact__surtitre {
+    margin: 0 0 18px;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow);
+    font-weight: 600;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  /* Les deux valeurs de la ligne CONTACT sont des liens : on écrire à
+     l'association depuis son téléphone sans recopier douze chiffres. La
+     typographie reprend celle de `FactRow` (valeur principale / secondaire). */
+  .lieu-contact__lien {
+    color: var(--parch);
+    font-size: clamp(14.5px, 14.129px + 0.0952vw, 15.5px);
+    font-weight: 500;
+    line-height: var(--lh-body-tight);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    overflow-wrap: anywhere;
+  }
+
+  .lieu-contact__lien--second {
+    color: var(--parch-soft);
+    font-size: clamp(12px, 10.886px + 0.2857vw, 15px);
+    font-weight: 400;
+  }
+
+  .lieu-contact__lien:hover,
+  .lieu-contact__lien:focus-visible {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  /* ── Visuel du lieu ────────────────────────────────────────────────────── */
+
+  .lieu-visuel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    width: 100%;
+    max-width: 760px; /* largeur du cadre de la maquette */
+  }
+
+  /* Sans photo, il ne reste qu'une ligne d'adresse et un bouton : le bloc se
+     resserre, il n'a plus de cadre à porter. */
+  .lieu-visuel--compact {
+    gap: 12px;
+  }
+
+  .lieu-visuel__adresse {
+    /* `Icon.astro` se dimensionne par `--icone-cote` : son style scopé
+       l'emporte sur un `:global(svg)` écrit ici. */
+    --icone-cote: 15px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0;
+    color: var(--ember);
+  }
+
+  .lieu-visuel__texte {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  /* ── Cadre photo (langage `MediaCard`) ─────────────────────────────────── */
+
+  .lieu-visuel__cadre {
+    position: relative;
+    isolation: isolate;
+    width: 100%;
+    /* 170 px à 390, 230 px à 1440 — la hauteur maquettée du cadre. */
+    height: clamp(170px, 147.714px + 5.7143vw, 230px);
+    overflow: hidden;
+    border: var(--filet);
+    border-radius: var(--radius-1);
+    background: var(--char);
+  }
+
+  .lieu-visuel__media {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  /* `<Picture>` est un composant : ses nœuds échappent au scope, d'où :global. */
+  .lieu-visuel__media :global(picture),
+  .lieu-visuel__media :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .lieu-visuel__media :global(img) {
+    object-fit: cover;
+    /* Cadrage choisi dans l'admin (`cadrageCss()`, src/lib/images.ts) : une
+       entrée de gymnase photographiée de travers se rattrape sans retoucher
+       le fichier. */
+    object-position: var(--lieu-position, 50% 50%);
+    transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* Voile léger sur toute la photo, puis assise en dégradé sous la légende :
+     les deux couches de `MediaCard`, à la même densité. Une photo d'entrée de
+     gymnase est claire — sans elles, l'adresse en surimpression passe sous le
+     seuil de contraste. */
+  .lieu-visuel__voile {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: var(--veil-32);
+    pointer-events: none;
+  }
+
+  .lieu-visuel__assise {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 1;
+    height: 58%;
+    background: linear-gradient(to top, var(--veil-77), var(--veil-35) 62%, transparent);
+    pointer-events: none;
+  }
+
+  /* Le déclencheur couvre le cadre : toute la photo est cliquable, y compris
+     la zone de la légende (qui laisse passer le pointeur). */
+  .lieu-visuel__declencheur {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    padding: 0;
+  }
+
+  .lieu-visuel__indice {
+    --icone-cote: 13px;
+    position: absolute;
+    top: clamp(10px, 0.5rem + 0.4vw, 14px);
+    right: clamp(10px, 0.5rem + 0.4vw, 14px);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border: var(--filet-fort);
+    border-radius: var(--radius-pill);
+    background: var(--veil-ink-65);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--parch);
+    transition:
+      border-color var(--transition),
+      color var(--transition);
+  }
+
+  .lieu-visuel__declencheur:hover .lieu-visuel__indice,
+  .lieu-visuel__declencheur:focus-visible .lieu-visuel__indice {
+    border-color: var(--ember-hot);
+    color: var(--ember-hot);
+  }
+
+  /* Le déclencheur est posé *après* la photo dans le DOM (il doit passer
+     au-dessus) : aucun combinateur de frère ne remonte jusqu'à elle, d'où
+     `:has()` sur le cadre. Même effet que le survol d'une `MediaCard`. */
+  .lieu-visuel__cadre:has(.lieu-visuel__declencheur:hover) .lieu-visuel__media :global(img),
+  .lieu-visuel__cadre:has(.lieu-visuel__declencheur:focus-visible) .lieu-visuel__media :global(img) {
+    transform: scale(1.04);
+  }
+
+  .lieu-visuel__declencheur:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: -3px;
+  }
+
+  /* Légende posée en surimpression de la photo, comme dans la maquette : le
+     cadre garde sa hauteur, l'adresse reste lisible. `pointer-events: none`
+     rend le clic au déclencheur qu'elle recouvre. */
+  .lieu-visuel__legende {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin: 0;
+    padding: clamp(11px, 9.514px + 0.381vw, 15px) clamp(14px, 12.514px + 0.381vw, 18px);
+    pointer-events: none;
+  }
+
+  .lieu-visuel__nom {
+    color: var(--parch);
+    font-size: var(--fs-body-xs);
+    font-weight: 500;
+    line-height: var(--lh-body-tight);
+  }
+
+  .lieu-visuel__rue {
+    color: var(--parch-soft);
+    font-size: var(--fs-body-xxs);
+    line-height: var(--lh-body-tight);
+  }
+
+  /* Sur mobile la maquette étire tous les boutons sur la largeur. */
+  @media (max-width: 819.98px) {
+    .lieu-visuel__bouton {
+      display: flex;
+      width: 100%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lieu-visuel__media :global(img),
+    .lieu-visuel__indice {
+      transition: none;
+    }
+
+    .lieu-visuel__cadre:has(.lieu-visuel__declencheur:hover) .lieu-visuel__media :global(img),
+    .lieu-visuel__cadre:has(.lieu-visuel__declencheur:focus-visible)
+      .lieu-visuel__media
+      :global(img) {
+      transform: none;
+    }
+  }
+</style>

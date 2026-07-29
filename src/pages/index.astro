@@ -1,0 +1,190 @@
+---
+/**
+ * Page d'accueil — assemblage de l'école principale.
+ *
+ * L'ordre des sections suit la frame « V2 — Site desktop » (design-spec §2.1),
+ * augmenté du bloc « Actualités » qui n'est pas maquetté (design-spec §10.2) et
+ * que l'architecture place juste sous le hero : c'est la seule section dont le
+ * contenu bouge toutes les semaines.
+ *
+ *   bandeau d'annonce · en-tête · hero
+ *   → actualités · disciplines · profs · le club · la rigueur
+ *   → nous rejoindre (créneaux, lieu, contact) · tournois · galerie · FAQ
+ *   → partenaires · pied de page · barre d'onglets mobile
+ *
+ * **Numérotation** : aucune section ne porte de numéro en base. `SectionLabel`
+ * compte les sections dans l'ordre de rendu (ARCHITECTURE.md §5). Conséquence
+ * voulue : le jour où il n'y a plus d'article publié, la section « Actualités »
+ * disparaît et « Disciplines » redevient `01`, comme dans la maquette.
+ *
+ * **Fonds** : alternance `$ink` / `$coal` de design-spec §2.1. Les deux
+ * premières sections de contenu partagent `$ink` (comme Disciplines / Profs
+ * dans la maquette) et sont séparées par un filet de 1 px ; « La rigueur » est
+ * la seule à ne pas porter de filet haut, le changement de fond suffisant.
+ *
+ * **Invariant multi-écoles n° 3** (multi-ecoles.md §6.6) : toute la lecture de
+ * contenu se fait ici, une seule fois. Les sections ne lisent rien : elles
+ * reçoivent l'école, leur contenu et le contexte de raccourcis en props. Le
+ * jour où une deuxième salle ouvre, cette page devient `[ecole].astro` sans
+ * qu'aucune section ne change.
+ */
+import Base from '../layouts/Base.astro';
+
+import BandeauAnnonce from '../components/sections/BandeauAnnonce.astro';
+import Nav from '../components/sections/Nav.astro';
+import Hero from '../components/sections/Hero.astro';
+import Actualites from '../components/sections/Actualites.astro';
+import Disciplines from '../components/sections/Disciplines.astro';
+import Profs from '../components/sections/Profs.astro';
+import Club from '../components/sections/Club.astro';
+import Rigueur from '../components/sections/Rigueur.astro';
+import Rejoindre from '../components/sections/Rejoindre.astro';
+import Tournois from '../components/sections/Tournois.astro';
+import Galerie from '../components/sections/Galerie.astro';
+import Faq from '../components/sections/Faq.astro';
+import Partenaires from '../components/sections/Partenaires.astro';
+import Footer from '../components/sections/Footer.astro';
+import TabBar from '../components/ui/TabBar.astro';
+
+import { estNomIcone } from '../components/ui/icones';
+import {
+  albumsDe,
+  annoncesDe,
+  articlesDe,
+  faqLocaleDe,
+  lireClub,
+  lireDisciplines,
+  lireEntetes,
+  lireHero,
+  lireIdentite,
+  lireMenus,
+  lirePartenaires,
+  lireFaqGenerale,
+  lireRejoindre,
+  lireRigueur,
+  lireTournois,
+  profsDe,
+} from '../lib/contenu';
+import { getEcolePrincipale } from '../lib/ecoles';
+import { lien } from '../lib/liens';
+import { contexteDe } from '../lib/raccourcis';
+
+const ecole = await getEcolePrincipale();
+
+const [
+  identite,
+  hero,
+  entetes,
+  club,
+  rigueur,
+  rejoindre,
+  tournois,
+  menus,
+  disciplines,
+  partenaires,
+  faqGenerale,
+  profs,
+  annonces,
+  articles,
+  faqLocale,
+  albums,
+] = await Promise.all([
+  lireIdentite(),
+  lireHero(),
+  lireEntetes(),
+  lireClub(),
+  lireRigueur(),
+  lireRejoindre(),
+  lireTournois(),
+  lireMenus(),
+  lireDisciplines(),
+  lirePartenaires(),
+  lireFaqGenerale(),
+  profsDe(ecole),
+  annoncesDe(ecole),
+  articlesDe(ecole),
+  faqLocaleDe(ecole),
+  albumsDe(ecole),
+]);
+
+// Les titres « {nb_armes} armes, {nb_armes} grammaires. » se comptent sur ce qui
+// est réellement affiché — plus jamais de « Cinq armes » au-dessus de quatre
+// cartes (ARCHITECTURE.md §4). Un seul contexte pour toute la page.
+const ctx = contexteDe(ecole.fiche, {
+  nbArmes: disciplines.filter((d) => d.entry.affichee).length,
+  nbProfs: profs.filter((p) => p.entry.visible).length,
+});
+
+// Album de la galerie : celui dont « Album affiché sur l'accueil » est coché.
+// À défaut, le premier album visible — mieux vaut une galerie que rien.
+const albumsVisibles = albums.filter((a) => a.entry.visible !== false);
+const albumAccueil = albumsVisibles.find((a) => a.entry.surAccueil) ?? albumsVisibles[0] ?? null;
+
+// Barre d'onglets mobile : sur l'accueil, l'onglet actif est « Accueil », et
+// « Essayer » reste l'action mise en exergue (design-spec §9.12).
+const onglets = (menus.barreMobile ?? []).map((onglet) => ({
+  libelle: onglet.libelle,
+  href: lien(ecole, onglet.lien),
+  icone: estNomIcone(onglet.icone) ? onglet.icone : 'house',
+  actif: onglet.icone === 'house',
+  exergue: onglet.icone === 'swords',
+}));
+---
+
+<Base ecole={ecole} identite={identite}>
+  <BandeauAnnonce slot="bandeau" ecole={ecole} annonces={annonces} ctx={ctx} />
+
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+  />
+
+  {/* Le hero doit rester le PREMIER enfant de <main> : il remonte de la hauteur
+      de l'en-tête pour passer sous la barre collante.
+
+      L'invite de défilement porte le libellé « Découvrir le club » (hero.yaml) :
+      elle vise donc la section « Le club », et rien d'autre. La cible ne dépend
+      plus de la présence d'un article publié — un libellé figé au-dessus d'une
+      destination variable finit toujours par mentir. */}
+  <Hero ecole={ecole} hero={hero} identite={identite} ctx={ctx} cibleDefilement="#club" />
+
+  <Actualites ecole={ecole} entete={entetes.actualites} articles={articles} ctx={ctx} />
+
+  <Disciplines ecole={ecole} disciplines={disciplines} entete={entetes.disciplines} ctx={ctx} />
+
+  <Profs
+    ecole={ecole}
+    profs={profs}
+    disciplines={disciplines}
+    entete={entetes.profs}
+    ctx={ctx}
+  />
+
+  <Club club={club} ctx={ctx} />
+
+  <Rigueur rigueur={rigueur} ctx={ctx} />
+
+  <Rejoindre ecole={ecole} contenu={rejoindre} disciplines={disciplines} ctx={ctx} />
+
+  <Tournois ecole={ecole} contenu={tournois} ctx={ctx} />
+
+  <Galerie ecole={ecole} entete={entetes.galerie} album={albumAccueil} ctx={ctx} />
+
+  <Faq
+    ecole={ecole}
+    entete={entetes.faq}
+    questions={faqGenerale}
+    questionsLocales={faqLocale}
+    ctx={ctx}
+  />
+
+  <Partenaires ecole={ecole} entete={entetes.partenaires} partenaires={partenaires} ctx={ctx} />
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    <TabBar onglets={onglets} libelle="Navigation rapide" />
+  </Fragment>
+</Base>

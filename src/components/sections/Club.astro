@@ -1,0 +1,563 @@
+---
+/**
+ * Section « Le club » — design-spec §3.4 (desktop 1440) et §4.4 (mobile 390).
+ *
+ * Trois blocs empilés :
+ *   1. le label numéroté (`03 ◆ LE CLUB`), numéro calculé par l'assembleur ;
+ *   2. le « Split » — titre sur trois lignes + paragraphe + chiffres clés à
+ *      gauche, photo de l'équipe à droite ;
+ *   3. la bande des trois piliers (Source · Geste · Salle), filets haut et bas,
+ *      trois colonnes séparées par un filet vertical.
+ *
+ * Deux partis pris d'intégration, tous deux assumés :
+ *
+ * — **Un seul `<h2>`, deux mises en page.** La maquette desktop pose le titre
+ *   à gauche de la photo ; la maquette mobile l'incruste *dans* la photo, sur
+ *   deux lignes au lieu de trois. Plutôt que de dupliquer le titre dans le DOM
+ *   (deux `<h2>` dont un masqué), le titre et la photo sont deux éléments de la
+ *   même grille : sous 820 px ils partagent la cellule `media` (le titre se pose
+ *   sur l'assise sombre du bas de la photo), au-delà ils occupent deux colonnes.
+ *   Les lignes 1 et 2 se lisent alors d'un trait et la ligne 3 passe dessous —
+ *   c'est exactement le « titre sur deux lignes » de la maquette mobile.
+ *   Seule nuance : l'accent ember reste sur la ligne 2 (choix desktop, qui fait
+ *   foi), là où la maquette mobile l'avait déplacé sur « une école. ».
+ *
+ * — **Chiffres clés et piliers restent affichés en mobile**, resserrés (trois
+ *   colonnes étroites pour les chiffres, pile verticale pour les piliers). La
+ *   maquette mobile les supprimait : ARCHITECTURE.md §5 impose la parité de
+ *   contenu entre desktop et mobile.
+ *
+ * La numérotation des piliers (`01`, `02`, `03`) est calculée sur la position
+ * dans le tableau du CMS : plus de doublon « 01 · 01 · » comme dans la maquette
+ * (design-spec §10.1, constat 4).
+ */
+import { Picture } from 'astro:assets';
+import SectionLabel from '../ui/SectionLabel.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import Filet from '../ui/Filet.astro';
+import Reveal from '../ui/Reveal.astro';
+import { cadrageCss, creditAffiche, largeursSrcset, resoudrePhoto } from '../../lib/images';
+import { nombreEnLettres, resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
+import type { lireClub } from '../../lib/contenu';
+
+/** Contenu du singleton « Accueil · Le club » (`lireClub()`). */
+export type ContenuClub = Awaited<ReturnType<typeof lireClub>>;
+
+interface Props {
+  /** Contenu déjà lu par la page. Alias accepté : `contenu`. */
+  club?: ContenuClub;
+  contenu?: ContenuClub;
+  /** Contexte de raccourcis de l'école courante (`contexteDe()`). */
+  ctx: ContexteRaccourcis;
+  /** Rang de la section, calculé par l'assembleur. Absent ⇒ compteur auto. */
+  num?: number | string | false;
+  /** Alias de `num`. */
+  numero?: number | string | false;
+  /** Ancre de la section. Le menu principal pointe sur `#club`. */
+  id?: string;
+  /** Fond alterné. La maquette place « Le club » sur `$coal`. */
+  fond?: 'ink' | 'coal';
+  /** Filet supérieur de séparation. Vrai partout sauf après une section de même fond. */
+  filetHaut?: boolean;
+  /** Accepté pour l'uniformité des sections ; non utilisé ici. */
+  ecole?: unknown;
+  class?: string;
+}
+
+const {
+  club,
+  contenu,
+  ctx,
+  num,
+  numero,
+  id = 'club',
+  fond = 'coal',
+  filetHaut = true,
+  class: classe,
+} = Astro.props;
+
+const donnees = club ?? contenu;
+if (!donnees) {
+  throw new Error(
+    'Club.astro : contenu manquant. Passer « club={await lireClub()} » depuis la page.',
+  );
+}
+
+const SOURCE = 'src/content/commun/club.yaml';
+
+// ── Titre ────────────────────────────────────────────────────────────────────
+// Trois champs de ligne dans le CMS, la deuxième portant l'accent ember (la
+// maquette accentue toujours la ligne médiane d'un titre à trois lignes).
+const lignesTitre = [
+  { texte: donnees.titreLigne1, accent: false },
+  { texte: donnees.titreLigne2, accent: true },
+  { texte: donnees.titreLigne3, accent: false },
+]
+  .map((ligne) => ({ ...ligne, texte: resoudre(ligne.texte, ctx, `${SOURCE} › titre`) }))
+  .filter((ligne) => ligne.texte.length > 0);
+
+const texte = resoudre(donnees.texte, ctx, `${SOURCE} › texte`);
+
+// ── Chiffres clés ────────────────────────────────────────────────────────────
+// « {nb_armes} » vaut « quatre » : c'est la forme voulue dans un titre
+// (« Quatre armes, quatre grammaires. »), pas dans un chiffre clé, où la
+// maquette affiche « 04 ». On retraduit donc le mot en nombre à deux chiffres,
+// et uniquement quand la valeur saisie est exactement ce raccourci.
+const EN_CHIFFRES = new Map<string, string>();
+for (let n = 0; n <= 12; n += 1) EN_CHIFFRES.set(nombreEnLettres(n), String(n).padStart(2, '0'));
+
+const RACCOURCI_COMPTE = /^\{nb_(?:armes|profs)\}$/;
+
+const chiffres = (donnees.chiffres ?? []).map((chiffre, index) => {
+  const brut = (chiffre.valeur ?? '').trim();
+  const resolu = resoudre(brut, ctx, `${SOURCE} › chiffre ${index + 1}`);
+  return {
+    valeur: RACCOURCI_COMPTE.test(brut) ? (EN_CHIFFRES.get(resolu) ?? resolu) : resolu,
+    libelle: resoudre(chiffre.libelle, ctx, `${SOURCE} › chiffre ${index + 1}`),
+  };
+});
+
+// ── Piliers ──────────────────────────────────────────────────────────────────
+const piliers = (donnees.piliers ?? []).map((pilier, index) => ({
+  numero: String(index + 1).padStart(2, '0'),
+  titre: resoudre(pilier.titre, ctx, `${SOURCE} › pilier ${index + 1}`),
+  texte: resoudre(pilier.texte, ctx, `${SOURCE} › pilier ${index + 1}`),
+}));
+
+// ── Photo ────────────────────────────────────────────────────────────────────
+const photo = resoudrePhoto(donnees.photo?.fichier);
+const altPhoto = donnees.photo?.alt ?? '';
+// Même règle que la galerie : le CMS ne porte que le nom, le « © » est posé au
+// rendu (`creditAffiche`, src/lib/images.ts). Un « © » saisi malgré tout dans
+// l'admin est absorbé, jamais doublé.
+const credit = creditAffiche(donnees.photo?.credit);
+const cadrage = cadrageCss(donnees.photo?.cadrage);
+
+// 688 px de large en desktop, la gouttière moins 44 px en mobile (photos.md
+// §5.4). Politique de largeurs commune (src/lib/images.ts).
+const largeursPhoto = largeursSrcset(photo, { largeurs: [346, 520, 688, 1032, 1376] });
+
+const idTitre = `${id}-titre`;
+---
+
+<section
+  id={id}
+  class:list={['section', `section--${fond}`, { 'section--sans-filet': !filetHaut }, 'club', classe]}
+  aria-labelledby={idTitre}
+>
+  <div class="gouttiere">
+    <SectionLabel libelle={donnees.eyebrow || 'Le club'} numero={num ?? numero} />
+
+    <Reveal>
+      <div class="club__split">
+        <div class="club__titre">
+          <SectionTitle lignes={lignesTitre} taille="xl" id={idTitre} />
+        </div>
+
+        <figure class="club__media" style={`--club-cadrage:${cadrage}`}>
+          {
+            photo ? (
+              <Picture
+                src={photo}
+                alt={altPhoto}
+                formats={['avif', 'webp']}
+                widths={largeursPhoto}
+                sizes="(min-width: 820px) 48vw, calc(100vw - 44px)"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : null
+          }
+        </figure>
+
+        {credit && <p class="club__credit">{credit}</p>}
+
+        <div class="club__corps">
+          <p class="club__texte">{texte}</p>
+
+          {/* Le cadre porte le filet haut et rogne les débords : c'est lui qui
+              fait disparaître le séparateur de tête quand la rangée se replie
+              (cf. la feuille de style plus bas). */}
+          {
+            chiffres.length > 0 && (
+              <div class="club__chiffres">
+                <ul class="club__chiffres-liste" role="list">
+                  {chiffres.map((chiffre) => (
+                    <li class="club__chiffre">
+                      <span class="club__chiffre-valeur">{chiffre.valeur}</span>
+                      <span class="club__chiffre-libelle">{chiffre.libelle}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          }
+        </div>
+      </div>
+    </Reveal>
+
+    {
+      piliers.length > 0 && (
+        <Reveal>
+          <ol class="club__piliers" role="list">
+            {piliers.map((pilier) => (
+              <li class="club__pilier">
+                <p class="club__pilier-num">
+                  <span>{pilier.numero}</span>
+                  <Filet largeur={28} ton="ember" />
+                </p>
+                <h3 class="club__pilier-titre">{pilier.titre}</h3>
+                <p class="club__pilier-texte">{pilier.texte}</p>
+              </li>
+            ))}
+          </ol>
+        </Reveal>
+      )
+    }
+  </div>
+</section>
+
+<style>
+  /* Espacement tête de section → contenu : 28 px en mobile, 56 en desktop. */
+  .club {
+    --club-esp-tete: clamp(28px, 17.6px + 2.6667vw, 56px);
+    /* Gouttière entre deux chiffres clés, de part et d'autre du filet
+       séparateur (design-spec §3.4 — `gap: 20`). */
+    --club-sep: 20px;
+  }
+
+  /* ── Split : titre + texte + chiffres | photo ───────────────────────────── */
+  /*
+   * Mobile : une seule colonne, et le titre partage la cellule de la photo pour
+   * s'y incruster (design-spec §4.4). Desktop : deux colonnes 540 / 688, le
+   * titre repasse à gauche au-dessus du texte (§3.4).
+   */
+  .club__split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'media'
+      'credit'
+      'corps';
+    margin-block-start: var(--club-esp-tete);
+    padding-block-end: var(--esp-bloc);
+  }
+
+  .club__media {
+    grid-area: media;
+    position: relative;
+    margin: 0;
+    overflow: hidden;
+    aspect-ratio: 346 / 250;
+    border-radius: var(--radius-2);
+    background: var(--char);
+  }
+
+  /* `<Picture>` est un composant : ses nœuds échappent au scope. */
+  .club__media :global(picture) {
+    display: block;
+    height: 100%;
+  }
+
+  .club__media :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--club-cadrage, 50% 50%);
+  }
+
+  /* Voile (45 %) + assise (80 % sur les 48 % du bas) : ils n'existent qu'en
+     mobile, où le titre se pose sur la photo. L'aplat de la maquette devient un
+     dégradé — même densité au ras du texte, sans arête visible. */
+  .club__media::before,
+  .club__media::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .club__media::before {
+    inset: 0;
+    background: var(--veil-ink-45);
+  }
+
+  .club__media::after {
+    inset: auto 0 0 0;
+    height: 52%;
+    background: linear-gradient(to top, var(--veil-ink-80), var(--veil-ink-45) 58%, transparent);
+  }
+
+  .club__titre {
+    grid-area: media;
+    z-index: 1;
+    align-self: end;
+    padding: clamp(16px, 4vw, 20px);
+  }
+
+  /* 24 px à 390, 72 px à 1440 : la rampe propre au titre du club (design-spec
+     §1.4 — 72 px, la seule occurrence). */
+  .club__titre :global(.titre-section) {
+    --titre-fs: clamp(24px, 6.171px + 4.5714vw, 72px);
+  }
+
+  .club__credit {
+    grid-area: credit;
+    margin: 8px 0 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  .club__corps {
+    grid-area: corps;
+    margin-block-start: 20px;
+  }
+
+  .club__texte {
+    max-width: 520px;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--parch-mute);
+  }
+
+  /* ── Chiffres clés ──────────────────────────────────────────────────────── */
+  /*
+   * Mobile : trois colonnes étroites, valeur au-dessus du libellé — la maquette
+   * mobile les supprimait, la parité de contenu les conserve (ARCHITECTURE §5).
+   * Desktop : une rangée, valeur et libellé côte à côte, séparateurs verticaux.
+   */
+  .club__chiffres {
+    margin-block-start: clamp(20px, 17.771px + 0.5714vw, 26px);
+    padding-block-start: clamp(18px, 15.771px + 0.5714vw, 24px);
+    border-top: var(--filet);
+  }
+
+  .club__chiffres-liste {
+    /* Colonnes déduites du nombre de chiffres saisis : la maquette en montre
+       trois, le CMS n'en impose aucun. */
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .club__chiffre {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 5px;
+    padding-inline: clamp(8px, 3vw, 16px);
+  }
+
+  .club__chiffre:first-child {
+    padding-inline-start: 0;
+  }
+
+  .club__chiffre + .club__chiffre {
+    border-left: var(--filet);
+  }
+
+  .club__chiffre-valeur {
+    font-family: var(--font-display);
+    font-size: clamp(20px, 17.771px + 0.5714vw, 26px);
+    font-weight: 500;
+    line-height: 1;
+    color: var(--parch);
+  }
+
+  .club__chiffre-libelle {
+    /* Sous 360 px, « ENCADRANTS » préfère se couper que déborder de sa colonne. */
+    overflow-wrap: anywhere;
+    font-family: var(--font-eyebrow);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  /* ── Piliers ────────────────────────────────────────────────────────────── */
+  /*
+   * Bande à filets haut et bas. Trois colonnes en desktop (séparées par un
+   * filet vertical), une pile en mobile (séparées par un filet horizontal).
+   */
+  .club__piliers {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0;
+    padding: 0;
+    border-top: var(--filet);
+    border-bottom: var(--filet);
+    list-style: none;
+  }
+
+  .club__pilier {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(12px, 9.77px + 0.5714vw, 18px);
+    padding-block: clamp(28px, 19.09px + 2.2857vw, 52px);
+  }
+
+  .club__pilier + .club__pilier {
+    border-top: var(--filet);
+  }
+
+  .club__pilier-num {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: clamp(10px, 9.81px + 0.0476vw, 10.5px);
+    font-weight: 600;
+    letter-spacing: 0.32em;
+    line-height: 1;
+    color: var(--ember);
+  }
+
+  .club__pilier-titre {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(22px, 15.314px + 1.7143vw, 40px);
+    font-style: italic;
+    font-weight: 400;
+    line-height: var(--lh-display);
+    color: var(--parch);
+  }
+
+  .club__pilier-texte {
+    max-width: 355px;
+    margin: 0;
+    font-size: var(--fs-body-xs);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+
+  /* ── Bascule desktop ────────────────────────────────────────────────────── */
+  @media (min-width: 820px) {
+    .club__split {
+      grid-template-columns: minmax(0, 540fr) minmax(0, 688fr);
+      grid-template-areas:
+        'titre media'
+        'corps media'
+        '.     credit';
+      grid-template-rows: auto 1fr auto;
+      column-gap: clamp(40px, -39.355px + 9.6774vw, 100px);
+      align-content: start;
+    }
+
+    .club__titre {
+      grid-area: titre;
+      align-self: start;
+      padding: 0;
+    }
+
+    /* `align-self: end` et non `center` : le crédit occupe la rangée suivante
+       de la grille, il doit rester au ras de la photo qu'il crédite. Centrée,
+       la photo s'en détachait de tout l'excédent de la colonne de gauche —
+       une centaine de pixels à 820, où le titre se replie sur plusieurs
+       lignes. Au format maquetté (1440) les deux colonnes sont de hauteur
+       comparable : le rendu y est inchangé. */
+    .club__media {
+      grid-area: media;
+      align-self: end;
+      aspect-ratio: 688 / 430;
+      border-radius: var(--radius-1);
+    }
+
+    /* Le voile et l'assise n'ont plus lieu d'être : le titre a quitté la photo. */
+    .club__media::before,
+    .club__media::after {
+      content: none;
+    }
+
+    .club__credit {
+      grid-area: credit;
+      text-align: right;
+    }
+
+    .club__corps {
+      grid-area: corps;
+      align-self: start;
+      margin-block-start: 28px;
+    }
+
+    /*
+     * La rangée de la maquette (`gap: 20`, séparateurs verticaux) tient sur une
+     * ligne à 1440, pas dans les 311 px de colonne gauche que laisse un écran
+     * de 820 : elle se replie. Or un item qui passe à la ligne emmène son filet
+     * de gauche et le laisse pendre devant le premier mot de la ligne suivante.
+     *
+     * D'où le montage : *tous* les items portent le filet, premier compris, et
+     * la liste est décalée à gauche d'exactement sa largeur (filet + gouttière).
+     * Le cadre `.club__chiffres`, en `overflow: hidden`, avale ce qui dépasse —
+     * donc le filet de tête de chaque ligne, la première comme les suivantes.
+     */
+    .club__chiffres {
+      overflow: hidden;
+    }
+
+    .club__chiffres-liste {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      margin-inline-start: calc(-1 * (var(--club-sep) + 1px));
+      column-gap: var(--club-sep);
+      row-gap: 12px;
+    }
+
+    .club__chiffre,
+    .club__chiffre:first-child {
+      flex-direction: row;
+      align-items: baseline;
+      gap: 10px;
+      padding-inline: var(--club-sep) 0;
+      border-left: var(--filet);
+    }
+
+    .club__piliers {
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(0, 1fr);
+    }
+
+    .club__pilier {
+      padding-inline: clamp(22px, -7.097px + 3.5484vw, 44px);
+    }
+
+    .club__pilier + .club__pilier {
+      border-top: 0;
+      border-left: var(--filet);
+    }
+  }
+
+  /* ── Titre incrusté : réagencement des lignes en mobile ─────────────────── */
+  /*
+   * La maquette mobile fond les deux premières lignes en une seule et renvoie
+   * la troisième dessous. Les nœuds visés appartiennent à `SectionTitle` : d'où
+   * les `:global()`, portés par `.club__titre` qui, lui, est bien scopé.
+   */
+  @media (max-width: 819.98px) {
+    .club__titre :global(.titre-section) {
+      display: block;
+      --titre-lh: 1.1;
+    }
+
+    .club__titre :global(.titre-section__ligne) {
+      display: inline;
+      /* La chasse que le mode « colonne » n'a pas besoin de poser. */
+      padding-inline-end: 0.22em;
+    }
+
+    .club__titre :global(.titre-section__ligne:last-child) {
+      display: block;
+      padding-inline-end: 0;
+    }
+  }
+</style>

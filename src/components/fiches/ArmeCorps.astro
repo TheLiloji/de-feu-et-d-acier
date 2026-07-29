@@ -1,0 +1,275 @@
+---
+/**
+ * Corps de la fiche arme — la « Description longue » du catalogue.
+ *
+ * La maquette (design-spec §5) ne montre qu'un paragraphe d'accroche, porté par
+ * le hero. Le modèle de contenu, lui, prévoit un corps riche par arme
+ * (`content-model.md`, champ « Description longue (fiche arme) ») : c'est ce
+ * bloc. Il reprend la mesure et la couleur du paragraphe de hero, sans en-tête
+ * ni filet — le rythme de la page tient aux espacements.
+ *
+ * **Rendu du Markdoc sans dépendance.** Le lecteur Keystatic renvoie l'arbre
+ * Markdoc (`{ node }`), pas du HTML. Plutôt que d'ajouter `@markdoc/markdoc`
+ * (dépendance transitive non déclarée, et le `package.json` est hors périmètre
+ * de ce chantier), on parcourt l'arbre ici : la palette autorisée par le schéma
+ * est courte — titres 2-3, gras, italique, liens, citations, listes, filet,
+ * images — et tout texte est échappé avant d'être écrit.
+ *
+ * Si un jour un `src/lib/markdoc.ts` partagé existe, ce bloc doit l'utiliser :
+ * la fiche prof et les articles ont exactement le même besoin.
+ *
+ * Bloc **masqué** quand la description est vide.
+ */
+import { resoudrePhoto } from '../../lib/images';
+import { estExterne } from '../../lib/liens';
+import { resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
+
+export interface Props {
+  /** Nœud Markdoc renvoyé par le lecteur : `(await entree.description()).node`. */
+  node?: unknown;
+  /**
+   * Contexte des raccourcis `{tarif}`, `{creneaux}`, `{arme}`… de la page.
+   * Sans lui, la description longue serait le seul champ de texte riche du site
+   * où « {tarif} » s'afficherait littéralement (ARCHITECTURE.md §7).
+   */
+  ctx?: ContexteRaccourcis;
+  /** Chemin du fichier, cité dans le message d'erreur d'un raccourci fautif. */
+  source?: string;
+  class?: string;
+}
+
+const { node, ctx, source = 'la description longue d’une arme', class: classe } = Astro.props;
+
+interface NoeudMarkdoc {
+  type?: string;
+  attributes?: Record<string, unknown>;
+  children?: unknown[];
+}
+
+const ECHAPPEMENTS: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+const ech = (valeur: unknown): string =>
+  String(valeur ?? '').replace(/[&<>"']/g, (c) => ECHAPPEMENTS[c] ?? c);
+
+const enfants = (n: NoeudMarkdoc): NoeudMarkdoc[] =>
+  Array.isArray(n.children) ? (n.children as NoeudMarkdoc[]) : [];
+
+const rendreListe = (noeuds: NoeudMarkdoc[]): string => noeuds.map(rendre).join('');
+
+function rendre(brut: unknown): string {
+  if (!brut || typeof brut !== 'object') return '';
+  const n = brut as NoeudMarkdoc;
+  const attrs = (n.attributes ?? {}) as Record<string, unknown>;
+
+  switch (n.type) {
+    case 'document':
+    case 'inline':
+      return rendreListe(enfants(n));
+
+    case 'paragraph': {
+      const contenu = rendreListe(enfants(n));
+      return contenu.trim() ? `<p>${contenu}</p>` : '';
+    }
+
+    case 'heading': {
+      // Le schéma n'autorise que 2 et 3 ; on borne quoi qu'il arrive, le H1 de
+      // la page étant le nom de l'arme.
+      const niveau = Math.min(Math.max(Number(attrs.level) || 2, 2), 4);
+      return `<h${niveau}>${rendreListe(enfants(n))}</h${niveau}>`;
+    }
+
+    case 'blockquote':
+      return `<blockquote>${rendreListe(enfants(n))}</blockquote>`;
+
+    case 'list': {
+      const balise = attrs.ordered ? 'ol' : 'ul';
+      return `<${balise}>${rendreListe(enfants(n))}</${balise}>`;
+    }
+
+    case 'item':
+      return `<li>${rendreListe(enfants(n))}</li>`;
+
+    case 'hr':
+      return '<hr />';
+
+    case 'text':
+      return ech(attrs.content);
+
+    case 'strong':
+      return `<strong>${rendreListe(enfants(n))}</strong>`;
+
+    case 'em':
+      return `<em>${rendreListe(enfants(n))}</em>`;
+
+    case 's':
+      return `<s>${rendreListe(enfants(n))}</s>`;
+
+    case 'softbreak':
+      return ' ';
+
+    case 'hardbreak':
+      return '<br />';
+
+    case 'link': {
+      const href = String(attrs.href ?? '');
+      const sortant =
+        estExterne(href) && !/^(mailto|tel):/i.test(href)
+          ? ' target="_blank" rel="noopener noreferrer"'
+          : '';
+      return `<a href="${ech(href)}"${sortant}>${rendreListe(enfants(n))}</a>`;
+    }
+
+    case 'image': {
+      // Les images du corps passent par le même glob que le reste du site ;
+      // une image absente ne casse pas la page, elle disparaît.
+      const source = resoudrePhoto(String(attrs.src ?? ''));
+      if (!source) return '';
+      return (
+        `<img src="${ech(source.src)}" width="${source.width}" height="${source.height}" ` +
+        `alt="${ech(attrs.alt)}" loading="lazy" decoding="async" />`
+      );
+    }
+
+    case 'code':
+      return `<code>${ech(attrs.content)}</code>`;
+
+    case 'fence':
+      return `<pre><code>${ech(attrs.content)}</code></pre>`;
+
+    default:
+      return rendreListe(enfants(n));
+  }
+}
+
+const htmlBrut = rendre(node).trim();
+const html = ctx ? resoudre(htmlBrut, ctx, source) : htmlBrut;
+---
+
+{
+  html && (
+    <section class:list={['corps-arme', classe]}>
+      <div class="gouttiere">
+        <div class="corps-arme__prose" set:html={html} />
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .corps-arme {
+    padding-block: clamp(22px, 15.3px + 1.714vw, 40px) clamp(36px, 13.714px + 5.714vw, 96px);
+  }
+
+  /* Le contenu est injecté par `set:html` : il échappe au scope, d'où les
+     sélecteurs `:global()` sous une racine, elle, scopée. */
+  .corps-arme__prose {
+    max-width: 68ch;
+    font-size: clamp(14.5px, 13.571px + 0.2381vw, 17px);
+    line-height: 1.7;
+    color: var(--parch-soft);
+  }
+
+  .corps-arme__prose :global(p) {
+    margin: 0;
+  }
+
+  .corps-arme__prose :global(* + p),
+  .corps-arme__prose :global(* + ul),
+  .corps-arme__prose :global(* + ol),
+  .corps-arme__prose :global(* + blockquote),
+  .corps-arme__prose :global(* + figure) {
+    margin-top: 1.1em;
+  }
+
+  .corps-arme__prose :global(h2),
+  .corps-arme__prose :global(h3),
+  .corps-arme__prose :global(h4) {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--parch);
+  }
+
+  .corps-arme__prose :global(* + h2),
+  .corps-arme__prose :global(* + h3),
+  .corps-arme__prose :global(* + h4) {
+    margin-top: var(--esp-item);
+  }
+
+  .corps-arme__prose :global(h2) {
+    font-size: var(--fs-display-s);
+  }
+
+  .corps-arme__prose :global(h3),
+  .corps-arme__prose :global(h4) {
+    font-size: clamp(17px, 15.5px + 0.38vw, 21px);
+  }
+
+  .corps-arme__prose :global(strong) {
+    font-weight: 600;
+    color: var(--parch);
+  }
+
+  .corps-arme__prose :global(em) {
+    font-style: italic;
+  }
+
+  .corps-arme__prose :global(a) {
+    color: var(--parch);
+    text-decoration: underline;
+    text-decoration-color: var(--ember);
+    text-underline-offset: 0.25em;
+    transition: color var(--transition);
+  }
+
+  .corps-arme__prose :global(a:hover),
+  .corps-arme__prose :global(a:focus-visible) {
+    color: var(--ember-hot);
+  }
+
+  .corps-arme__prose :global(ul),
+  .corps-arme__prose :global(ol) {
+    margin: 0;
+    padding-left: 1.2em;
+  }
+
+  .corps-arme__prose :global(li + li) {
+    margin-top: 0.35em;
+  }
+
+  .corps-arme__prose :global(li::marker) {
+    color: var(--ember);
+  }
+
+  .corps-arme__prose :global(blockquote) {
+    margin: 0;
+    padding-left: var(--esp-item);
+    border-left: 1px solid var(--ember);
+    font-family: var(--font-display);
+    font-size: var(--fs-display-quote);
+    font-style: italic;
+    line-height: 1.3;
+    color: var(--parch);
+  }
+
+  .corps-arme__prose :global(hr) {
+    height: 1px;
+    margin-block: var(--esp-bloc);
+    border: 0;
+    background: var(--parch-line);
+  }
+
+  .corps-arme__prose :global(img) {
+    width: 100%;
+    height: auto;
+    margin-block: var(--esp-item);
+    border-radius: var(--radius-2);
+  }
+</style>

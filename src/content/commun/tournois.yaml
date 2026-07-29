@@ -1,0 +1,29 @@
+eyebrow: Tournois & saison
+titreLigne1: Saison
+titreLigne2: de compétition.
+photo:
+  fichier: /src/assets/photos/commun/tournois-en-garde-3x4.jpg
+  alt: >-
+    Escrimeur en garde face à l'objectif, gambison rouge et blanc et masque
+    grillagé, épée tenue à la verticale, dans un gymnase.
+  cadrage: centre
+  credit: ''
+overlayEyebrow: Compétiteurs
+overlayTitre: >-
+  Plusieurs membres engagés en compétition, référencés sur HEMA Ratings.
+texte: >-
+  Le club est présent sur le circuit FFAMHE et référencé sur HEMA Ratings. La
+  compétition reste un choix : on peut pratiquer en loisir ou viser les
+  tournois, à son rythme.
+faits:
+  - titre: Circuit FFAMHE
+    texte: épée longue, épée de côté, rapière — open / débutant / féminin
+  - titre: Interclubs & stages
+    texte: échanges réguliers avec d'autres clubs AMHE
+  - titre: Loisir possible
+    texte: la compétition n'est jamais obligatoire
+boutons:
+  - libelle: Résultats HEMA Ratings
+    url: https://hemaratings.com/clubs/details/1155/
+  - libelle: Calendrier FFAMHE
+    url: https://ffamhe.fr

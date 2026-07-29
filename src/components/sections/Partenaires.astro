@@ -1,0 +1,283 @@
+---
+/**
+ * Section « Partenaires » (design-spec §3.10 desktop, §4.9 mobile).
+ *
+ * Fond `$coal`, filet haut, et le seul rythme vertical particulier de
+ * l'accueil : `120/56/110/56` en desktop — padding bas réduit, parce que le
+ * pied de page suit immédiatement. D'où l'unique surcharge de padding.
+ *
+ * Trois rangées `PartnerRow` : logo en `contain` à gauche (le seul endroit du
+ * site où une image n'est pas rognée), catégorie / nom / texte long / bouton
+ * sortant à droite. Sous 820 px la rangée s'empile, `PartnerRow` s'en charge.
+ *
+ * Parité desktop / mobile
+ * -----------------------
+ * La maquette mobile réduit la section à une bande de trois logos sous
+ * « ILS NOUS ACCOMPAGNENT » : tout l'éditorial disparaît. ARCHITECTURE.md §5
+ * l'interdit — le mobile compacte, il ne supprime pas. On garde donc les trois
+ * rangées complètes, empilées, ainsi que le titre et le chapô.
+ *
+ * Textes
+ * ------
+ * Rien n'est écrit en dur : nom, catégorie, présentation, libellé et adresse du
+ * bouton viennent de `src/content/commun/partenaires/`, l'en-tête de
+ * `entetes.partenaires`. Les présentations sont du markdoc (gras, italique,
+ * liens) rendu en HTML au build, puis passé au résolveur de raccourcis comme
+ * partout ailleurs sur le site.
+ */
+import SectionLabel from '../ui/SectionLabel.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import PartnerRow from '../ui/PartnerRow.astro';
+import Reveal from '../ui/Reveal.astro';
+import type { Ecole } from '../../lib/ecoles';
+import { resoudrePhoto } from '../../lib/images';
+import { estExterne, lien } from '../../lib/liens';
+import { contexteDe, resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
+import { typographieFr } from '../../lib/typographie';
+import { rendreMarkdoc } from '../../lib/markdoc';
+
+/** Une entrée de la collection « Partenaires » telle que la rend le lecteur. */
+export interface EntreePartenaire {
+  slug: string;
+  entry: {
+    nom: string;
+    visible?: boolean;
+    categorie?: string;
+    logo?: string | null;
+    logoAlt?: string | null;
+    /** Dessin blanc : la section l'inverse sur sa pastille claire. */
+    logoClair?: boolean;
+    /** `null` quand le champ est laissé vide dans l'admin. */
+    ordre?: number | null;
+    /** Présentation markdoc, résolue à la demande par le lecteur. */
+    texte: () => Promise<{ node: unknown }>;
+    lien?: { libelle?: string | null; url?: string | null } | null;
+  };
+}
+
+/** En-tête de section, tel que saisi dans « Accueil · Titres des sections ». */
+export interface EntetePartenaires {
+  eyebrow?: string | null;
+  titreLigne1?: string | null;
+  titreLigne2?: string | null;
+  lede?: string | null;
+}
+
+export interface Props {
+  /** École servie par la page : résout les raccourcis et les liens internes. */
+  ecole: Ecole;
+  /** Singleton `entetes.partenaires`. */
+  entete: EntetePartenaires;
+  /** Collection commune — `lirePartenaires()`. */
+  partenaires?: EntreePartenaire[];
+  /** Contexte de raccourcis de la page, calculé une fois par l'assembleur. */
+  ctx?: ContexteRaccourcis;
+  /** Rang de section. Absent ⇒ numérotation automatique ; `false` ⇒ aucun numéro. */
+  num?: number | string | false;
+  /** Ancre de la section. */
+  id?: string;
+  class?: string;
+}
+
+// L'annotation `: Props` est explicite : sans elle, `partenaires` retombe sur
+// le type large de `Astro.props` et les rappels de `filter`/`sort`/`map`
+// ci-dessous passent en `any` implicite (erreur sous `astro check`).
+const {
+  ecole,
+  entete,
+  partenaires = [],
+  ctx,
+  num,
+  id = 'partenaires',
+  class: classe,
+}: Props = Astro.props;
+
+const contexte = ctx ?? contexteDe(ecole.fiche, { nbArmes: 0, nbProfs: 0 });
+
+/**
+ * Libellés des catégories — le CMS stocke la valeur technique du select
+ * (`affiliation`, `equipement`…), la maquette affiche le libellé en capitales
+ * (la CSS de `PartnerRow` s'en charge). Les valeurs suivent la liste déclarée
+ * dans `keystatic.config.ts`, rubrique « Partenaires ».
+ */
+const CATEGORIES: Record<string, string> = {
+  affiliation: 'Affiliation',
+  equipement: 'Équipement',
+  institution: 'Institution',
+  'club-ami': 'Club ami',
+};
+
+/*
+ * Polarité des logos — champ CMS « Logo blanc, à inverser sur fond clair ».
+ *
+ * Les trois marques ne livrent pas la même polarité : la signature FFAMHE est
+ * en noir sur blanc, « Faits d'Armes » en blanc sur une plaque noire opaque,
+ * « Black Armoury » en blanc détouré. Posés tels quels sur le fond sombre de la
+ * section, ils donnaient trois traitements différents — dont un autocollant
+ * blanc et un rectangle noir (design-spec §3.10 attend un logo détouré).
+ *
+ * La feuille pose donc une pastille claire commune aux trois, et les logos
+ * déclarés « clairs » y sont inversés pour redevenir de l'encre sur parchemin.
+ * L'information vient du CMS (`logoClair`, cf. keystatic.config.ts rubrique
+ * « Partenaires ») et non d'une liste de noms de fichiers écrite ici : le jour
+ * où un partenaire livre un nouveau logo, la case se décoche dans l'admin, sans
+ * toucher au code. Décochée par défaut — c'est le cas d'un logo normal, sombre
+ * sur fond clair : un partenaire ajouté sans y penser ne casse rien.
+ */
+
+// Markdoc → HTML : `src/lib/markdoc.ts`. Le `<article>` racine est retiré, la
+// sémantique étant portée par la rangée.
+
+const rangees = await Promise.all(
+  partenaires
+    .filter((p) => p.entry.visible !== false && Boolean(p.entry.nom))
+    .sort((a, b) => (a.entry.ordre ?? 100) - (b.entry.ordre ?? 100))
+    .map(async (p) => {
+      // Le nom est un champ de slug, jamais passé à `resoudre()` : sa
+      // typographie se compose ici (« Faits d’Armes »).
+      const nom = typographieFr(p.entry.nom);
+      const source = `la présentation de « ${p.entry.nom} » (src/content/commun/partenaires/${p.slug}.mdoc)`;
+      const { node } = await p.entry.texte();
+      const url = p.entry.lien?.url ?? '';
+      const categorie = p.entry.categorie ?? '';
+
+      return {
+        slug: p.slug,
+        nom,
+        categorie: CATEGORIES[categorie] ?? categorie,
+        // `resoudrePhoto` renvoie null si le fichier n'a pas encore été déposé :
+        // la rangée s'affiche alors sans logo plutôt que de casser le build.
+        logo: resoudrePhoto(p.entry.logo),
+        alt: typographieFr(p.entry.logoAlt) || `Logo ${nom}`,
+        logoClair: Boolean(p.entry.logoClair),
+        html: resoudre(rendreMarkdoc(node), contexte, source),
+        href: lien(ecole, url),
+        libelleLien: typographieFr(p.entry.lien?.libelle) || `Visiter ${nom}`,
+        externe: estExterne(url),
+      };
+    }),
+);
+
+// ── En-tête ─────────────────────────────────────────────────────────────────
+
+const sourceEntetes = 'src/content/commun/entetes.yaml (rubrique « Partenaires »)';
+const eyebrow = entete.eyebrow || 'Partenaires';
+
+// Ligne 1 en parchemin, ligne 2 en ember italique (design-spec §9.3).
+const lignesTitre = [
+  { texte: resoudre(entete.titreLigne1, contexte, sourceEntetes), accent: false },
+  { texte: resoudre(entete.titreLigne2, contexte, sourceEntetes), accent: true },
+].filter((ligne) => ligne.texte.length > 0);
+
+const chapo = resoudre(entete.lede, contexte, sourceEntetes);
+
+const idTitre = `${id}-titre`;
+const classes = ['section', 'section--coal', 'partenaires', classe].filter(Boolean).join(' ');
+---
+
+{
+  rangees.length > 0 && (
+    <section id={id} class={classes} aria-labelledby={idTitre}>
+      <div class="gouttiere">
+        <SectionLabel libelle={eyebrow} numero={num} />
+
+        <Reveal>
+          <div class="partenaires__tete">
+            {lignesTitre.length > 0 && (
+              <SectionTitle lignes={lignesTitre} taille="l" balise="h2" id={idTitre} />
+            )}
+            {chapo && <p class="partenaires__chapo">{chapo}</p>}
+          </div>
+        </Reveal>
+
+        <ul class="partenaires__rangees" role="list">
+          {rangees.map((r, index) => (
+            <Reveal as="li" class="partenaires__rangee" delai={index * 90}>
+              <PartnerRow
+                logo={r.logo}
+                alt={r.alt}
+                logoClair={r.logoClair}
+                categorie={r.categorie}
+                nom={r.nom}
+                nomNiveau="h3"
+                href={r.href || undefined}
+                libelleLien={r.libelleLien}
+                externe={r.externe}
+              >
+                <Fragment set:html={r.html} />
+              </PartnerRow>
+            </Reveal>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  /*
+   * Seule section de l'accueil à ne pas suivre le rythme commun : 44 → 120 en
+   * haut, 48 → 110 en bas (design-spec §2.1 et §4.9). Le double sélecteur
+   * l'emporte sur `.section` de global.css quel que soit l'ordre d'injection.
+   */
+  .section.partenaires {
+    padding-block: clamp(44px, 15.771px + 7.2381vw, 120px)
+      clamp(48px, 24.971px + 5.9048vw, 110px);
+  }
+
+  /* `esp 56` sous le label, `esp 64` avant les rangées : des marges, pas des
+     div vides (design-spec §0.3). */
+  .partenaires__tete {
+    margin-top: clamp(28px, 17.6px + 2.6667vw, 56px);
+  }
+
+  /* Chapô plus large que les autres (760 dans la maquette, contre 460) et en
+     $parch-soft. Largeur bloquée convertie en max-width (§10.2). */
+  .partenaires__chapo {
+    max-width: 760px;
+    margin-top: clamp(16px, 11.543px + 1.1429vw, 28px);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--parch-soft);
+  }
+
+  .partenaires__rangees {
+    margin-top: clamp(28px, 14.629px + 3.4286vw, 64px);
+    padding: 0;
+    list-style: none;
+  }
+
+  /*
+   * Pastille claire commune aux trois logos.
+   *
+   * Les fichiers fournis n'ont ni la même polarité ni le même détourage : sans
+   * cadre commun, la section alignait un pavé blanc (FFAMHE), un rectangle noir
+   * (Faits d'Armes) et un logo détouré (Black Armoury). Une plaque de parchemin
+   * identique pour les trois rétablit l'unité de la rangée — et c'est le fond
+   * sur lequel ces logos sont dessinés à l'origine.
+   *
+   * `mix-blend-mode: multiply` fait disparaître les aplats clairs des sources
+   * dans la plaque (blanc × parchemin = parchemin) sans toucher au dessin :
+   * le bleu et le rouge de la FFAMHE restent les siens. Les logos déclarés
+   * clairs au CMS sont d'abord inversés (`data-logo-clair`, posé par
+   * `PartnerRow`) — leur aplat noir devient alors blanc, donc invisible lui
+   * aussi, et leur dessin blanc redevient sombre.
+   *
+   * Les règles visent `PartnerRow` de l'extérieur : la pastille est un parti
+   * pris de cette section, pas du composant, qui sert aussi la bande de logos
+   * du pied de page.
+   */
+  .partenaires__rangees :global(.partner-row__logo) {
+    padding: clamp(8px, 4px + 1vw, 18px);
+    border-radius: var(--radius-1);
+    background: var(--parch);
+  }
+
+  .partenaires__rangees :global(.partner-row__logo img) {
+    mix-blend-mode: multiply;
+  }
+
+  .partenaires__rangees :global(.partner-row[data-logo-clair] .partner-row__logo img) {
+    filter: invert(1);
+  }
+</style>

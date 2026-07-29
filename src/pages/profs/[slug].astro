@@ -1,0 +1,275 @@
+---
+/**
+ * Fiche d'un encadrant — `/profs/<slug>/`, gabarit de design-spec §6.
+ *
+ * Quatre blocs, dans l'ordre de la maquette : fil d'Ariane, hero (portrait +
+ * identité + biographie + vidéo), interview, bande d'appel. Les blocs vidéo et
+ * interview sont masqués tant qu'ils sont vides (ARCHITECTURE.md §1) — c'est le
+ * cas des trois fiches aujourd'hui, et la page reste complète sans eux.
+ *
+ * Les pages sont générées depuis les encadrants **affichés** de l'école : une
+ * fiche décochée dans l'admin (« Affiché sur le site ») disparaît de la grille
+ * d'accueil *et* n'a plus d'URL. Aujourd'hui seule l'école principale a des
+ * routes non préfixées ; le jour où une deuxième salle ouvre, ce fichier est
+ * recopié en `src/pages/[ecole]/profs/[slug].astro` sans rien changer d'autre
+ * (multi-ecoles.md §6.4).
+ *
+ * Écart assumé à la maquette : la barre d'onglets mobile n'a **aucun onglet
+ * actif**. La maquette allume « CONTACT » sur une fiche prof, ce qui est faux —
+ * et allumer « ACCUEIL » le serait tout autant puisqu'on n'y est pas.
+ */
+import type { GetStaticPaths, InferGetStaticPropsType } from 'astro';
+import ProfCta from '../../components/fiches/ProfCta.astro';
+import ProfFilAriane from '../../components/fiches/ProfFilAriane.astro';
+import ProfHero from '../../components/fiches/ProfHero.astro';
+import ProfInterview from '../../components/fiches/ProfInterview.astro';
+import { corpsEnTexte, rendreCorps } from '../../lib/markdoc';
+import { libelleArmes, prenomDe, profsAffiches } from '../../components/fiches/prof';
+import Footer from '../../components/sections/Footer.astro';
+import Nav from '../../components/sections/Nav.astro';
+import TabBar from '../../components/ui/TabBar.astro';
+import type { NomIcone } from '../../components/ui/icones';
+import Base from '../../layouts/Base.astro';
+import {
+  lireDisciplines,
+  lireEntetes,
+  lireFiches,
+  lireHero,
+  lireIdentite,
+  lireMenus,
+  profsDe,
+} from '../../lib/contenu';
+import { getEcolePrincipale } from '../../lib/ecoles';
+import { cadrageCss, creditAffiche, resoudrePhoto } from '../../lib/images';
+import { typographieFr } from '../../lib/typographie';
+import { lien } from '../../lib/liens';
+import { contexteDe, resoudre } from '../../lib/raccourcis';
+
+/** Forme d'un onglet de `TabBar` — recopiée pour ne pas typer depuis un .astro. */
+interface OngletBarre {
+  libelle: string;
+  href: string;
+  icone: NomIcone;
+  exergue?: boolean;
+}
+
+export const getStaticPaths = (async () => {
+  const ecole = await getEcolePrincipale();
+
+  const [identite, hero, entetes, fiches, menus, disciplines, profs] = await Promise.all([
+    lireIdentite(),
+    lireHero(),
+    lireEntetes(),
+    lireFiches(),
+    lireMenus(),
+    lireDisciplines(),
+    profsDe(ecole),
+  ]);
+
+  const affiches = profsAffiches(profs);
+  const nbArmes = disciplines.filter((d) => d.entry.affichee).length;
+
+  // La barre d'onglets est la même sur toutes les fiches : construite une fois.
+  const onglets: OngletBarre[] = (menus.barreMobile ?? []).map((entree) => ({
+    libelle: entree.libelle,
+    href: lien(ecole, entree.lien),
+    icone: entree.icone as NomIcone,
+    // L'onglet central mis en exergue est celui des épées croisées, comme dans
+    // la maquette — repéré par son icône, pas par sa position.
+    exergue: entree.icone === 'swords',
+  }));
+
+  return Promise.all(
+    affiches.map(async (prof) => {
+      const entree = prof.entry;
+      const source = `src/content/ecoles/${ecole.slug}/profs/${prof.slug}.mdoc`;
+      const prenom = prenomDe(entree);
+
+      const ctx = contexteDe(
+        ecole.fiche,
+        { nbArmes, nbProfs: affiches.length },
+        { prof: prenom, arme: libelleArmes(entree.armes, disciplines) || undefined },
+      );
+
+      // Le corps Markdoc est converti ici, au build : les props d'une route
+      // statique doivent rester des données, jamais des fonctions du Reader.
+      // Les raccourcis y sont résolus comme dans n'importe quel autre champ :
+      // la biographie et une réponse de FAQ partagent le même type de champ,
+      // un rédacteur ne peut pas deviner que « {tarif} » ne marcherait ici qu'à
+      // moitié (ARCHITECTURE.md §7).
+      const lireBio = entree.bio as unknown as () => Promise<{ node: unknown }>;
+      const bio = resoudre(rendreCorps(await lireBio()), ctx, `${source} — biographie`);
+
+      const accroche = resoudre(entree.accroche, ctx, `${source} — accroche`);
+
+      const entretien = (entree.interview ?? []).map((qr, i) => ({
+        question: resoudre(qr.question, ctx, `${source} — interview [${i + 1}] question`),
+        reponse: resoudre(qr.reponse, ctx, `${source} — interview [${i + 1}] réponse`),
+      }));
+
+      return {
+        params: { slug: prof.slug },
+        props: {
+          ecole,
+          identite,
+          // En-tête et pied de page du site : passés en props comme le reste,
+          // aucune lecture de contenu dans le corps de la page.
+          menus,
+          ctaEntete: hero.boutonPrincipal,
+          onglets,
+          slug: prof.slug,
+          // Le nom ne transite pas par `resoudre()` : c'est un slug de
+          // collection. Sa typographie se pose ici (H1, fil d'Ariane, <title>).
+          nom: typographieFr(entree.nom),
+          prenom,
+          armes: libelleArmes(entree.armes, disciplines),
+          accroche,
+          bio,
+          portrait: resoudrePhoto(entree.portrait?.fichier),
+          portraitAlt: entree.portrait?.alt ?? '',
+          portraitPosition: cadrageCss(entree.portrait?.cadrage),
+          credit: creditAffiche(entree.portrait?.credit),
+          lienExterne: {
+            libelle: entree.lienExterne?.libelle ?? '',
+            // `lien()` laisse une URL absolue intacte et renvoie '' si le champ
+            // est vide — le bouton se masque alors tout seul.
+            url: lien(ecole, entree.lienExterne?.url),
+          },
+          video: {
+            url: entree.video?.url ?? '',
+            duree: entree.video?.duree ?? '',
+            vignette: resoudrePhoto(entree.video?.vignette),
+          },
+          entretien,
+          rubrique: entetes.profs?.eyebrow || 'Les profs',
+          retour: lien(ecole, '#profs'),
+          cta: {
+            titre: resoudre(fiches.prof?.titre, ctx, 'src/content/commun/fiches.yaml (prof, titre)'),
+            sousTitre: resoudre(
+              fiches.prof?.sousTitre,
+              ctx,
+              'src/content/commun/fiches.yaml (prof, sous-titre)',
+            ),
+            bouton: {
+              libelle: fiches.prof?.bouton?.libelle ?? '',
+              url: lien(ecole, fiches.prof?.bouton?.url),
+            },
+          },
+        },
+      };
+    }),
+  );
+}) satisfies GetStaticPaths;
+
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+
+const {
+  ecole,
+  identite,
+  menus,
+  ctaEntete,
+  onglets,
+  nom,
+  armes,
+  accroche,
+  bio,
+  portrait,
+  portraitAlt,
+  portraitPosition,
+  credit,
+  lienExterne,
+  video,
+  entretien,
+  rubrique,
+  retour,
+  cta,
+} = Astro.props as Props;
+
+// Meta description. L'accroche seule ne suffit pas : elle fait 24 à 40 signes
+// (« Armes courtes & bouclier »), ce qu'un moteur remplace par un extrait de
+// son cru. On la complète donc par le début de la biographie, bornée à la
+// longueur utile.
+const description = [accroche, corpsEnTexte(bio)]
+  .map((morceau) => morceau.trim())
+  .filter(Boolean)
+  .join(' — ')
+  .slice(0, 300)
+  .trim();
+---
+
+<Base ecole={ecole} identite={identite} titre={nom} description={description}>
+  {/* Fiche : pas de hero photographique plein écran sous la barre, elle garde
+      donc son fond plein dès le chargement. */}
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={ctaEntete}
+    identite={identite}
+    fond="solide"
+  />
+
+  <ProfFilAriane retour={retour} rubrique={rubrique} courant={nom} />
+
+  <article class="fiche-prof" aria-labelledby="fiche-prof-titre">
+    <div class="fiche-prof__hero">
+      <ProfHero
+        nom={nom}
+        armes={armes}
+        accroche={accroche}
+        bio={bio}
+        portrait={portrait}
+        portraitAlt={portraitAlt}
+        portraitPosition={portraitPosition}
+        credit={credit}
+        lienExterne={lienExterne}
+        retour={retour}
+        libelleRetour={`Retour — ${rubrique}`}
+        video={video}
+        idTitre="fiche-prof-titre"
+      />
+    </div>
+
+    <ProfInterview entretien={entretien} />
+
+    <ProfCta
+      titre={cta.titre}
+      sousTitre={cta.sousTitre}
+      bouton={cta.bouton}
+      lienExterne={lienExterne}
+    />
+  </article>
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient après le pied de
+        page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide du site" />
+  </Fragment>
+</Base>
+
+<style>
+  .fiche-prof {
+    background: var(--ink);
+  }
+
+  /*
+   * Mobile : le hero est plein cadre et arrive tout en haut (design-spec §6.4).
+   * Les 26 px du bas sont ceux du bloc `Bio` de la maquette : ils étaient en
+   * fait fournis par `ProfInterview`, masqué tant qu'aucune question n'est
+   * saisie — le filet haut de la bande CTA atterrissait alors sur les jambages
+   * de la dernière ligne de la bio. On les pose ici, où ils ne dépendent de
+   * rien.
+   *
+   * Desktop : 72 px sous le fil d'Ariane, 88 px avant l'interview (§6.3).
+   */
+  .fiche-prof__hero {
+    padding-block: 0 26px;
+  }
+
+  @media (min-width: 1000px) {
+    .fiche-prof__hero {
+      padding-block: clamp(40px, 1rem + 3vw, 72px) clamp(48px, 1rem + 3.6vw, 88px);
+    }
+  }
+</style>

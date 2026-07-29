@@ -1,0 +1,246 @@
+---
+/**
+ * Section « Les profs » — design-spec §3.3 (desktop) et §4.5 (mobile).
+ *
+ * Desktop : label numéroté, titre sur deux lignes + chapô en vis-à-vis, puis
+ * une grille de trois cartes de 426,7 px. Mobile : la même liste devient un
+ * carrousel de cartes défilables, avec l'indicateur « GLISSER » dans la tête de
+ * section. Un seul balisage sert les deux — `Carousel` bascule en grille de
+ * trois colonnes au-dessus de 820 px, donc aucune photo n'est chargée deux fois
+ * et aucun lien n'est dupliqué.
+ *
+ * **Écart assumé à la maquette mobile.** La carte mobile de la maquette (158 px)
+ * abandonne l'accroche et n'affiche que le prénom. ARCHITECTURE.md §5 impose la
+ * parité de contenu entre desktop et mobile : la carte mobile garde donc le nom
+ * complet et l'accroche, et sa largeur passe de 158 à ~220 px pour rester
+ * lisible. Le mobile compacte, il ne retire rien. La variante `compacte` de
+ * `ProfCard` n'est de ce fait pas employée ici.
+ *
+ * La ligne d'armes (« MESSER · VIKING · BOCLE ») n'est pas un champ du CMS :
+ * elle est composée depuis les armes enseignées (cf. `../fiches/prof.ts`).
+ * Le titre « {nb_profs} encadrants, {nb_profs} écoles. » se recalcule sur les
+ * encadrants réellement affichés (ARCHITECTURE.md §4).
+ */
+import Carousel from '../ui/Carousel.astro';
+import ProfCard from '../ui/ProfCard.astro';
+import Reveal from '../ui/Reveal.astro';
+import SectionLabel from '../ui/SectionLabel.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import type { Discipline, Prof } from '../../lib/contenu';
+import type { Ecole } from '../../lib/ecoles';
+import { cadrageCss, resoudrePhoto } from '../../lib/images';
+import { lienProf } from '../../lib/liens';
+import {
+  contexteDe,
+  majusculeInitiale,
+  resoudre,
+  type ContexteRaccourcis,
+} from '../../lib/raccourcis';
+import { libelleArmes, profsAffiches } from '../fiches/prof';
+
+/** Entrée du singleton « En-têtes de section » (`entetes.profs`). */
+export interface EnteteProfs {
+  eyebrow?: string | null;
+  titreLigne1?: string | null;
+  titreLigne2?: string | null;
+  lede?: string | null;
+}
+
+export interface Props {
+  /** École servie par la page — pilote les liens vers les fiches. */
+  ecole: Ecole;
+  /** Encadrants de l'école, tels que lus par `profsDe(ecole)`. */
+  profs: readonly Prof[];
+  /** Catalogue commun des armes, pour composer la ligne de disciplines. */
+  disciplines: readonly Discipline[];
+  /** `entetes.profs` du singleton « En-têtes de section ». */
+  entete: EnteteProfs;
+  /** Contexte de raccourcis de la page. Reconstruit si absent. */
+  ctx?: ContexteRaccourcis;
+  /** Rang de la section, calculé par l'assembleur. Auto si absent. */
+  num?: number;
+  /** Alternance des fonds. La maquette met « Les profs » sur `$ink`. */
+  fond?: 'ink' | 'coal';
+  /** Ancre de la section. Cible de `#profs` dans les menus. */
+  id?: string;
+  /** Retire le filet haut (première section de la page). */
+  sansFilet?: boolean;
+  class?: string;
+}
+
+const {
+  ecole,
+  profs,
+  disciplines,
+  entete,
+  ctx,
+  num,
+  fond = 'ink',
+  id = 'profs',
+  sansFilet = false,
+  class: classe,
+} = Astro.props;
+
+const SOURCE = 'src/content/commun/entetes.yaml (Les profs)';
+
+const affiches = profsAffiches(profs);
+const armesAffichees = disciplines.filter((d) => d.entry.affichee).length;
+
+// Le contexte arrive normalement de l'assembleur (une seule construction pour
+// toute la page). Le repli garde la section utilisable isolément — page
+// d'aperçu, test visuel — sans jamais inventer de valeur.
+const contexte =
+  ctx ?? contexteDe(ecole.fiche, { nbArmes: armesAffichees, nbProfs: affiches.length });
+
+// « {nb_profs} encadrants, » rend « trois encadrants, » : la première ligne
+// ouvre le titre, elle prend donc la majuscule (« Trois encadrants, »).
+const lignesTitre = [
+  { texte: majusculeInitiale(resoudre(entete.titreLigne1, contexte, SOURCE)) },
+  { texte: resoudre(entete.titreLigne2, contexte, SOURCE), accent: true },
+].filter((ligne) => ligne.texte.length > 0);
+
+const lede = resoudre(entete.lede, contexte, SOURCE);
+const idTitre = `${id}-titre`;
+
+const cartes = affiches.map((prof) => {
+  const entree = prof.entry;
+  const interview = entree.interview ?? [];
+  const aInterview = interview.length > 0 || Boolean(entree.video?.url);
+
+  return {
+    slug: prof.slug,
+    nom: entree.nom,
+    prenom: entree.prenom || undefined,
+    armes: libelleArmes(entree.armes, disciplines),
+    accroche: entree.accroche || undefined,
+    portrait: resoudrePhoto(entree.portrait?.fichier),
+    alt: entree.portrait?.alt || undefined,
+    position: cadrageCss(entree.portrait?.cadrage),
+    misEnAvant: Boolean(entree.misEnAvant),
+    href: lienProf(ecole, prof.slug),
+    // La maquette écrit « LIRE L'INTERVIEW ». Tant qu'aucune interview n'est
+    // saisie, la fiche existe quand même (bio, accroche, lien externe) : le
+    // libellé dit alors ce qu'on y trouve vraiment.
+    libelleLien: aInterview ? "Lire l'interview" : 'Voir la fiche',
+  };
+});
+---
+
+{
+  cartes.length > 0 && (
+    <section
+      class:list={[
+        'section',
+        `section--${fond}`,
+        { 'section--sans-filet': sansFilet },
+        'profs',
+        classe,
+      ]}
+      id={id}
+      aria-labelledby={lignesTitre.length > 0 ? idTitre : undefined}
+      aria-label={lignesTitre.length > 0 ? undefined : entete.eyebrow || 'Les profs'}
+    >
+      <div class="gouttiere">
+        <SectionLabel
+          libelle={entete.eyebrow || 'Les profs'}
+          numero={num ?? undefined}
+          glisser={cartes.length > 1}
+        />
+
+        {/* `profs__tete` est porté par le `Reveal` lui-même : c'est lui qui rend
+            le nœud, et le titre comme le chapô doivent en être les enfants
+            directs pour devenir des items flex (sinon le vis-à-vis desktop
+            n'existe pas). */}
+        {(lignesTitre.length > 0 || lede) && (
+          <Reveal class="profs__tete">
+            {lignesTitre.length > 0 && <SectionTitle lignes={lignesTitre} taille="l" id={idTitre} />}
+            {lede && <p class="profs__lede">{lede}</p>}
+          </Reveal>
+        )}
+
+        <Carousel
+          libelle="Les encadrants du club"
+          nombre={cartes.length}
+          largeurItem="clamp(196px, 58vw, 240px)"
+          gap="12px"
+          fleches={false}
+          compteur={false}
+          grilleDesktop={3}
+        >
+          {cartes.map((carte, index) => (
+            <div class="profs__item">
+              <Reveal delai={index * 90}>
+                <ProfCard
+                  nom={carte.nom}
+                  prenom={carte.prenom}
+                  discipline={carte.armes}
+                  accroche={carte.accroche}
+                  portrait={carte.portrait}
+                  alt={carte.alt}
+                  objectPosition={carte.position}
+                  href={carte.href}
+                  libelleLien={carte.libelleLien}
+                  misEnAvant={carte.misEnAvant}
+                  nomNiveau="h3"
+                  sizes="(min-width: 1440px) 427px, (min-width: 820px) 30vw, 62vw"
+                />
+              </Reveal>
+            </div>
+          ))}
+        </Carousel>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  /* Tête de section : titre et chapô en vis-à-vis, alignés par le bas
+     (design-spec §3.3 — `justify: space_between`, `align: end`). En dessous de
+     820 px ils s'empilent, le chapô passant sous le titre. */
+  .profs__tete {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(14px, 0.5rem + 1.2vw, 26px);
+    padding-block: clamp(22px, 1rem + 1.6vw, 56px) clamp(26px, 1rem + 2.6vw, 64px);
+  }
+
+  .profs__lede {
+    max-width: 46ch;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--parch-mute);
+  }
+
+  @media (min-width: 820px) {
+    .profs__tete {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: clamp(32px, 2rem + 2vw, 72px);
+    }
+
+    .profs__lede {
+      flex: 0 1 460px;
+      max-width: 460px;
+    }
+  }
+
+  /* Les enfants directs de la piste du carrousel en reçoivent la largeur (et,
+     en grille desktop, la hauteur de la rangée). L'enveloppe `Reveal` doit
+     s'étirer d'autant, sinon le `height: 100%` des cartes ne résout rien et
+     les trois cartes d'une rangée n'ont plus la même hauteur. */
+  .profs__item {
+    display: flex;
+    min-width: 0;
+  }
+
+  .profs__item > :global(*) {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .profs__item :global(.prof-card) {
+    width: 100%;
+  }
+</style>

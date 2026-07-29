@@ -1,0 +1,12 @@
+arme:
+  titre: Envie de tester {arme} ?
+  sousTitre: '{essai} premières séances offertes — matériel prêté.'
+  bouton:
+    libelle: Venir essayer
+    url: '#rejoindre'
+prof:
+  titre: S’entraîner avec {prof} ?
+  sousTitre: Viens à une séance, {prof} t’accueille.
+  bouton:
+    libelle: Venir essayer
+    url: '#rejoindre'

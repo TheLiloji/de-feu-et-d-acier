@@ -1,0 +1,189 @@
+---
+/**
+ * Encadré « La source » de la fiche arme — design-spec §5.1 (bloc 4), §5.3, §5.4.
+ *
+ * Carte à fond très légèrement parchemin (`--surface-1`), filet 1 px, rayon 3 :
+ * la planche du traité à gauche (170×200 en desktop, 64×80 en mobile), le texte
+ * à droite — sur-titre ember, titre en Cormorant, paragraphe, lien fléché.
+ *
+ * Deux écarts assumés :
+ *   - la maquette mobile **supprime** le paragraphe de la carte ; la parité de
+ *     contenu desktop/mobile est obligatoire (ARCHITECTURE.md §5), on le garde
+ *     donc, simplement plus compact ;
+ *   - le bloc entier est **masqué** si l'arme n'a ni titre, ni texte, ni
+ *     planche (l'encadré est facultatif dans le CMS).
+ */
+import { Picture } from 'astro:assets';
+import Reveal from '../ui/Reveal.astro';
+import TextLink from '../ui/TextLink.astro';
+import { largeursSrcset, resoudrePhoto } from '../../lib/images';
+import { estExterne } from '../../lib/liens';
+
+export interface SourceArme {
+  titre?: string | null;
+  texte?: string | null;
+  lien?: { libelle?: string | null; url?: string | null } | null;
+  /** Chemin CMS de la planche du traité. */
+  image?: string | null;
+  /** Description de la planche, saisie au CMS. Vide ⇒ description générique. */
+  imageAlt?: string | null;
+}
+
+export interface Props {
+  source?: SourceArme | null;
+  /** Sur-titre ember de la carte. */
+  libelle?: string;
+  /**
+   * Repli de description, quand le CMS n'en porte pas. Générique à dessein :
+   * tant que les quatre fiches partagent la même planche, une description
+   * précise mentirait sur trois d'entre elles.
+   */
+  alt?: string;
+}
+
+const {
+  source,
+  libelle = 'La source',
+  alt = 'Planche du traité étudié en salle',
+} = Astro.props;
+
+const titre = source?.titre ?? '';
+const texte = source?.texte ?? '';
+const lienUrl = source?.lien?.url ?? '';
+const lienLibelle = source?.lien?.libelle || 'Étudier la source';
+const image = resoudrePhoto(source?.image);
+// Le rédacteur décrit sa planche quand il en dépose une ; sinon, la formule
+// neutre, vraie pour n'importe quelle gravure de traité.
+const texteAlt = source?.imageAlt?.trim() || alt;
+
+const afficher = Boolean(titre || texte || image);
+
+// La planche est une vignette : 170 px en desktop, 64 px en mobile. Politique
+// de largeurs commune (src/lib/images.ts).
+const largeurs = largeursSrcset(image, { rendMax: 170 });
+---
+
+{
+  afficher && (
+    <section class="source-arme">
+      <div class="gouttiere">
+        <Reveal>
+          <div class="source-arme__carte">
+            {image && (
+              <div class="source-arme__planche">
+                <Picture
+                  src={image}
+                  alt={texteAlt}
+                  formats={['avif', 'webp']}
+                  widths={largeurs}
+                  sizes="(min-width: 1000px) 170px, 128px"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+            )}
+
+            <div class="source-arme__texte">
+              <p class="source-arme__label">{libelle}</p>
+              {titre && <h2 class="source-arme__titre">{titre}</h2>}
+              {texte && <p class="source-arme__para">{texte}</p>}
+              {lienUrl && (
+                <p class="source-arme__lien">
+                  <TextLink libelle={lienLibelle} href={lienUrl} externe={estExterne(lienUrl)} />
+                </p>
+              )}
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .source-arme {
+    padding-bottom: clamp(28px, 2.743px + 6.476vw, 96px);
+  }
+
+  .source-arme__carte {
+    display: flex;
+    align-items: center;
+    gap: clamp(16px, 4.114px + 3.048vw, 48px);
+    padding: clamp(16px, 8.571px + 1.905vw, 36px) clamp(16px, 7.086px + 2.286vw, 40px);
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    background: var(--surface-1);
+  }
+
+  .source-arme__planche {
+    flex: none;
+    width: clamp(64px, 24.63px + 10.1vw, 170px);
+    aspect-ratio: 170 / 200;
+    overflow: hidden;
+    border-radius: var(--radius-1);
+    background: var(--char);
+  }
+
+  /* `<Picture>` est un composant : ses nœuds échappent au scope, d'où :global. */
+  .source-arme__planche :global(picture),
+  .source-arme__planche :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .source-arme__planche :global(img) {
+    object-fit: cover;
+  }
+
+  .source-arme__texte {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(6px, 3.771px + 0.5714vw, 12px);
+  }
+
+  .source-arme__label {
+    font-family: var(--font-eyebrow);
+    font-size: clamp(8.5px, 7.757px + 0.1905vw, 10.5px);
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .source-arme__titre {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(16px, 10.8px + 1.333vw, 30px);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--parch);
+  }
+
+  .source-arme__para {
+    max-width: 560px;
+    font-size: clamp(13px, 12.443px + 0.1429vw, 14.5px);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+
+  .source-arme__lien {
+    margin-top: 2px;
+  }
+
+  /*
+   * La maquette centre la vignette face au texte (§5.4) — mais elle supprime
+   * aussi le paragraphe en mobile, si bien que les deux colonnes y font la même
+   * hauteur. Le paragraphe étant conservé (parité de contenu, ARCHITECTURE §5),
+   * la colonne texte est deux à trois fois plus haute que la vignette sous
+   * 1000 px : centrée, la planche flottait au milieu de deux trous. Elle se
+   * cale donc sur « LA SOURCE » tant qu'on n'est pas au gabarit desktop.
+   */
+  @media (max-width: 999.98px) {
+    .source-arme__carte {
+      align-items: flex-start;
+    }
+  }
+</style>

@@ -1,0 +1,41 @@
+mentions:
+  intro: >-
+    Site édité par la section AMHE « De Feu et d'Acier » de l'USAM
+    Clermont-Ferrand, association loi 1901 affiliée à la FFAMHE.
+  entrees:
+    - titre: Siège & lieu d'entraînement
+      texte: '{lieu} — {adresse}'
+    - titre: Horaires hebdomadaires
+      texte: '{creneaux}'
+    - titre: Directrice de publication
+      texte: Clémence Sillac, présidente de section
+    - titre: Contact
+      texte: '{email} · {telephone}'
+    - titre: Affiliation
+      texte: Section AMHE de l'USAM Clermont-Ferrand · fédération FFAMHE
+  note: >-
+    Les photographies et illustrations utilisées sont la propriété du club ou de
+    leurs auteurs respectifs. Toute reproduction non autorisée est interdite.
+    Crédits photographiques : © Alexandre Vergne — L'IMAGINARIUM et Enzo
+    Cirillo.
+hebergeur:
+  nom: Cloudflare, Inc.
+  adresse: 101 Townsend St, San Francisco, CA 94107, USA
+rgpd:
+  paragraphes:
+    - >-
+      Ce site ne dépose aucun cookie, n'utilise aucun outil d'analyse d'audience
+      et ne stocke aucune donnée personnelle côté serveur.
+    - >-
+      Les liens de contact ouvrent votre application de messagerie ou votre
+      téléphone avec un message pré-rempli. Aucune information n'est envoyée
+      vers ce site ni vers un service tiers : l'envoi se fait depuis votre
+      propre boîte mail.
+    - >-
+      Les coordonnées affichées (mail, téléphone, adresse) sont celles
+      communiquées volontairement par les responsables du club pour leurs
+      fonctions associatives.
+  note: >-
+    Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et
+    de suppression sur les données qui vous concernent. Pour exercer ces droits,
+    écrivez à {email}.

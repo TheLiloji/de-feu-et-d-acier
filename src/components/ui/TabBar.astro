@@ -1,0 +1,241 @@
+---
+/**
+ * TabBar — barre d'onglets fixe en bas d'écran (mobile).
+ *
+ * design-spec §9.12 : frame 390×80, fond `--veil-ink-95`, filet haut, quatre
+ * onglets de 72×66 (marqueur ember de 14×2 si actif, icône 19 px, libellé 8 px
+ * très espacé) et un onglet central mis en exergue — cercle ember de 46 px avec
+ * `swords` en `--ink`.
+ *
+ * Ce sont des liens de navigation, pas des onglets ARIA : le composant rend un
+ * `<nav>` avec une liste et `aria-current="page"` sur l'entrée active. Y coller
+ * `role="tablist"` mentirait aux lecteurs d'écran (rien ne se déplie ici).
+ * Les flèches ← → et Origine / Fin déplacent le focus d'un onglet à l'autre,
+ * en plus de la tabulation qui reste normale.
+ *
+ * La barre est masquée au-dessus de 1000 px, seuil auquel la nav desktop prend
+ * le relais (`BASCULE_NAV`, src/lib/breakpoints.ts) : au-dessous, la page est en
+ * chrome mobile de bout en bout. Une cale de la hauteur de la barre est rendue
+ * avec elle, pour que le bas de page ne passe jamais dessous — placer le
+ * composant **après** `<main>`.
+ *
+ * Chrome **global** (décision client) : la barre est rendue sur toutes les pages
+ * du site, accueil comme fiches, actualités et pages légales. Cf.
+ * ARCHITECTURE.md §5.
+ */
+import Icon from './Icon.astro';
+import type { NomIcone } from './icones';
+
+export interface Onglet {
+  libelle: string;
+  href: string;
+  /** Nom d'icône lucide : `house`, `sword`, `swords`, `image`, `phone`… */
+  icone: NomIcone;
+  /** Page courante. */
+  actif?: boolean;
+  /** Onglet central : cercle ember. Un seul par barre. */
+  exergue?: boolean;
+  externe?: boolean;
+}
+
+export interface Props {
+  onglets: Onglet[];
+  /** Libellé du `<nav>`. */
+  libelle?: string;
+  class?: string;
+}
+
+const { onglets = [], libelle = 'Navigation rapide', class: classe } = Astro.props;
+---
+
+<div class="tabbar__cale" aria-hidden="true"></div>
+
+<nav class:list={['tabbar', classe]} aria-label={libelle} data-tabbar>
+  <ul class="tabbar__liste" role="list">
+    {
+      onglets.map((onglet) => (
+        <li class="tabbar__item">
+          <a
+            class="tabbar__lien"
+            href={onglet.href}
+            data-exergue={onglet.exergue ? '' : undefined}
+            aria-current={onglet.actif ? 'page' : undefined}
+            {...(onglet.externe ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+          >
+            <span class="tabbar__marqueur" aria-hidden="true" />
+            <span class="tabbar__icone" aria-hidden="true">
+              <Icon name={onglet.icone} />
+            </span>
+            <span class="tabbar__libelle">{onglet.libelle}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<script>
+  // Flèches ← → et Origine / Fin d'un onglet à l'autre. La tabulation reste
+  // celle du navigateur : on ajoute un raccourci, on n'en retire aucun.
+  document.querySelectorAll<HTMLElement>('[data-tabbar]').forEach((barre) => {
+    barre.addEventListener('keydown', (evenement: KeyboardEvent) => {
+      const liens = Array.from(barre.querySelectorAll<HTMLAnchorElement>('.tabbar__lien'));
+      const index = liens.indexOf(document.activeElement as HTMLAnchorElement);
+      if (index === -1) return;
+
+      let vise = index;
+      switch (evenement.key) {
+        case 'ArrowRight':
+          vise = (index + 1) % liens.length;
+          break;
+        case 'ArrowLeft':
+          vise = (index - 1 + liens.length) % liens.length;
+          break;
+        case 'Home':
+          vise = 0;
+          break;
+        case 'End':
+          vise = liens.length - 1;
+          break;
+        default:
+          return;
+      }
+
+      evenement.preventDefault();
+      liens[vise].focus();
+    });
+  });
+</script>
+
+<style>
+  .tabbar {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    background: var(--veil-ink-95);
+    border-top: var(--filet);
+    backdrop-filter: blur(10px);
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  /* Réserve la hauteur de la barre en fin de flux : le pied de page reste
+     accessible au doigt. */
+  .tabbar__cale {
+    height: calc(80px + env(safe-area-inset-bottom));
+  }
+
+  .tabbar__liste {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2px;
+    margin: 0;
+    padding: 0 10px;
+    list-style: none;
+  }
+
+  .tabbar__item {
+    flex: 1;
+  }
+
+  .tabbar__lien {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 66px;
+    padding-top: 6px;
+    color: var(--parch-mute);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .tabbar__marqueur {
+    display: block;
+    width: 14px;
+    height: 2px;
+    border-radius: var(--radius-1);
+    background: transparent;
+  }
+
+  .tabbar__lien[aria-current='page'] {
+    color: var(--parch);
+  }
+
+  .tabbar__lien[aria-current='page'] .tabbar__marqueur {
+    background: var(--ember);
+  }
+
+  .tabbar__icone {
+    /* `Icon.astro` lit `--icone-cote` : son style scopé l'emporterait sur un
+       `:global(svg)` écrit ici. */
+    --icone-cote: 19px;
+    display: grid;
+    place-items: center;
+  }
+
+  .tabbar__libelle {
+    font-family: var(--font-eyebrow);
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* Onglet central mis en exergue : cercle ember, libellé toujours lisible. */
+  .tabbar__lien[data-exergue] {
+    gap: 4px;
+    color: var(--parch);
+  }
+
+  .tabbar__lien[data-exergue] .tabbar__marqueur {
+    display: none;
+  }
+
+  .tabbar__lien[data-exergue] .tabbar__icone {
+    --icone-cote: 20px;
+    width: 46px;
+    height: 46px;
+    border-radius: var(--radius-pill);
+    background: var(--ember);
+    color: var(--ink);
+    transition: background-color var(--transition);
+  }
+
+  .tabbar__lien:hover {
+    color: var(--parch);
+  }
+
+  .tabbar__lien[data-exergue]:hover .tabbar__icone {
+    background: var(--ember-hot);
+  }
+
+  .tabbar__lien:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: -2px;
+  }
+
+  /* Le desktop a son en-tête : ni barre, ni cale. Le seuil est celui de la
+     bascule de nav (`BASCULE_NAV`, src/lib/breakpoints.ts) : tant que l'en-tête
+     est en gabarit mobile — blason + burger —, la navigation basse et son CTA
+     « ESSAYER » font partie du même chrome. Si ce chiffre bouge, le
+     `scroll-padding-bottom` de src/styles/global.css bouge avec lui. */
+  @media (min-width: 1000px) {
+    .tabbar,
+    .tabbar__cale {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tabbar__lien,
+    .tabbar__lien[data-exergue] .tabbar__icone {
+      transition: none;
+    }
+  }
+</style>

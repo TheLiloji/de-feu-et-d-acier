@@ -1,0 +1,511 @@
+---
+/**
+ * MediaCard — carte photo à contenu incrusté.
+ *
+ * Le pattern le plus utilisé du site : 15 occurrences (cartes discipline
+ * desktop et mobile, photo du club, photo « Tournois », hero de fiche mobile,
+ * tuiles de galerie). Cf. design-spec.md §9.8, §3.2, §3.7, §3.8, §4.2, §4.7.
+ *
+ * La maquette empile quatre couches :
+ *   1. l'image, plein cadre, en `cover` ;
+ *   2. un voile uniforme (32 % à 65 % de noir) ;
+ *   3. une « assise » — un rectangle sombre (77 % à 88 %) ancré en bas, qui
+ *      occupe ~40 % de la hauteur et simule un dégradé sans en utiliser un ;
+ *   4. le contenu, en absolu, avec une marge interne de 16 à 36 px.
+ *
+ * On garde le voile uniforme (il change la lecture de toute la photo) mais
+ * l'assise devient un vrai `linear-gradient` : c'est le rendu que la maquette
+ * cherchait à approcher avec un aplat, en plus léger et sans arête visible
+ * (recommandation d'intégration de design-spec §9.8).
+ *
+ * Deux variantes :
+ *   - `carte` (défaut) : époque en haut, titre + sous-titre + lien en bas ;
+ *   - `tuile`  : bandeau bas plat et légende en display italique (galerie).
+ *
+ * Quand `href` est fourni, la carte **entière** devient le lien : le libellé
+ * « DÉCOUVRIR L'ARME » n'est alors qu'une affordance visuelle (pas d'ancre
+ * imbriquée, qui serait invalide et illisible au clavier).
+ */
+import { Picture } from 'astro:assets';
+import Icon from './Icon.astro';
+import { largeursSrcset } from '../../lib/images';
+
+/** Densité du voile uniforme posé sur toute la photo. */
+type Voile = 'nul' | 'leger' | 'moyen' | 'fort';
+/** Densité de l'assise sombre du bas de carte. */
+type Assise = 'nulle' | 'legere' | 'standard' | 'forte' | 'bandeau';
+
+export interface LienMediaCard {
+  /** Libellé en capitales, ex. « DÉCOUVRIR L'ARME ». */
+  libelle: string;
+  /** Facultatif : si la carte porte déjà `href`, le libellé reste du texte. */
+  href?: string;
+  externe?: boolean;
+}
+
+export interface Props {
+  /** Image importée (`astro:assets`) — voie normale, via `resoudrePhoto()`. */
+  image?: ImageMetadata | null;
+  /** Repli : URL d'une image déjà servie (dossier `public/`). */
+  src?: string | null;
+  alt?: string;
+  /** `aspect-ratio` CSS du cadre. Maquette : 360/620 (cartes), 3/2 (tuiles). */
+  ratio?: string;
+  /**
+   * Hauteur fixe — prend le pas sur `ratio` quand la mise en page l'exige :
+   * `ratio` est alors ignoré et la carte occupe toute la largeur offerte.
+   */
+  hauteur?: string;
+  /** Cadrage de la photo (`cadrageCss()` de src/lib/images.ts). */
+  objectPosition?: string;
+  variante?: 'carte' | 'tuile';
+  voile?: Voile;
+  assise?: Assise;
+  /** Rayon : 0 (tuiles de galerie), 2 (desktop), 3 (mobile). */
+  rayon?: 0 | 1 | 2 | 3;
+  /** Sur-titre en capitales ember, précédé d'un tiret. Ex. « MÉDIÉVALE ». */
+  eyebrow?: string;
+  /** Seconde ligne du bloc haut. Ex. « XIVᵉ — XVᵉ S. ». */
+  precision?: string;
+  /** Variante mobile de l'époque : une pastille au lieu du tiret + 2 lignes. */
+  badge?: string;
+  titre?: string;
+  /** Balise du titre. `p` par défaut : une carte n'est pas toujours un titre. */
+  titreNiveau?: 'h2' | 'h3' | 'h4' | 'p';
+  sousTitre?: string;
+  /** Variante `tuile` : légende en display italique dans le bandeau bas. */
+  legende?: string;
+  lien?: LienMediaCard;
+  /** Rend la carte entière cliquable. */
+  href?: string;
+  externe?: boolean;
+  charge?: 'lazy' | 'eager';
+  sizes?: string;
+  /** Largeurs du `srcset` (photos.md §5.4). Prioritaire sur `rendMax`. */
+  largeurs?: number[];
+  /** Largeur CSS maximale du cadre — plafonne l'échelle par défaut à `2 ×`. */
+  rendMax?: number;
+  class?: string;
+}
+
+const {
+  image = null,
+  src = null,
+  alt = '',
+  ratio = '3 / 4',
+  hauteur,
+  objectPosition = '50% 50%',
+  variante = 'carte',
+  voile = 'fort',
+  assise = 'standard',
+  rayon = 2,
+  eyebrow,
+  precision,
+  badge,
+  titre,
+  titreNiveau = 'p',
+  sousTitre,
+  legende,
+  lien,
+  href,
+  externe = false,
+  charge = 'lazy',
+  sizes = '100vw',
+  largeurs,
+  rendMax,
+  class: classe,
+} = Astro.props;
+
+const Balise = href ? 'a' : 'article';
+const Titre = titreNiveau;
+
+const attributsLien = href
+  ? { href, ...(externe ? { target: '_blank', rel: 'noopener noreferrer' } : {}) }
+  : {};
+
+// Le `srcset` est calculé par le helper commun (src/lib/images.ts) : une seule
+// politique de largeurs pour toutes les images du site. L'appelant précise
+// `largeurs` (photos.md §5.4) ou, à défaut, `rendMax` — sans quoi l'échelle par
+// défaut couvre tout le master, ce qui suffit mais génère plus de dérivés.
+const largeursFinales = largeursSrcset(image, { largeurs, rendMax });
+
+// Les deux zones incrustées peuvent être alimentées par des props ou, pour un
+// cas hors gabarit, par les slots `haut` et `bas`.
+const aBlocHaut = Boolean(eyebrow || precision || badge) || Astro.slots.has('haut');
+const aBlocBas = Boolean(titre || sousTitre || lien || legende) || Astro.slots.has('bas');
+
+// `aspect-ratio` et `height` posés sur la même boîte se contredisent : le
+// navigateur garde la hauteur et résout alors la **largeur** par le ratio. Une
+// carte `hauteur="520px"` en 3/4 mesurait donc 390 px de large quelle que soit
+// la place offerte (carte « bandeau » d'Actualites.astro : 390 px dans une
+// gouttière de 1328). Dès qu'une hauteur explicite est demandée, le ratio est
+// donc neutralisé — la carte redevient un bloc de largeur pleine.
+const style = [
+  `--media-ratio:${hauteur ? 'auto' : ratio}`,
+  hauteur ? `--media-hauteur:${hauteur}` : '',
+  `--media-position:${objectPosition}`,
+  `--media-rayon:${rayon}px`,
+]
+  .filter(Boolean)
+  .join(';');
+---
+
+<Balise
+  class:list={['media-card', classe]}
+  data-variante={variante}
+  data-voile={voile}
+  data-assise={assise}
+  data-cliquable={href ? '' : undefined}
+  style={style}
+  {...attributsLien}
+>
+  <div class="media-card__media">
+    {
+      image ? (
+        <Picture
+          src={image}
+          alt={alt}
+          formats={['avif', 'webp']}
+          widths={largeursFinales}
+          sizes={sizes}
+          loading={charge}
+          decoding="async"
+        />
+      ) : src ? (
+        <img src={src} alt={alt} loading={charge} decoding="async" />
+      ) : null
+    }
+  </div>
+
+  <div class="media-card__voile" aria-hidden="true"></div>
+  <div class="media-card__assise" aria-hidden="true"></div>
+
+  <div class="media-card__contenu">
+    {
+      aBlocHaut && (
+        <div class="media-card__haut">
+          {badge && <span class="media-card__badge">{badge}</span>}
+          {eyebrow && (
+            <p class="media-card__epoque">
+              <span class="media-card__tiret" aria-hidden="true" />
+              {eyebrow}
+            </p>
+          )}
+          {precision && <p class="media-card__precision">{precision}</p>}
+          <slot name="haut" />
+        </div>
+      )
+    }
+
+    {
+      aBlocBas && (
+        <div class="media-card__bas">
+          {legende && <p class="media-card__legende">{legende}</p>}
+          {titre && <Titre class="media-card__titre">{titre}</Titre>}
+          {sousTitre && <p class="media-card__soustitre">{sousTitre}</p>}
+          {lien && <span class="media-card__filet" aria-hidden="true" />}
+          {lien &&
+            (lien.href && !href ? (
+              <a
+                class="media-card__lien"
+                href={lien.href}
+                {...(lien.externe ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              >
+                {lien.libelle}
+                <Icon name={lien.externe ? 'arrow-up-right' : 'arrow-right'} />
+              </a>
+            ) : (
+              <span class="media-card__lien">
+                {lien.libelle}
+                <Icon name={lien.externe ? 'arrow-up-right' : 'arrow-right'} />
+              </span>
+            ))}
+          <slot name="bas" />
+        </div>
+      )
+    }
+  </div>
+</Balise>
+
+<style>
+  .media-card {
+    --media-pad: clamp(16px, 0.9rem + 1.6vw, 36px);
+    position: relative;
+    display: block;
+    isolation: isolate;
+    overflow: hidden;
+    aspect-ratio: var(--media-ratio);
+    height: var(--media-hauteur, auto);
+    border-radius: var(--media-rayon);
+    background: var(--char);
+    color: var(--parch);
+    text-decoration: none;
+  }
+
+  /* ── Couche 1 : la photo ────────────────────────────────────────────────── */
+
+  .media-card__media {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  /* `<Picture>` est un composant : ses nœuds échappent au scope, d'où :global. */
+  .media-card__media :global(picture),
+  .media-card__media :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .media-card__media :global(img) {
+    object-fit: cover;
+    object-position: var(--media-position);
+    transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* ── Couche 2 : le voile uniforme ───────────────────────────────────────── */
+
+  .media-card__voile {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .media-card[data-voile='nul'] .media-card__voile {
+    background: transparent;
+  }
+  .media-card[data-voile='leger'] .media-card__voile {
+    background: var(--veil-32);
+  }
+  .media-card[data-voile='moyen'] .media-card__voile {
+    background: var(--veil-50);
+  }
+  .media-card[data-voile='fort'] .media-card__voile {
+    background: var(--veil-65);
+  }
+
+  /* ── Couche 3 : l'assise ────────────────────────────────────────────────── */
+  /* La maquette pose un aplat de 77 à 88 % sur les 40 % du bas ; un dégradé
+     rend la même densité au ras du texte sans la ligne de démarcation. */
+
+  .media-card__assise {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 1;
+    height: var(--media-assise-hauteur, 58%);
+    background: var(--media-assise-fond, none);
+    pointer-events: none;
+  }
+
+  .media-card[data-assise='nulle'] .media-card__assise {
+    display: none;
+  }
+  .media-card[data-assise='legere'] .media-card__assise {
+    --media-assise-hauteur: 50%;
+    --media-assise-fond: linear-gradient(to top, var(--veil-50), transparent);
+  }
+  .media-card[data-assise='standard'] .media-card__assise {
+    --media-assise-hauteur: 58%;
+    --media-assise-fond: linear-gradient(to top, var(--veil-77), var(--veil-35) 62%, transparent);
+  }
+  .media-card[data-assise='forte'] .media-card__assise {
+    --media-assise-hauteur: 62%;
+    --media-assise-fond: linear-gradient(to top, var(--veil-88), var(--veil-40) 70%, transparent);
+  }
+  /* Galerie : un vrai bandeau plat de 44 à 64 px, comme la maquette.
+     Sa densité, en revanche, est celle de `--veil-79` et non celle de
+     `--veil-50` : sur une photo claire, le crédit (`--parch-soft`, 9-10 px)
+     tombait à 2,5:1 sur un voile à 50 %, contre 6,2:1 ici — le bandeau plat de
+     la maquette est conservé, seul son opacité change. */
+  .media-card[data-assise='bandeau'] .media-card__assise {
+    --media-assise-hauteur: clamp(44px, 2rem + 2vw, 64px);
+    --media-assise-fond: var(--veil-79);
+  }
+
+  /* ── Couche 4 : le contenu ──────────────────────────────────────────────── */
+
+  .media-card__contenu {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--esp-item);
+    padding: var(--media-pad);
+    pointer-events: none;
+  }
+
+  /* Seuls les éléments interactifs reprennent la main sur le pointeur. */
+  .media-card__contenu :global(a),
+  .media-card__contenu :global(button) {
+    pointer-events: auto;
+  }
+
+  .media-card__haut {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  .media-card__bas {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+    margin-top: auto;
+  }
+
+  .media-card__epoque {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: clamp(9px, 8.4px + 0.15vw, 10.5px);
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    /* `--ember` sur une photo claire tombe à 1,8:1 — échec WCAG 1.4.3 mesuré
+       sur les trois masters d'armes (prises studio sur bâche beige) et sur la
+       carte « Actualités ». Le sur-titre passe donc en `--parch` (pire cas
+       relevé 5,3:1) ; l'accent chromatique de la maquette reste porté par le
+       tiret, décoratif et hors périmètre du critère. */
+    color: var(--parch);
+  }
+
+  .media-card__tiret {
+    display: block;
+    width: 22px;
+    height: 1px;
+    flex: none;
+    background: var(--ember);
+  }
+
+  .media-card__precision {
+    margin: 0;
+    font-size: clamp(10px, 9.6px + 0.1vw, 11px);
+    letter-spacing: 0.18em;
+    line-height: 1.3;
+    color: var(--parch);
+  }
+
+  .media-card__badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border: var(--filet-fort);
+    border-radius: var(--radius-pill);
+    background: var(--veil-ink-65);
+    font-family: var(--font-eyebrow);
+    font-size: clamp(9px, 8.6px + 0.1vw, 10px);
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    color: var(--parch);
+  }
+
+  .media-card__titre {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-display-m);
+    font-weight: 400;
+    line-height: var(--lh-display);
+    color: var(--parch);
+    text-wrap: balance;
+  }
+
+  .media-card__soustitre {
+    max-width: 34ch;
+    margin: 0;
+    font-size: var(--fs-body-xxs);
+    line-height: var(--lh-body-tight);
+    color: var(--parch-soft);
+  }
+
+  .media-card__filet {
+    display: block;
+    width: 36px;
+    height: 1px;
+    margin-top: 4px;
+    background: var(--ember);
+    transition: width var(--transition);
+  }
+
+  .media-card__lien {
+    /* `Icon.astro` lit `--icone-cote` : c'est la seule façon fiable de le
+       dimensionner depuis l'extérieur, son style scopé l'emportant sur un
+       `:global(svg)` posé ici. */
+    --icone-cote: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-eyebrow);
+    font-size: clamp(9px, 8.4px + 0.15vw, 10.5px);
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--parch);
+    text-decoration: none;
+  }
+
+  .media-card__lien :global(svg) {
+    transition: transform var(--transition);
+  }
+
+  /* Variante « tuile » : la légende remplace le titre, dans le bandeau bas. */
+  .media-card[data-variante='tuile'] .media-card__contenu {
+    justify-content: flex-end;
+    padding: clamp(12px, 0.6rem + 0.6vw, 16px);
+  }
+
+  .media-card__legende {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(12px, 11.1px + 0.24vw, 14.5px);
+    font-style: italic;
+    line-height: 1.2;
+    color: var(--parch);
+  }
+
+  /* ── États ──────────────────────────────────────────────────────────────── */
+
+  .media-card[data-cliquable]:hover .media-card__media :global(img),
+  .media-card:focus-visible .media-card__media :global(img) {
+    transform: scale(1.04);
+  }
+
+  .media-card[data-cliquable]:hover .media-card__lien,
+  .media-card:focus-within .media-card__lien {
+    color: var(--ember-hot);
+  }
+
+  .media-card[data-cliquable]:hover .media-card__lien :global(svg) {
+    transform: translateX(3px);
+  }
+
+  .media-card[data-cliquable]:hover .media-card__filet {
+    width: 52px;
+  }
+
+  .media-card:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .media-card__media :global(img),
+    .media-card__lien :global(svg),
+    .media-card__filet {
+      transition: none;
+    }
+
+    .media-card[data-cliquable]:hover .media-card__media :global(img),
+    .media-card:focus-visible .media-card__media :global(img) {
+      transform: none;
+    }
+  }
+</style>

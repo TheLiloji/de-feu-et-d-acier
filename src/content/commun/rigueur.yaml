@@ -1,0 +1,34 @@
+eyebrow: La rigueur
+titreLigne1: Le geste juste,
+titreLigne2: avant le costume.
+lede: >-
+  On étudie les arts martiaux européens à partir des traités et sources
+  historiques, dans une pratique moderne, sportive et sécurisée. On y vient pour
+  le geste, pas pour le costume.
+texte: >-
+  Ici on s'entraîne en tenue de sport, masque d'escrime et protections modernes,
+  avec des armes d'entraînement adaptées à chaque discipline. Les sources sont à
+  la base de notre travail, et nous poussons leur application jusqu'en assaut,
+  avec différents niveaux d'engagement.
+planche:
+  fichier: /src/assets/photos/commun/rigueur-traite.jpg
+  alt: >-
+    Planche d'un traité d'escrime historique : deux escrimeurs à l'épée longue
+    en garde, dessinés à la plume et rehaussés de lavis, avec des annotations
+    manuscrites.
+  cadrage: centre
+  credit: ''
+legendePlanche: >-
+  Planche extraite d'un traité d'escrime historique. Étude des gardes, des
+  distances, du timing — des gestes que l'on cherche à comprendre, puis à
+  éprouver dans la salle.
+manifesteMobile:
+  citation: « Le geste juste, avant le costume. »
+  sousTitre: Traités historiques · pratique moderne & sécurisée
+  photo:
+    fichier: /src/assets/photos/commun/rigueur-traite.jpg
+    alt: >-
+      Planche d'un traité d'escrime historique, deux escrimeurs à l'épée longue
+      en garde.
+    cadrage: centre
+    credit: ''

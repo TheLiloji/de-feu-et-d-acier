@@ -1,0 +1,293 @@
+---
+/**
+ * Section « Les disciplines » — la bande des cartes d'armes.
+ *
+ * design-spec §3.2 (desktop) et §4.2 (mobile).
+ *
+ * Desktop : tête éditoriale dans la gouttière (label numéroté, titre à gauche /
+ * chapô à droite), puis une **bande de cartes collées bord à bord** qui occupe
+ * les 1440 px et déborde volontairement la gouttière — quatre cartes 360×620.
+ *
+ * Mobile : la même liste devient un carrousel à défilement (cartes 258×350,
+ * rayon 3, pastille d'époque, pagination). C'est le composant `Carousel` qui
+ * porte les deux états : bande défilable sous 820 px, grille au-dessus.
+ *
+ * Trois écarts assumés par rapport à la maquette, tous arbitrés :
+ *
+ *   1. **Le lien « Découvrir l'arme » est sur les quatre cartes.** La maquette
+ *      ne le posait que sur « Combat viking » — état de maquettage partiel
+ *      explicitement signalé par design-spec §3.2. Ici la carte entière est le
+ *      lien vers la fiche : le libellé n'est qu'une affordance.
+ *   2. **Le mobile garde le titre, le chapô et le nom de l'époque.** La maquette
+ *      mobile n'affiche ni titre de section ni chapô, et réduit l'époque aux
+ *      seuls siècles ; la parité de contenu desktop/mobile est obligatoire
+ *      (ARCHITECTURE.md §5), donc on compacte sans rien retirer.
+ *   3. **Le nombre de cartes vient du contenu.** L'épée-bocle est dans le
+ *      catalogue avec `affichee: false` : elle reste sélectionnable dans les
+ *      créneaux sans occuper de carte (ARCHITECTURE.md §4). Le titre
+ *      « {nb_armes} armes, {nb_armes} grammaires. » est recalculé sur ce qui est
+ *      réellement affiché — plus jamais de « Cinq armes » au-dessus de quatre.
+ */
+import Carousel from '../ui/Carousel.astro';
+import MediaCard from '../ui/MediaCard.astro';
+import Reveal from '../ui/Reveal.astro';
+import SectionLabel from '../ui/SectionLabel.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import type { Discipline } from '../../lib/contenu';
+import type { Ecole } from '../../lib/ecoles';
+import { cadrageCss, resoudrePhoto } from '../../lib/images';
+import { lienArme } from '../../lib/liens';
+import { majusculeInitiale, resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
+import type { EntreeLigne } from '../ui/titre';
+
+/** En-tête de section tel que le CMS le rend (`entetes.disciplines`). */
+export interface EnteteSection {
+  eyebrow?: string | null;
+  titreLigne1?: string | null;
+  titreLigne2?: string | null;
+  lede?: string | null;
+}
+
+export interface Props {
+  /** École servie par la page — pilote les liens internes. */
+  ecole: Ecole;
+  /** Catalogue complet : le filtre « affichée » est appliqué ici. */
+  disciplines: readonly Discipline[];
+  /** Sur-titre, titre sur deux lignes et chapô, lus dans `entetes.yaml`. */
+  entete: EnteteSection;
+  /** Contexte de résolution des raccourcis ({nb_armes}, {email}…). */
+  ctx: ContexteRaccourcis;
+  /** Rang de la section, calculé par l'assembleur. Absent ⇒ rang automatique. */
+  num?: number;
+  /** Ancre de la section. Défaut `disciplines` (cf. `menus.yaml`). */
+  id?: string;
+  /** Chemin cité dans les erreurs de raccourci. */
+  source?: string;
+}
+
+const {
+  ecole,
+  disciplines,
+  entete,
+  ctx,
+  num,
+  id = 'disciplines',
+  source = 'src/content/commun/entetes.yaml (disciplines)',
+} = Astro.props;
+
+// Ordre éditorial : le champ « Ordre d'affichage » du CMS, puis le nom.
+const affichees = [...disciplines]
+  .filter((d) => d.entry.affichee)
+  .sort(
+    (a, b) =>
+      (a.entry.ordre ?? 100) - (b.entry.ordre ?? 100) ||
+      a.entry.nom.localeCompare(b.entry.nom, 'fr'),
+  );
+
+const cartes = affichees.map((d) => ({
+  slug: d.slug,
+  nom: d.entry.nom,
+  sousTitre: d.entry.sousTitre ?? '',
+  epoque: d.entry.epoque ?? '',
+  dates: d.entry.dates ?? '',
+  badge: [d.entry.epoque, d.entry.dates].filter(Boolean).join(' · '),
+  image: resoudrePhoto(d.entry.photo?.fichier),
+  alt: d.entry.photo?.alt ?? '',
+  objectPosition: cadrageCss(d.entry.photo?.cadrage),
+  href: lienArme(ecole, d.slug),
+}));
+
+const eyebrow = resoudre(entete.eyebrow, ctx, source) || 'Les disciplines';
+// « {nb_armes} armes, » rend « quatre armes, » : la ligne ouvre le titre, elle
+// prend donc la majuscule (« Quatre armes, », comme la maquette).
+const ligne1 = majusculeInitiale(resoudre(entete.titreLigne1, ctx, source));
+const ligne2 = resoudre(entete.titreLigne2, ctx, source);
+const lede = resoudre(entete.lede, ctx, source);
+
+// La seconde ligne porte l'accent ember italique (design-spec §9.3).
+const lignes: EntreeLigne[] = [
+  ...(ligne1 ? [{ texte: ligne1 }] : []),
+  ...(ligne2 ? [{ texte: ligne2, accent: true }] : []),
+];
+
+const idLabel = `${id}-label`;
+const idTitre = `${id}-titre`;
+
+// Au-delà de quatre armes la grille desktop passe à la ligne plutôt que de
+// rétrécir les cartes : 4 × 360 = les 1440 px de la maquette.
+const colonnes = Math.min(Math.max(cartes.length, 1), 4);
+---
+
+{
+  cartes.length > 0 && (
+    <section
+      class="section section--ink disciplines"
+      id={id}
+      aria-labelledby={lignes.length > 0 ? idTitre : idLabel}
+    >
+      {/* Le scope CSS d'Astro ne traverse pas la racine d'un composant enfant :
+          les classes de mise en page vivent donc sur des éléments de ce
+          template, jamais posées sur `<Reveal>` ou `<Carousel>`. */}
+      <div class="gouttiere disciplines__tete">
+        <Reveal>
+          <SectionLabel libelle={eyebrow} numero={num} id={idLabel} glisser />
+
+          {lignes.length > 0 && (
+            <div class="disciplines__head">
+              <SectionTitle lignes={lignes} taille="xl" id={idTitre} />
+              {lede && <p class="disciplines__lede">{lede}</p>}
+            </div>
+          )}
+        </Reveal>
+      </div>
+
+      <div class="disciplines__strip">
+        <Carousel
+          libelle="Les armes pratiquées au club"
+          nombre={cartes.length}
+          largeurItem="clamp(220px, 66vw, 258px)"
+          gap="12px"
+          fleches={false}
+          compteur={false}
+          points
+          debordement
+          grilleDesktop={colonnes}
+        >
+          {cartes.map((carte) => (
+            <MediaCard
+              image={carte.image}
+              alt={carte.alt}
+              objectPosition={carte.objectPosition}
+              ratio="258 / 350"
+              rayon={3}
+              voile="fort"
+              assise="standard"
+              badge={carte.badge}
+              eyebrow={carte.epoque}
+              precision={carte.dates}
+              titre={carte.nom}
+              titreNiveau="h3"
+              sousTitre={carte.sousTitre}
+              lien={{ libelle: 'Découvrir l’arme' }}
+              href={carte.href}
+              sizes="(min-width: 820px) 25vw, 66vw"
+              largeurs={[300, 360, 540, 720]}
+            />
+          ))}
+        </Carousel>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  /* Rythme propre à la section : 160 px en haut, rien en bas — la bande de
+     cartes touche la section suivante (design-spec §2.1). Le mobile reprend
+     56/60, avec la pagination du carrousel dans le bas. */
+  .disciplines {
+    padding-block: clamp(56px, 17.371px + 9.9048vw, 160px) 60px;
+    scroll-margin-top: 96px;
+  }
+
+  .disciplines__tete {
+    padding-bottom: clamp(18px, 0.92px + 4.381vw, 64px);
+  }
+
+  .disciplines__head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--esp-item);
+    /* `esp 56` de la maquette, interpolé jusqu'à 20 px en mobile. */
+    margin-top: clamp(20px, 6.629px + 3.4286vw, 56px);
+  }
+
+  .disciplines__lede {
+    max-width: 460px;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--parch-mute);
+  }
+
+  /* La bande : plein cadre, sans gouttière au-dessus de 820 px. */
+  .disciplines__strip {
+    width: 100%;
+    max-width: var(--largeur-max);
+    margin-inline: auto;
+    padding-inline: var(--gouttiere);
+  }
+
+  /* ── Cartes ─────────────────────────────────────────────────────────────── */
+  /* `MediaCard` pose ses dimensions en variables *en ligne* : elles ne peuvent
+     pas être surchargées par une custom property. On agit donc directement sur
+     les propriétés concernées, depuis le parent (spécificité supérieure). */
+
+  .disciplines__strip :global(.media-card) {
+    aspect-ratio: 258 / 350;
+    border-radius: var(--radius-2);
+  }
+
+  /* Mobile : voile léger (32 %) et pastille d'époque.
+     La classe du voile est répétée à dessein : sans elle, la règle a exactement
+     la même spécificité que celle de `MediaCard` et c'est l'ordre des feuilles
+     — non garanti — qui trancherait. */
+  .disciplines__strip :global(.media-card[data-voile] .media-card__voile.media-card__voile) {
+    background: var(--veil-32);
+  }
+
+  .disciplines__strip :global(.media-card__epoque),
+  .disciplines__strip :global(.media-card__precision) {
+    display: none;
+  }
+
+  @media (min-width: 820px) {
+    .disciplines {
+      padding-bottom: 0;
+    }
+
+    /* Quatre cartes 360×620, collées bord à bord : la maquette ne met aucun
+       gap entre elles, et c'est ce qui fait la bande. `[data-carrousel]` n'est
+       là que pour passer devant la règle de `Carousel`, de même spécificité. */
+    .disciplines__strip :global(.carrousel[data-carrousel][data-grille] .carrousel__piste) {
+      gap: 0;
+    }
+
+    .disciplines__strip :global(.media-card) {
+      aspect-ratio: 360 / 620;
+      border-radius: 0;
+    }
+
+    .disciplines__strip :global(.media-card[data-voile] .media-card__voile.media-card__voile) {
+      background: var(--veil-65);
+    }
+
+    /* Desktop : tiret + époque nommée + siècles, la pastille disparaît. */
+    .disciplines__strip :global(.media-card__badge) {
+      display: none;
+    }
+
+    .disciplines__strip :global(.media-card__epoque) {
+      display: flex;
+    }
+
+    .disciplines__strip :global(.media-card__precision) {
+      display: block;
+    }
+  }
+
+  @media (min-width: 820px) {
+    .disciplines__strip {
+      padding-inline: 0;
+    }
+
+    .disciplines__head {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: clamp(32px, 4vw, 64px);
+    }
+
+    .disciplines__lede {
+      flex: 0 1 460px;
+    }
+  }
+</style>

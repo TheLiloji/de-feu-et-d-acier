@@ -1,0 +1,402 @@
+---
+/**
+ * Section « Galerie » (design-spec §3.8 desktop, §4.7 mobile).
+ *
+ * La maquette desktop pose six tuiles en positions absolues ; design-spec §3.8
+ * donne lui-même l'équivalent fluide, qui est celui repris ici :
+ * `repeat(12, 1fr)` avec 12 px de gouttière. Les mesures tombent juste —
+ * 7 colonnes = 769.7 px, 5 colonnes = 546.3 px, 4 colonnes = 434.7 px sur les
+ * 1328 px de largeur utile, exactement les cotes relevées.
+ *
+ *   desktop                          mobile (2 colonnes)
+ *   ┌────────────┬──────┐            ┌─────────────┐
+ *   │            │  02  │            │     01      │
+ *   │     01     ├──────┤            ├──────┬──────┤
+ *   │            │  03  │            │  02  │  03  │
+ *   ├─────┬──────┼──────┤            ├──────┼──────┤
+ *   │ 04  │  05  │  06  │            │  04  │  05  │
+ *   └─────┴──────┴──────┘            ├──────┴──────┤
+ *                                    │     06      │
+ *                                    └─────────────┘
+ *
+ * Deux décisions de chantier :
+ *
+ *   1. **le mobile garde les six photos.** La maquette n'en montrait que quatre,
+ *      dans un filmstrip ; la parité de contenu est obligatoire (ARCHITECTURE
+ *      §5), et une grille à deux colonnes compacte sans rien retirer ;
+ *   2. **les crédits sont affichés.** Le champ existe dans le CMS et plusieurs
+ *      photos sont dues à un photographe tiers (ARCHITECTURE §6) : les taire
+ *      serait un choix, pas un oubli. Ils sont posés sous la légende, dans le
+ *      bandeau, en corps minuscule et `$parch-soft`. Le CMS ne stocke que le
+ *      nom : le « © » est posé ici, pour que les six tuiles soient formatées
+ *      de la même façon quelle que soit la saisie.
+ *
+ * Le composant ne lit aucun contenu : l'album et l'en-tête arrivent en props
+ * (multi-ecoles.md §6.6, invariants 3 et 4).
+ */
+import type { Ecole } from '../../lib/ecoles';
+import type { Album, lireEntetes } from '../../lib/contenu';
+import type { ContexteRaccourcis } from '../../lib/raccourcis';
+import { resoudre as resoudreTexte } from '../../lib/raccourcis';
+import { cadrageCss, creditAffiche, resoudrePhoto } from '../../lib/images';
+import { typographieFr } from '../../lib/typographie';
+import SectionLabel from '../ui/SectionLabel.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import MediaCard from '../ui/MediaCard.astro';
+import Button from '../ui/Button.astro';
+import TextLink from '../ui/TextLink.astro';
+import Reveal from '../ui/Reveal.astro';
+
+/** Bloc « galerie » du singleton « Accueil · Titres des sections ». */
+export type EnTeteGalerie = Awaited<ReturnType<typeof lireEntetes>>['galerie'];
+
+/** Une photo d'album, telle que saisie dans l'admin. */
+export type PhotoAlbum = Album['entry']['photos'][number];
+
+export interface Props {
+  /** École servie par la page (`src/lib/ecoles.ts`). */
+  ecole: Ecole;
+  /** En-tête de section (sur-titre + titre en deux lignes). */
+  entete: EnTeteGalerie;
+  /**
+   * Album affiché sur l'accueil — celui dont « Album affiché sur l'accueil »
+   * est coché. Ses six premières photos alimentent la mosaïque.
+   */
+  album?: Album | null;
+  /** Alternative à `album` : la liste de photos déjà extraite. */
+  photos?: readonly PhotoAlbum[];
+  /** Contexte des raccourcis `{email}`, `{ville}`… du titre de section. */
+  ctx?: ContexteRaccourcis;
+  /** Rang forcé du label (`8`, `'08'`, `false`). Absent ⇒ numérotation auto. */
+  num?: number | string | false;
+  /** Fond alterné. La maquette place « Galerie » sur `$coal`. */
+  fond?: 'ink' | 'coal';
+  /** Filet supérieur. À mettre à `false` après une section de même fond. */
+  filetHaut?: boolean;
+  /** Ancre de la section. Doit rester `galerie` (cf. `menus.yaml`). */
+  id?: string;
+  class?: string;
+}
+
+const {
+  ecole,
+  entete,
+  album = null,
+  photos: photosProp,
+  ctx,
+  num,
+  fond = 'coal',
+  filetHaut = true,
+  id = 'galerie',
+  class: classe,
+} = Astro.props;
+
+const SOURCE = 'src/content/commun/entetes.yaml';
+const MOTIF_RACCOURCI = /\{[a-z_]+\}/;
+
+/** Résout les raccourcis d'un champ, ou refuse de rendre un raccourci brut. */
+function texte(valeur: string | null | undefined, champ: string): string {
+  const brut = valeur ?? '';
+  if (!brut) return '';
+  if (ctx) return resoudreTexte(brut, ctx, `${SOURCE} (galerie.${champ})`);
+  if (MOTIF_RACCOURCI.test(brut)) {
+    throw new Error(
+      `Galerie.astro : le champ « galerie.${champ} » de ${SOURCE} contient un raccourci, ` +
+        'mais la section a été rendue sans sa prop « ctx ». ' +
+        'Passer contexteDe(ecole.fiche, comptes) depuis la page.',
+    );
+  }
+  return brut;
+}
+
+// La mosaïque n'existe qu'en six tuiles : au-delà on coupe, en deçà on retombe
+// sur une grille régulière (cf. `data-mosaique` plus bas).
+const MAX_TUILES = 6;
+
+// Crédit photo : le champ du CMS ne porte que le nom, le « © » est posé au
+// rendu par `creditAffiche` (src/lib/images.ts) — un seul format pour tout le
+// site, quelle que soit la façon dont chaque photographe a été saisi.
+
+// On résout AVANT de couper : une photo dont le fichier n'a pas encore été
+// déposé ne doit pas consommer une des six places de la mosaïque (sinon la
+// grille perd une tuile alors qu'une septième photo valide attendait).
+const source = photosProp ?? album?.entry.photos ?? [];
+const tuiles = source
+  .filter((photo) => Boolean(photo?.fichier))
+  .map((photo) => ({
+    image: resoudrePhoto(photo.fichier),
+    alt: photo.alt ?? '',
+    legende: typographieFr(photo.legende),
+    credit: creditAffiche(photo.credit),
+    objectPosition: cadrageCss(photo.cadrage),
+  }))
+  .filter((tuile) => tuile.image !== null)
+  .slice(0, MAX_TUILES);
+
+// Chaque tuile occupe une part différente de la largeur : on l'annonce au
+// navigateur, sinon `srcset` sert une 770 px là où 435 px suffisent.
+const TAILLES = [
+  '(min-width: 820px) 54vw, calc(100vw - 44px)',
+  '(min-width: 820px) 38vw, calc(50vw - 28px)',
+  '(min-width: 820px) 38vw, calc(50vw - 28px)',
+  '(min-width: 820px) 30vw, calc(50vw - 28px)',
+  '(min-width: 820px) 30vw, calc(50vw - 28px)',
+  '(min-width: 820px) 30vw, calc(100vw - 44px)',
+];
+
+// …et on génère les largeurs correspondantes (photos.md §5.4). Sans elles,
+// l'échelle par défaut irait jusqu'au master : une tuile de 167 px CSS
+// téléchargeait 81 Ko de 1200 w, faute de candidat plus petit.
+const LARGEURS = [
+  [386, 580, 770, 1160, 1540], // 01 — tuile large (770 px de rendu max)
+  [273, 410, 546, 820, 1092], // 02 — tuile moyenne (546 px)
+  [273, 410, 546, 820, 1092], // 03 — tuile moyenne
+  [236, 435, 652, 870], // 04 — tuile portrait (435 px)
+  [236, 435, 652, 870], // 05 — tuile portrait
+  [236, 435, 652, 870], // 06 — tuile portrait
+];
+
+const titre = [
+  { texte: texte(entete?.titreLigne1, 'titreLigne1') },
+  { texte: texte(entete?.titreLigne2, 'titreLigne2'), accent: true },
+].filter((ligne) => ligne.texte.length > 0);
+
+const facebook = ecole.fiche.reseaux?.facebook ?? '';
+const LIBELLE_FACEBOOK = 'Suivre sur Facebook';
+
+const idTitre = `${id}-titre`;
+const mosaique = tuiles.length === MAX_TUILES;
+---
+
+{
+  tuiles.length > 0 && (
+    <section
+      class:list={[
+        'section',
+        `section--${fond}`,
+        { 'section--sans-filet': !filetHaut },
+        'galerie',
+        classe,
+      ]}
+      id={id}
+      aria-labelledby={titre.length > 0 ? idTitre : undefined}
+      aria-label={titre.length > 0 ? undefined : 'Galerie'}
+    >
+      <div class="gouttiere">
+        <SectionLabel libelle={entete?.eyebrow || 'Galerie'} numero={num} />
+
+        <Reveal>
+          <div class="galerie__tete">
+            {titre.length > 0 && <SectionTitle lignes={titre} taille="xl" id={idTitre} />}
+            {facebook && (
+              <div class="galerie__bouton">
+                <Button
+                  variante="contour"
+                  taille="petite"
+                  libelle={LIBELLE_FACEBOOK}
+                  href={facebook}
+                  externe
+                />
+              </div>
+            )}
+          </div>
+        </Reveal>
+
+        <Reveal delai={90}>
+          <div class="galerie__grille" data-mosaique={mosaique ? '' : undefined}>
+            {tuiles.map((tuile, index) => (
+              <MediaCard
+                image={tuile.image}
+                alt={tuile.alt}
+                objectPosition={tuile.objectPosition}
+                variante="tuile"
+                voile="nul"
+                assise="bandeau"
+                rayon={0}
+                ratio="var(--tuile-ratio)"
+                legende={tuile.legende}
+                sizes={TAILLES[index] ?? '(min-width: 820px) 33vw, calc(50vw - 28px)'}
+                largeurs={LARGEURS[index] ?? [236, 435, 652, 870]}
+              >
+                {/* Toujours rendu : un élément `slot="…"` glissé dans une
+                    expression n'est pas toujours reconnu comme slot nommé.
+                    Écrit sans espace autour de l'expression, pour que `:empty`
+                    le retire vraiment de la mise en page quand il n'y a pas de
+                    crédit à afficher. */}
+                <span slot="bas" class="galerie__credit">{tuile.credit}</span>
+              </MediaCard>
+            ))}
+          </div>
+        </Reveal>
+
+        {facebook && (
+          <p class="galerie__lien-mobile">
+            <TextLink libelle={LIBELLE_FACEBOOK} href={facebook} externe ton="soft" />
+          </p>
+        )}
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .galerie {
+    --galerie-esp-tete: clamp(32px, 23.086px + 2.2857vw, 56px); /* label → tête */
+    --galerie-esp-titre: clamp(32px, 20.114px + 3.0476vw, 64px); /* tête → grille */
+    --galerie-gouttiere: 12px; /* constante dans la maquette, desktop et mobile */
+  }
+
+  /* Tête de section : le titre à gauche, et — c'est la particularité de cette
+     section — un bouton à droite plutôt qu'un chapô. */
+  .galerie__tete {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--esp-item);
+    margin-top: var(--galerie-esp-tete);
+    padding-bottom: var(--galerie-esp-titre);
+  }
+
+  /* Sous 820 px le bouton cède la place au lien centré posé après la grille,
+     comme dans la maquette mobile. Même libellé, même cible : le contenu ne
+     change pas, seule sa forme suit le gabarit. */
+  .galerie__bouton {
+    display: none;
+  }
+
+  .galerie__lien-mobile {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0 0;
+  }
+
+  @media (min-width: 820px) {
+    .galerie__tete {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--esp-bloc);
+    }
+
+    .galerie__bouton {
+      display: block;
+      flex: none;
+      padding-bottom: 6px; /* aligne le bouton sur la ligne de base du titre */
+    }
+
+    .galerie__lien-mobile {
+      display: none;
+    }
+  }
+
+  /* ── Mosaïque ──────────────────────────────────────────────────────────── */
+
+  /*
+   * Deux colonnes en mobile, douze en desktop. `--tuile-ratio` est lu par
+   * `MediaCard` (prop `ratio`), ce qui permet de faire varier la proportion
+   * d'une tuile selon le gabarit — l'`aspect-ratio` étant posé en style en
+   * ligne par le composant, c'est le seul point d'entrée possible.
+   */
+  .galerie__grille {
+    --tuile-ratio: 1 / 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--galerie-gouttiere);
+  }
+
+  /* Mosaïque mobile : la première et la dernière tuile prennent toute la
+     largeur, les quatre autres forment un carré de 2 × 2. */
+  .galerie__grille[data-mosaique] > :global(:nth-child(1)),
+  .galerie__grille[data-mosaique] > :global(:nth-child(6)) {
+    grid-column: span 2;
+    --tuile-ratio: 3 / 2;
+  }
+
+  @media (min-width: 820px) {
+    .galerie__grille {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    /* Sans les six tuiles attendues, on retombe sur une grille régulière de
+       trois colonnes plutôt que sur une mosaïque trouée. */
+    .galerie__grille > :global(*) {
+      grid-column: span 4;
+      --tuile-ratio: 4 / 3;
+    }
+
+    /* Tuile 1 — colonnes 1-7, sur les deux rangées hautes (769.7 × 676). Elle
+       est étirée par la grille : son `aspect-ratio` ne s'applique pas. */
+    .galerie__grille[data-mosaique] > :global(:nth-child(1)) {
+      grid-column: 1 / 8;
+      grid-row: 1 / 3;
+      --tuile-ratio: auto;
+    }
+
+    /* Tuiles 2 et 3 — colonnes 8-12, 546.3 × 332. */
+    .galerie__grille[data-mosaique] > :global(:nth-child(2)),
+    .galerie__grille[data-mosaique] > :global(:nth-child(3)) {
+      grid-column: 8 / 13;
+      --tuile-ratio: 546.3 / 332;
+    }
+
+    /* Tuiles 4, 5 et 6 — trois blocs de 4 colonnes, 434.7 × 504. */
+    .galerie__grille[data-mosaique] > :global(:nth-child(4)),
+    .galerie__grille[data-mosaique] > :global(:nth-child(5)),
+    .galerie__grille[data-mosaique] > :global(:nth-child(6)) {
+      grid-column: span 4;
+      grid-row: 3;
+      --tuile-ratio: 434.7 / 504;
+    }
+  }
+
+  /* ── Assise des tuiles ────────────────────────────────────────────────── */
+
+  /*
+   * `MediaCard` rend l'assise « bandeau » comme la maquette : un rectangle plat
+   * de 64 px à 50 % de noir. Cette hauteur est calée sur une légende d'une
+   * seule ligne — on la remonte pour que le crédit tienne sur le voile lui
+   * aussi, plutôt qu'à cheval sur la photo.
+   */
+  .galerie .galerie__grille :global(.media-card[data-assise='bandeau'] .media-card__assise) {
+    --media-assise-hauteur: 74px;
+  }
+
+  /*
+   * Sous 820 px les tuiles font environ 165 px de large : « Médiévale de
+   * Montferrand » passe à la ligne et déborderait d'un rectangle de hauteur
+   * fixe. Le bandeau plat cède donc la place à un dégradé, qui couvre le texte
+   * quelle que soit sa hauteur et sans montrer d'arête.
+   */
+  @media (max-width: 819.98px) {
+    .galerie .galerie__grille :global(.media-card[data-assise='bandeau'] .media-card__assise) {
+      --media-assise-hauteur: 62%;
+      --media-assise-fond: linear-gradient(to top, var(--veil-77), var(--veil-40) 62%, transparent);
+    }
+  }
+
+  /* ── Crédit photo ──────────────────────────────────────────────────────── */
+
+  /*
+   * Posé sous la légende, dans le bandeau bas. Discret — c'est une mention, pas
+   * une information de lecture — mais lisible : à 9-10 px sur une photo,
+   * `$parch-mute` passerait tout juste le seuil de contraste, on garde donc
+   * `$parch-soft`, que la petite taille suffit à mettre en retrait de la
+   * légende. La marge négative reprend la gouttière de 8 px que `MediaCard`
+   * met entre la légende et le slot.
+   */
+  .galerie__credit {
+    display: block;
+    margin-top: -4px;
+    color: var(--parch-soft);
+    font-family: var(--font-eyebrow);
+    font-size: clamp(9px, 8.629px + 0.0952vw, 10px);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+
+  .galerie__credit:empty {
+    display: none;
+  }
+</style>

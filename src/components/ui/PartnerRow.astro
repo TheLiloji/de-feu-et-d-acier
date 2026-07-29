@@ -1,0 +1,242 @@
+---
+/**
+ * PartnerRow — rangée de partenaire (FFAMHE, Faits d'Armes, Black Armoury).
+ *
+ * design-spec §3.10 : rangée `gap: 72`, `align: center`, `padding: 56 0`, filet
+ * bas. À gauche un logo 240×120 en **`contain`** — le seul endroit du site où
+ * une image n'est pas en `cover`. À droite la catégorie (ember), le nom
+ * (display 34), un texte long et un bouton secondaire.
+ *
+ * Sous 820 px la rangée s'empile : logo réduit, puis le bloc éditorial. La
+ * maquette mobile ne gardait qu'une bande de logos ; la parité de contenu
+ * desktop/mobile étant obligatoire (ARCHITECTURE.md §5), on conserve tout et on
+ * compacte. Pour la bande de logos seule, utiliser `variante="logo"`.
+ *
+ * Le bouton peut être passé par le slot `action` (contrôle total de l'appelant).
+ * Sans slot, `href` + `libelleLien` rendent un `Button` en variante contour —
+ * celle des douze boutons secondaires de la maquette.
+ *
+ * `logoClair` ne change rien ici : la rangée se contente d'exposer la polarité
+ * du dessin en `data-logo-clair`, à charge de la section hôte d'en tirer un
+ * traitement. Cf. `Partenaires.astro`.
+ */
+import { Image } from 'astro:assets';
+import Button from './Button.astro';
+
+export interface Props {
+  /** Logo importé (`astro:assets`). Affiché en `contain`, jamais rogné. */
+  logo?: ImageMetadata | null;
+  /** Repli : URL d'une image du dossier `public/`. */
+  src?: string | null;
+  alt?: string;
+  /**
+   * Le dessin du logo est **clair** (blanc détouré, ou blanc sur aplat noir).
+   *
+   * Purement déclaratif : la rangée expose l'information en `data-logo-clair` et
+   * n'en fait rien. C'est à la section hôte de décider quoi en faire — seule
+   * « Partenaires » pose une pastille claire, et n'y inverse que ces logos-là.
+   * La bande de logos du pied de page, sur fond sombre, les laisse tels quels.
+   */
+  logoClair?: boolean;
+  /** Ex. « AFFILIATION », « ÉQUIPEMENT ». */
+  categorie?: string;
+  nom: string;
+  /** Balise du nom. `p` par défaut. */
+  nomNiveau?: 'h2' | 'h3' | 'h4' | 'p';
+  /** Texte long. Ignoré si du contenu est passé dans le slot par défaut. */
+  texte?: string;
+  href?: string;
+  libelleLien?: string;
+  externe?: boolean;
+  /** `logo` : la bande de logos seule (variante mobile de la maquette). */
+  variante?: 'complete' | 'logo';
+  /** Dernière rangée : pas de filet bas. */
+  sansFilet?: boolean;
+  class?: string;
+}
+
+const {
+  logo = null,
+  src = null,
+  alt,
+  logoClair = false,
+  categorie,
+  nom,
+  nomNiveau = 'p',
+  texte,
+  href,
+  libelleLien,
+  externe = true,
+  variante = 'complete',
+  sansFilet = false,
+  class: classe,
+} = Astro.props;
+
+const Nom = nomNiveau;
+const texteAlt = alt ?? `Logo ${nom}`;
+const aAction = Astro.slots.has('action');
+const aCorps = Astro.slots.has('default');
+const libelle = libelleLien ?? `Visiter ${nom}`;
+
+// Les logos sont de petites images : une seule largeur suffit, plafonnée à
+// 480 px pour couvrir les écrans à forte densité sans agrandir l'original.
+const largeurLogo = logo ? Math.min(logo.width, 480) : undefined;
+---
+
+<div
+  class:list={['partner-row', classe]}
+  data-variante={variante}
+  data-logo-clair={logoClair ? '' : undefined}
+  data-sans-filet={sansFilet ? '' : undefined}
+>
+  <div class="partner-row__logo">
+    {
+      logo ? (
+        <Image src={logo} alt={texteAlt} width={largeurLogo} loading="lazy" decoding="async" />
+      ) : src ? (
+        <img src={src} alt={texteAlt} loading="lazy" decoding="async" />
+      ) : null
+    }
+  </div>
+
+  {
+    variante === 'complete' && (
+      <div class="partner-row__contenu">
+        {categorie && <p class="partner-row__categorie">{categorie}</p>}
+        <Nom class="partner-row__nom">{nom}</Nom>
+
+        {aCorps ? (
+          <div class="partner-row__texte">
+            <slot />
+          </div>
+        ) : (
+          texte && <p class="partner-row__texte">{texte}</p>
+        )}
+
+        {aAction ? (
+          <div class="partner-row__action">
+            <slot name="action" />
+          </div>
+        ) : (
+          href && (
+            <div class="partner-row__action">
+              <Button variante="contour" libelle={libelle} href={href} externe={externe} />
+            </div>
+          )
+        )}
+      </div>
+    )
+  }
+</div>
+
+<style>
+  .partner-row {
+    display: flex;
+    align-items: center;
+    gap: clamp(20px, 1rem + 3.6vw, 72px);
+    padding-block: clamp(28px, 1rem + 3vw, 56px);
+    border-bottom: var(--filet);
+  }
+
+  .partner-row[data-sans-filet] {
+    border-bottom: 0;
+  }
+
+  .partner-row__logo {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: clamp(96px, 6rem + 6vw, 240px);
+    height: clamp(52px, 3rem + 3.4vw, 120px);
+  }
+
+  .partner-row__logo :global(img) {
+    width: 100%;
+    height: 100%;
+    /* Un élément de grille a `min-height: auto`, et pour une image ce minimum
+       vaut sa hauteur de ratio : « Faits d'Armes » (2,27:1) débordait ainsi de
+       3,5 px sous le cadre, seul des trois, et se retrouvait décentré dans sa
+       plaque. Remettre le minimum à zéro est le geste habituel sur un enfant de
+       grille ; c'est ce qui rend les trois vignettes strictement identiques. */
+    min-width: 0;
+    min-height: 0;
+    /* Seul endroit du site en `contain` : un logo ne se rogne pas. */
+    object-fit: contain;
+    object-position: center;
+  }
+
+  .partner-row__contenu {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .partner-row__categorie {
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow);
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .partner-row__nom {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-display-s);
+    font-weight: 500;
+    line-height: 1.1;
+    color: var(--parch);
+  }
+
+  .partner-row__texte {
+    max-width: 76ch;
+    margin: 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--parch-soft);
+  }
+
+  .partner-row__texte :global(p) {
+    margin: 0 0 0.8em;
+  }
+
+  .partner-row__texte :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .partner-row__action {
+    margin-top: 8px;
+  }
+
+  /* Variante « bande de logos » : la rangée se réduit à sa vignette. */
+  .partner-row[data-variante='logo'] {
+    padding-block: 0;
+    border-bottom: 0;
+  }
+
+  .partner-row[data-variante='logo'] .partner-row__logo {
+    width: clamp(96px, 5rem + 5vw, 160px);
+    height: clamp(52px, 3rem + 2vw, 80px);
+  }
+
+  @media (max-width: 819px) {
+    .partner-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 18px;
+    }
+
+    .partner-row__logo {
+      justify-items: start;
+    }
+
+    .partner-row__logo :global(img) {
+      object-position: left center;
+    }
+  }
+</style>

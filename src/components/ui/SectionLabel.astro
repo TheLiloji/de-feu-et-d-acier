@@ -1,0 +1,141 @@
+---
+/**
+ * Label de section numéroté — `01 ◆ LES DISCIPLINES`.
+ *
+ * La structure la plus régulière du site : 18 occurrences en desktop, 8 en
+ * mobile (design-spec §9.1). Un seul composant couvre les deux, la maquette ne
+ * différant que par des grandeurs (interpolées) et par deux détails :
+ *
+ *   - le **filet bas** existe en desktop, pas en mobile ;
+ *   - l'indicateur **GLISSER** n'existe qu'en mobile, devant un carrousel.
+ *
+ * Le numéro est **calculé au rendu** : le premier `<SectionLabel>` de la page
+ * porte `01`, le deuxième `02`… Masquer une section dans l'admin renumérote
+ * donc les suivantes toute seule (ARCHITECTURE §5, et `numerotation.ts` pour le
+ * mécanisme). La prop `numero` force une valeur ; `numero={false}` la supprime.
+ *
+ * Exemples :
+ *   <SectionLabel libelle="Les disciplines" />
+ *   <SectionLabel libelle="Les armes" glisser />
+ *   <SectionLabel libelle="Le club" numero={4} />
+ */
+import Icon from './Icon.astro';
+import { formaterNumero, numeroSuivant } from './numerotation';
+
+interface Props {
+  /** Libellé. Écrit normalement : la CSS pose les capitales. */
+  libelle?: string;
+  /** Alias anglais de `libelle`. */
+  label?: string;
+  /** Rang forcé (`3` ou `'03'`), ou `false` pour ne pas numéroter. */
+  numero?: number | string | false;
+  /** Affiche l'indicateur « Glisser » — visible sous 820 px seulement. */
+  glisser?: boolean;
+  /** Filet bas (desktop). `false` le supprime partout. Défaut : `true`. */
+  filet?: boolean;
+  /** `id` posé sur le label, pour `aria-labelledby` côté section. */
+  id?: string;
+  class?: string;
+  [attribut: `data-${string}`]: string | number | boolean | undefined;
+}
+
+const { libelle, label, numero, glisser = false, filet = true, id, class: classe, ...reste } = Astro.props;
+
+const texte = libelle ?? label ?? '';
+if (!texte) {
+  throw new Error('SectionLabel.astro : prop « libelle » manquante.');
+}
+
+// `numero` absent ⇒ rang automatique. `numero={false}` ⇒ aucun numéro.
+const rang =
+  numero === false
+    ? null
+    : numero === undefined
+      ? formaterNumero(numeroSuivant(Astro.locals, Astro.url.pathname))
+      : typeof numero === 'number'
+        ? formaterNumero(numero)
+        : numero;
+---
+
+<p class:list={['label-section', { 'label-section--filet': filet }, classe]} id={id} {...reste}>
+  <span class="label-section__groupe">
+    {rang && <span class="label-section__numero">{rang}</span>}
+    <span class="label-section__diamant"><Icon name="diamond" /></span>
+    <span class="label-section__libelle">{texte}</span>
+  </span>
+  {
+    glisser && (
+      <span class="label-section__glisser" aria-hidden="true">
+        <span>Glisser</span>
+        <Icon name="chevrons-right" size={12} />
+      </span>
+    )
+  }
+</p>
+
+<style>
+  .label-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esp-item);
+    width: 100%;
+    margin: 0;
+    padding-bottom: clamp(18px, 16.514px + 0.381vw, 22px);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    letter-spacing: var(--ls-eyebrow);
+    text-transform: uppercase;
+  }
+
+  .label-section__groupe {
+    display: flex;
+    align-items: center;
+    gap: clamp(10px, 7.771px + 0.5714vw, 16px);
+    min-width: 0;
+  }
+
+  .label-section__numero {
+    color: var(--ember);
+  }
+
+  /* Losange plein : 6 px en mobile, 8 px en desktop (design-spec §9.1). */
+  .label-section__diamant {
+    display: inline-flex;
+    flex: none;
+    --icone-cote: clamp(6px, 5.257px + 0.1905vw, 8px);
+    color: var(--ember);
+  }
+
+  .label-section__libelle {
+    color: var(--parch-soft);
+    /* On reprend la chasse ajoutée après la dernière lettre. */
+    margin-inline-end: calc(-1 * var(--ls-eyebrow));
+  }
+
+  /* Indicateur de geste : purement visuel, et seulement là où le carrousel
+     défile au doigt. Au-delà de 820 px la grille remplace le carrousel. */
+  .label-section__glisser {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    color: var(--parch-mute);
+    font-size: var(--fs-eyebrow-s);
+    letter-spacing: var(--ls-eyebrow-s);
+  }
+
+  /* Le filet bas n'existe qu'en desktop : en mobile la maquette s'en passe,
+     la tête de section étant déjà détachée par son espacement. */
+  @media (min-width: 820px) {
+    .label-section--filet {
+      border-bottom: var(--filet);
+    }
+
+    .label-section__glisser {
+      display: none;
+    }
+  }
+</style>

@@ -1,0 +1,69 @@
+menuPrincipal:
+  - libelle: Disciplines
+    lien: '#disciplines'
+  - libelle: Les profs
+    lien: '#profs'
+  - libelle: Le club
+    lien: '#club'
+  - libelle: Nous rejoindre
+    lien: '#rejoindre'
+  - libelle: Tournois
+    lien: '#tournois'
+  - libelle: FAQ
+    lien: '#faq'
+barreMobile:
+  - libelle: Accueil
+    icone: house
+    lien: '#hero'
+  - libelle: Armes
+    icone: sword
+    lien: '#disciplines'
+  - libelle: Essayer
+    icone: swords
+    lien: '#rejoindre'
+  - libelle: Photos
+    icone: image
+    lien: '#galerie'
+  - libelle: Contact
+    icone: phone
+    lien: '#contact'
+colonnes:
+  - titre: Le club
+    liens:
+      - libelle: Actualités
+        url: /actualites/
+      - libelle: La rigueur
+        url: '#rigueur'
+      - libelle: Disciplines
+        url: '#disciplines'
+      - libelle: FAQ
+        url: '#faq'
+      - libelle: Tournois
+        url: '#tournois'
+      - libelle: Galerie
+        url: '#galerie'
+  - titre: Pratique
+    liens:
+      - libelle: Nous rejoindre
+        url: '#rejoindre'
+      - libelle: Adhésion
+        url: ''
+      - libelle: Nous écrire
+        url: ''
+      - libelle: HelloAsso
+        url: https://www.helloasso.com/associations/usam-amhe-clermont-ferrand
+  - titre: Suivre
+    liens:
+      - libelle: Facebook
+        url: https://www.facebook.com/63AMHE/
+      - libelle: HEMA Ratings
+        url: https://hemaratings.com/clubs/details/1155/
+      - libelle: USAM Clermont
+        url: https://usam-clermont-ferrand.com/amhe-arts-martiaux-historiques-europeens
+      - libelle: FFAMHE
+        url: https://ffamhe.fr
+liensLegaux:
+  - libelle: Mentions légales
+    url: /mentions-legales/
+  - libelle: Confidentialité
+    url: /confidentialite/
