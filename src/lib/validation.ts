@@ -1,14 +1,16 @@
 /**
  * Garde-fous du build — ARCHITECTURE.md §7.
  *
- * Cinq vérifications, cinq échecs de build avec un message qui dit **quoi
+ * Six vérifications, six échecs de build avec un message qui dit **quoi
  * corriger et où** :
  *
  *   1. un raccourci inconnu dans un texte du CMS (`{tarrif}`, `{Email}`) ;
  *   2. aucune école principale, ou plusieurs ;
  *   3. une image de contenu sans description alternative ;
  *   4. deux annonces épinglées en bandeau en même temps ;
- *   5. une image déposée dans un format que le build ne sait pas traiter.
+ *   5. une image déposée dans un format que le build ne sait pas traiter ;
+ *   6. un traité dont les droits ne sont pas en règle (planche sans description
+ *      ou sans crédit, licence sans adresse, extrait cité sans sa source).
  *
  * Pourquoi ici et pas dans un script `prebuild`
  * ---------------------------------------------
@@ -26,7 +28,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { ECOLES } from '../config/ecoles';
-import { annoncesDe, reader } from './contenu';
+import { annoncesDe, lireTraites, reader } from './contenu';
 import { EXTENSIONS_PHOTOS, resoudrePhoto } from './images';
 import { RACCOURCIS_CONNUS } from './raccourcis';
 
@@ -280,12 +282,100 @@ async function verifierAnnonces(aujourdhui: string): Promise<string[]> {
   return problemes;
 }
 
+/**
+ * 6. Les sources : droits d'une fiche de traité.
+ *
+ * Les planches de traités ne sont pas des photos du club — ce sont des images
+ * appartenant à des bibliothèques, publiées sous des conditions écrites. La BnF
+ * exige « Source gallica.bnf.fr / Bibliothèque nationale de France », le MDZ
+ * exige bibliothèque + cote + folio + URN (plus « digitalisiert von Google »
+ * sous statut NoC-NC), le Royal Armouries exige le crédit, le lien vers la
+ * licence CC BY 4.0 et la mention des modifications. Une planche publiée sans
+ * sa ligne de crédit met le club en faute vis-à-vis de l'institution qui l'a
+ * numérisée : c'est un défaut de build, pas un oubli à corriger plus tard.
+ *
+ * Trois invariants, donc, en plus des contrôles génériques :
+ *
+ *   - chaque planche a une description alternative — le contrôle n° 3 ne la
+ *     voit pas, il s'accroche au couple `fichier`/`alt` de `photo()` et la
+ *     planche porte son fichier sous la clé `image` ;
+ *   - chaque planche a son crédit ;
+ *   - la licence du traité a une adresse, et un extrait cité a son crédit et
+ *     son lien vers la page d'où il est repris.
+ *
+ * Le format du fichier est vérifié au passage, avec le même message que pour
+ * les photos : une planche déposée en HEIC disparaîtrait sans bruit.
+ */
+async function verifierTraites(racineProjet: string): Promise<string[]> {
+  const problemes: string[] = [];
+
+  for (const { slug, entry } of await lireTraites()) {
+    const ou = `traites › ${slug}`;
+    const nom = entry.titre || slug;
+
+    if (!entry.licence?.url?.trim()) {
+      problemes.push(
+        `Traité sans adresse de licence — ${ou}\n` +
+          `    « ${nom} »\n` +
+          '    Remplir « Droits d’utilisation › Adresse de la licence » dans l’admin : c’est le lien\n' +
+          '    qui prouve que le club a le droit de publier ces planches.',
+      );
+    }
+
+    if (entry.extraitCitation?.trim()) {
+      if (!entry.extraitCredit?.trim()) {
+        problemes.push(
+          `Extrait cité sans crédit — ${ou}\n` +
+            `    « ${nom} »\n` +
+            '    Un extrait de traité se cite avec l’auteur de la transcription. Ex. « Transcription\n' +
+            '    ARDAMHE, hébergée par la FFAMHE ».',
+        );
+      }
+      if (!entry.extraitUrl?.trim()) {
+        problemes.push(
+          `Extrait cité sans lien vers sa source — ${ou}\n` +
+            `    « ${nom} »\n` +
+            '    Remplir « Lien vers la page de l’extrait » : la courte citation suppose que l’on\n' +
+            '    renvoie au texte complet.',
+        );
+      }
+    }
+
+    entry.planches.forEach((planche, i) => {
+      const oup = `${ou} › planche ${i + 1}${planche.folio ? ` (${planche.folio})` : ''}`;
+
+      if (!planche.alt?.trim()) {
+        problemes.push(
+          `Planche sans description alternative — ${oup}\n` +
+            `    Fichier : ${planche.image || '(aucun)'}\n` +
+            '    Remplir « Description de la planche » dans l’admin : elle est lue par les lecteurs d’écran.',
+        );
+      }
+
+      if (!planche.credit?.trim()) {
+        problemes.push(
+          `Planche sans crédit — ${oup}\n` +
+            `    Fichier : ${planche.image || '(aucun)'}\n` +
+            '    Recopier la ligne de crédit exigée par la bibliothèque, sans la modifier. Sans elle,\n' +
+            '    la publication de cette planche n’est pas en règle.',
+        );
+      }
+
+      if (planche.image?.trim()) {
+        problemes.push(...verifierFormat(planche.image.trim(), oup, racineProjet));
+      }
+    });
+  }
+
+  return problemes;
+}
+
 // ── Point d'entrée ─────────────────────────────────────────────────────────
 
 let enCours: Promise<void> | null = null;
 
 /**
- * Lance les cinq contrôles. Lève une erreur unique listant tout ce qui cloche.
+ * Lance les six contrôles. Lève une erreur unique listant tout ce qui cloche.
  *
  * @param aujourdhui Date de référence (`AAAA-MM-JJ`), pour les tests.
  */
@@ -298,6 +388,7 @@ export function validerContenu(aujourdhui = new Date().toISOString().slice(0, 10
       ...verifierRaccourcis(racineProjet),
       ...(await verifierImages(racineProjet)),
       ...(await verifierAnnonces(aujourdhui)),
+      ...(await verifierTraites(racineProjet)),
     ];
 
     if (problemes.length === 0) return;
