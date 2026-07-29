@@ -1,0 +1,204 @@
+---
+/**
+ * Fiche arme — `/armes/<slug>/`.
+ *
+ * Gabarit de design-spec §5 (« V2 — Fiche arme », desktop et mobile) : fil
+ * d'Ariane, hero, corps, mini-cours, encadré « La source », bande d'appel, et
+ * la barre d'onglets mobile avec l'onglet « Armes » actif.
+ *
+ * Les routes sont dépliées depuis le **catalogue des disciplines**, et seules
+ * les armes marquées « Affichée dans la grille » ont une page : l'épée-bocle
+ * reste sélectionnable dans les créneaux sans fiche publique
+ * (ARCHITECTURE.md §4). Décocher la case dans l'admin retire la page au
+ * prochain build — et le lien de la carte disparaît en même temps, puisque la
+ * grille lit le même filtre.
+ *
+ * Tout ce qui peut manquer est masqué proprement : pas de mini-cours tant que
+ * rien n'est tourné, pas d'encadré source si l'arme n'en a pas, pas de corps
+ * si la description longue est vide.
+ */
+import Base from '../../layouts/Base.astro';
+import ArmeBandeCta from '../../components/fiches/ArmeBandeCta.astro';
+import ArmeCorps from '../../components/fiches/ArmeCorps.astro';
+import ArmeFilAriane from '../../components/fiches/ArmeFilAriane.astro';
+import ArmeHero from '../../components/fiches/ArmeHero.astro';
+import ArmeMiniCours from '../../components/fiches/ArmeMiniCours.astro';
+import ArmeSource from '../../components/fiches/ArmeSource.astro';
+import Footer from '../../components/sections/Footer.astro';
+import Nav from '../../components/sections/Nav.astro';
+import TabBar from '../../components/ui/TabBar.astro';
+import { estNomIcone } from '../../components/ui/icones';
+import {
+  lireDisciplines,
+  lireFiches,
+  lireHero,
+  lireIdentite,
+  lireMenus,
+  profsDe,
+} from '../../lib/contenu';
+import { getEcolePrincipale } from '../../lib/ecoles';
+import { cadrageCss, creditAffiche, resoudrePhoto } from '../../lib/images';
+import { estExterne, lien } from '../../lib/liens';
+import { contexteDe, majusculeInitiale, resoudre } from '../../lib/raccourcis';
+import { typographieFr } from '../../lib/typographie';
+
+export async function getStaticPaths() {
+  const disciplines = await lireDisciplines();
+  return disciplines.filter((d) => d.entry.affichee).map((d) => ({ params: { slug: d.slug } }));
+}
+
+/** Voyelles françaises, accentuées comprises, plus le h (toujours muet ici). */
+const INITIALES_ELIDEES = 'aàâäeéèêëiîïoôöuùûüyh';
+
+/**
+ * « Épée longue » → « l'épée longue », « Messer » → « le messer ».
+ *
+ * Le CMS ne porte pas le genre des armes : on l'infère — élision devant
+ * voyelle ou h, sinon « la » si le premier mot se termine par un e, « le »
+ * sinon. Les cinq armes du catalogue sortent justes. Le jour où une arme prend
+ * le mauvais article, la bonne réponse est un champ « Article » dans le schéma
+ * des disciplines, pas une exception écrite ici.
+ */
+function avecArticle(nom: string): string {
+  const minuscule = nom.charAt(0).toLocaleLowerCase('fr') + nom.slice(1);
+  const initiale = minuscule.charAt(0).toLocaleLowerCase('fr');
+
+  if (INITIALES_ELIDEES.includes(initiale)) return `l'${minuscule}`;
+
+  const premierMot = minuscule.split(/[\s-]/)[0] ?? '';
+  return `${premierMot.endsWith('e') ? 'la' : 'le'} ${minuscule}`;
+}
+
+const { slug } = Astro.params;
+
+const ecole = await getEcolePrincipale();
+const [identite, hero, fiches, menus, disciplines, profs] = await Promise.all([
+  lireIdentite(),
+  lireHero(),
+  lireFiches(),
+  lireMenus(),
+  lireDisciplines(),
+  profsDe(ecole),
+]);
+
+const affichees = disciplines.filter((d) => d.entry.affichee);
+const entree = affichees.find((d) => d.slug === slug);
+
+if (!entree) {
+  throw new Error(
+    `Fiche arme : aucune discipline affichée ne porte le slug « ${slug} ». ` +
+      `Armes affichées : ${affichees.map((d) => d.slug).join(', ') || 'aucune'}.`,
+  );
+}
+
+const arme = entree.entry;
+const corps = await arme.description();
+
+// Nom et résumé viennent directement de la collection : ils ne transitent pas
+// par `resoudre()`, donc pas par la normalisation typographique du CMS. On la
+// pose ici — c'est le H1 de la page, le fil d'Ariane, la balise `<title>` et le
+// paragraphe d'accroche qui la suit (apostrophe courbe, fine insécable à
+// l'intérieur des « », cf. src/lib/typographie.ts).
+const nomArme = typographieFr(arme.nom);
+const sousTitreArme = typographieFr(arme.sousTitre);
+const resumeArme = typographieFr(arme.resume);
+
+// Les titres auto-calculés du site se comptent sur ce qui est réellement
+// affiché (ARCHITECTURE.md §4) — même base ici que sur l'accueil.
+const ctx = contexteDe(
+  ecole.fiche,
+  { nbArmes: affichees.length, nbProfs: profs.filter((p) => p.entry.visible).length },
+  { arme: avecArticle(arme.nom) },
+);
+
+const sourceFiches = 'src/content/commun/fiches.yaml (bandeau de fin — fiche arme)';
+const bandeau = {
+  titre: resoudre(fiches.arme?.titre, ctx, sourceFiches),
+  sousTitre: majusculeInitiale(resoudre(fiches.arme?.sousTitre, ctx, sourceFiches)),
+  libelle: fiches.arme?.bouton?.libelle ?? '',
+  url: lien(ecole, fiches.arme?.bouton?.url || '#rejoindre'),
+};
+
+// L'ancre du mini-cours reste **relative à cette page** : la passer par
+// `lien()` la renverrait vers l'accueil de l'école.
+const ANCRE_MINI_COURS = 'mini-cours';
+const lecons = arme.miniCours ?? [];
+const aMiniCours = lecons.some((l) => Boolean(l?.video || l?.vignette));
+
+const retourHref = lien(ecole, '#disciplines');
+
+const onglets = (menus.barreMobile ?? []).map((onglet) => ({
+  libelle: onglet.libelle,
+  href: lien(ecole, onglet.lien),
+  icone: estNomIcone(onglet.icone) ? onglet.icone : 'house',
+  // design-spec §9.12 : sur une fiche arme, l'onglet actif est « Armes » ;
+  // « Essayer » est l'action mise en exergue, jamais active.
+  actif: onglet.icone === 'sword',
+  exergue: onglet.icone === 'swords',
+}));
+---
+
+<Base ecole={ecole} identite={identite} titre={nomArme} description={resumeArme || undefined}>
+
+  {/* Fiche : pas de hero photographique plein écran sous la barre, elle garde
+      donc son fond plein dès le chargement. */}
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+    fond="solide"
+  />
+
+  <ArmeFilAriane nom={nomArme} retourHref={retourHref} />
+
+  <ArmeHero
+    nom={nomArme}
+    sousTitre={sousTitreArme}
+    epoque={arme.epoque}
+    dates={arme.dates}
+    resume={resumeArme}
+    image={resoudrePhoto(arme.photo?.fichier)}
+    alt={arme.photo?.alt ?? ''}
+    objectPosition={cadrageCss(arme.photo?.cadrage)}
+    credit={creditAffiche(arme.photo?.credit)}
+    retourHref={retourHref}
+    essayerHref={bandeau.url}
+    miniCoursHref={aMiniCours ? `#${ANCRE_MINI_COURS}` : null}
+    idTitre="fiche-arme-titre"
+  />
+
+  <ArmeCorps
+    node={corps.node}
+    ctx={ctx}
+    source={`src/content/commun/disciplines/${slug}.mdoc — description longue`}
+  />
+
+  <ArmeMiniCours lecons={lecons} id={ANCRE_MINI_COURS} />
+
+  {/* Pas d'alt fabriqué depuis le nom de l'arme : les quatre fiches servent
+      aujourd'hui la même planche germanique d'épée longue, si bien que
+      « Planche du traité — Rapière » affirmait à l'aveugle ce que l'image ne
+      montre pas. Le champ « Description de la planche » du groupe `source`
+      (keystatic.config.ts) est là pour ça : saisi par le rédacteur en même temps
+      que sa planche, jamais recomposé ici. Tant qu'il est vide, `ArmeSource`
+      retombe sur une description neutre, vraie pour les quatre fiches. */}
+  <ArmeSource source={arme.source} />
+
+  <ArmeBandeCta
+    titre={bandeau.titre}
+    sousTitre={bandeau.sousTitre}
+    libelle={bandeau.libelle}
+    href={bandeau.url}
+    externe={estExterne(bandeau.url)}
+    id="essayer"
+  />
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient donc après le pied
+        de page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide" />
+  </Fragment>
+</Base>

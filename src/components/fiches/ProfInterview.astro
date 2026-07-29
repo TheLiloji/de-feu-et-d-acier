@@ -1,0 +1,156 @@
+---
+/**
+ * Bloc « L'INTERVIEW » de la fiche prof — design-spec §6.3 et §6.4.
+ *
+ * Une tête en sur-titre ember avec filet bas, puis une suite de questions en
+ * Cormorant italique, chacune séparée de la suivante par un filet de 1 px.
+ *
+ * **Masquable** : la maquette dessine trois questions avec des barres grises en
+ * guise de réponses — ce sont des placeholders, pas du contenu. Tant qu'aucune
+ * question n'est saisie dans l'admin, le bloc ne rend rien du tout
+ * (ARCHITECTURE.md §1 : « blocs vidéo/interview masqués tant que vides »). Une
+ * question sans réponse rend la question seule plutôt qu'une barre grise : on
+ * n'imprime pas un placeholder de maquette sur un site public.
+ *
+ * Le nombre de questions n'est pas contraint : la maquette en montre trois, le
+ * CMS en accepte autant qu'on veut.
+ */
+export interface QuestionReponse {
+  question?: string | null;
+  reponse?: string | null;
+}
+
+export interface Props {
+  /** Les couples question/réponse du CMS, dans l'ordre de saisie. */
+  entretien: readonly QuestionReponse[];
+  /** Sur-titre du bloc. */
+  titre?: string;
+  /** `id` du sur-titre, cible d'un `aria-labelledby`. */
+  idTitre?: string;
+  /** Niveau du sur-titre. `h2` par défaut (le `<h1>` est le nom du prof). */
+  niveauTitre?: 'h2' | 'h3';
+  class?: string;
+}
+
+const {
+  entretien,
+  titre = "L'interview",
+  idTitre = 'fiche-prof-interview',
+  niveauTitre = 'h2',
+  class: classe,
+} = Astro.props;
+
+const Titre = niveauTitre;
+const NiveauQuestion = niveauTitre === 'h2' ? 'h3' : 'h4';
+
+// Une entrée n'est retenue que si elle porte au moins une question : un item
+// vide laissé dans l'admin ne doit pas ouvrir un bloc muet.
+const questions = entretien
+  .map((qr) => ({
+    question: (qr.question ?? '').trim(),
+    // Le champ « Réponse » est multiligne : les lignes vides font les
+    // paragraphes, comme partout ailleurs dans l'admin.
+    paragraphes: (qr.reponse ?? '')
+      .split(/\r?\n\s*\r?\n/)
+      .map((p) => p.trim())
+      .filter(Boolean),
+  }))
+  .filter((qr) => qr.question.length > 0);
+---
+
+{
+  questions.length > 0 && (
+    <section class:list={['itw', classe]} aria-labelledby={idTitre}>
+      <div class="gouttiere">
+        <div class="itw__tete">
+          <Titre class="itw__surtitre" id={idTitre}>
+            {titre}
+          </Titre>
+        </div>
+
+        <ol class="itw__liste" role="list">
+          {questions.map((qr) => (
+            <li class="itw__bloc">
+              <NiveauQuestion class="itw__question">{qr.question}</NiveauQuestion>
+              {qr.paragraphes.length > 0 && (
+                <div class="itw__reponse">
+                  {qr.paragraphes.map((p) => (
+                    <p>{p}</p>
+                  ))}
+                </div>
+              )}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  /* Mobile : 18 px sous la bio (design-spec §6.4). Desktop : rien, le hero
+     porte déjà ses 88 px de marge basse (§6.3). */
+  .itw {
+    padding-block: 18px clamp(20px, 0.6rem + 2.4vw, 80px);
+  }
+
+  @media (min-width: 820px) {
+    .itw {
+      padding-block-start: 0;
+    }
+  }
+
+  .itw__tete {
+    padding-block-end: clamp(16px, 0.6rem + 0.8vw, 22px);
+    border-bottom: var(--filet);
+  }
+
+  .itw__surtitre {
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: clamp(10px, 9.814px + 0.0476vw, 10.5px);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    letter-spacing: 0.27em; /* 2.6 px en mobile, 3 px en desktop */
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .itw__liste {
+    margin: 0;
+    padding: 0;
+    padding-block-start: clamp(0px, 0.2rem + 0.4vw, 12px);
+    list-style: none;
+  }
+
+  .itw__bloc {
+    padding-block: clamp(24px, 1rem + 1.2vw, 36px);
+  }
+
+  .itw__bloc + .itw__bloc {
+    border-top: var(--filet);
+  }
+
+  .itw__question {
+    max-width: 34ch;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-display-quote);
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--parch);
+  }
+
+  .itw__reponse {
+    max-width: 72ch;
+    margin-block-start: clamp(12px, 0.5rem + 0.4vw, 16px);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--parch-soft);
+  }
+
+  .itw__reponse p + p {
+    margin-block-start: 0.9em;
+  }
+</style>

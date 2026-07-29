@@ -1,0 +1,165 @@
+---
+/**
+ * Bande d'appel de fin de fiche prof — design-spec §6.3 (« Bande CTA ») et
+ * §6.4 (« CTAs »).
+ *
+ * Desktop : titre centré « S'entraîner avec Gabriel ? », sous-titre en display
+ * italique, bouton `$ember` de 52 px. Mobile : la maquette n'y met que deux
+ * boutons pleine largeur — le lien externe puis le bouton d'essai — et perd le
+ * titre. ARCHITECTURE.md §5 imposant la parité de contenu, le titre et le
+ * sous-titre sont conservés en mobile, simplement plus compacts.
+ *
+ * Le titre et le sous-titre viennent du singleton « Textes des fiches arme &
+ * prof » (`fiches.prof`), raccourci `{prof}` déjà résolu par la page : rien
+ * n'est écrit en dur ici.
+ *
+ * Le bouton du lien externe n'apparaît que sous 1000 px : au-dessus, `ProfHero`
+ * le rend sous le portrait, comme la maquette. Les deux copies se relaient au
+ * seuil de bascule du gabarit de fiche (`BASCULE_NAV`, src/lib/breakpoints.ts) —
+ * jamais visibles ensemble, jamais absentes toutes les deux.
+ */
+import Button from '../ui/Button.astro';
+
+export interface LienCta {
+  libelle?: string | null;
+  url?: string | null;
+}
+
+export interface Props {
+  /** Titre, raccourcis déjà résolus. Ex. « S'entraîner avec Gabriel ? ». */
+  titre?: string;
+  /** Sous-titre en display italique. */
+  sousTitre?: string;
+  /** Bouton principal — « Venir essayer ». */
+  bouton?: LienCta | null;
+  /** Lien externe du prof, rendu en mobile seulement. */
+  lienExterne?: LienCta | null;
+  /** `id` du titre, pour l'`aria-labelledby` de la bande. */
+  idTitre?: string;
+  class?: string;
+}
+
+const {
+  titre,
+  sousTitre,
+  bouton = null,
+  lienExterne = null,
+  idTitre = 'fiche-prof-cta',
+  class: classe,
+} = Astro.props;
+
+const aBouton = Boolean(bouton?.url && bouton?.libelle);
+const aLienExterne = Boolean(lienExterne?.url);
+const libelleLienExterne = lienExterne?.libelle?.trim() || 'Profil HEMA Ratings';
+const aContenu = Boolean(titre || sousTitre) || aBouton || aLienExterne;
+---
+
+{
+  aContenu && (
+    <section class:list={['cta-prof', classe]} aria-labelledby={titre ? idTitre : undefined}>
+      <div class="gouttiere cta-prof__bloc">
+        {titre && (
+          <h2 class="cta-prof__titre" id={idTitre}>
+            {titre}
+          </h2>
+        )}
+        {sousTitre && <p class="cta-prof__sous">{sousTitre}</p>}
+
+        {(aBouton || aLienExterne) && (
+          <div class="cta-prof__boutons">
+            {aLienExterne && (
+              <div class="cta-prof__externe">
+                <Button
+                  variante="contour"
+                  libelle={libelleLienExterne}
+                  href={lienExterne!.url!}
+                  externe
+                  pleineLargeur
+                />
+              </div>
+            )}
+
+            {aBouton && (
+              <div class="cta-prof__principal">
+                <Button
+                  variante="pleine"
+                  taille="grande"
+                  libelle={bouton!.libelle!}
+                  href={bouton!.url!}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .cta-prof {
+    border-top: var(--filet);
+  }
+
+  .cta-prof__bloc {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-block: clamp(34px, 1rem + 3.4vw, 80px) clamp(28px, 1rem + 3.4vw, 96px);
+    text-align: center;
+  }
+
+  .cta-prof__titre {
+    margin: 0;
+    /* 26 px à 390, 44 px à 1440 (design-spec §6.3). */
+    font-size: clamp(26px, 19.314px + 1.7143vw, 44px);
+    font-weight: 400;
+    line-height: 1.1;
+    text-wrap: balance;
+    color: var(--parch);
+  }
+
+  .cta-prof__sous {
+    max-width: 40ch;
+    font-family: var(--font-display);
+    font-size: clamp(14px, 13.257px + 0.1905vw, 16px);
+    font-style: italic;
+    line-height: 1.3;
+    color: var(--parch-soft);
+  }
+
+  .cta-prof__boutons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 420px;
+    margin-block-start: clamp(18px, 0.6rem + 1.2vw, 28px);
+  }
+
+  .cta-prof__principal > :global(.bouton) {
+    display: flex;
+    width: 100%;
+  }
+
+  /* Au-dessus de 1000 px le lien externe est déjà sous le portrait : la copie
+     mobile disparaît de l'arbre d'accessibilité comme de la tabulation.
+     Le seuil est celui de `ProfHero` (`.prof-hero__hema`, `BASCULE_NAV` de
+     src/lib/breakpoints.ts) : les deux copies se relaient exactement, sans
+     bande où le lien HEMA Ratings manquerait — il manquait entre 820 et 1000. */
+  @media (min-width: 1000px) {
+    .cta-prof__externe {
+      display: none;
+    }
+
+    .cta-prof__boutons {
+      width: auto;
+      max-width: none;
+    }
+
+    .cta-prof__principal > :global(.bouton) {
+      width: auto;
+    }
+  }
+</style>

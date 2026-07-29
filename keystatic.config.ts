@@ -1,0 +1,1326 @@
+import { collection, config, fields, singleton } from '@keystatic/core';
+import { ECOLES, MULTI, libelleEcole, type EcoleConfig } from './src/config/ecoles';
+
+// ───────────────────────────────────────────────────────────────────────────
+//  Stockage : fichiers locaux en dev, commits GitHub en prod.
+//  Cf. stack-notes.md §1.2 — le contenu vit dans git, historique et rollback
+//  gratuits, mais chaque « Enregistrer » = 1 commit + 1 rebuild.
+// ───────────────────────────────────────────────────────────────────────────
+//  En dev, PUBLIC_KEYSTATIC_STORAGE=github force le mode GitHub — sert à
+//  l'assistant de création de la GitHub App et à tester l'auth en local.
+//  (Préfixe PUBLIC_ obligatoire : ce fichier est aussi bundlé côté client,
+//  et Vite n'expose à import.meta.env que les variables préfixées.)
+const storage =
+  import.meta.env.PROD || import.meta.env.PUBLIC_KEYSTATIC_STORAGE === 'github'
+    ? ({ kind: 'github', repo: 'TheLiloji/de-feu-et-d-acier' } as const)
+    : ({ kind: 'local' } as const);
+
+// ───────────────────────────────────────────────────────────────────────────
+//  Helpers de schéma
+//  Règle : libellés en français, clés sans accent (lisibles en diff git).
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * Rappel de la syntaxe d'accent, ajouté aux descriptions des champs rendus par
+ * `SectionTitle` : le fragment entouré d'astérisques passe en ember italique,
+ * c'est le seul accent coloré de la maquette (design-spec §9.3). La convention
+ * n'était documentée nulle part côté admin — d'où des titres à plat.
+ */
+const ACCENT =
+  'Entourer d’astérisques le fragment à mettre en valeur (ember, italique) : *gratuites*. Écrire \\* pour une astérisque littérale.';
+
+/** Rappel des raccourcis, ajouté aux descriptions des champs qui les acceptent. */
+const RACCOURCIS =
+  'Raccourcis : {email}, {telephone}, {lieu}, {adresse}, {tarif}, {saison}, {creneaux}, {creneaux_court}, {essai}.';
+
+/**
+ * Normalise le nom du fichier déposé depuis l'admin.
+ *
+ * Keystatic enregistre par défaut le fichier **tel quel** : `IMG_4821.JPG`,
+ * `Rapière (2).jpg`… Or le build retrouve les photos par leur chemin. Une
+ * extension en capitales ou un nom accentué se traduisait par une photo
+ * silencieusement absente du site. On assainit donc à l'entrée : minuscules,
+ * accents retirés, tout le reste ramené à des tirets.
+ */
+const nomDeFichier = (original: string): string =>
+  original
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9.-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+/**
+ * Image éditoriale. Elle atterrit dans `src/assets/photos/…` pour passer par
+ * `astro:assets` (sharp) au build : AVIF/WebP + srcset. Cf. photos.md §5.
+ * Ne jamais pointer vers `public/` pour une photo : aucune optimisation.
+ */
+const imageEditoriale = (label: string, dossier: string, description?: string) =>
+  fields.image({
+    label,
+    directory: `src/assets/photos/${dossier}`,
+    publicPath: `/src/assets/photos/${dossier}/`,
+    transformFilename: nomDeFichier,
+    description:
+      description ??
+      'JPEG ou PNG déjà préparé : 2400 px maximum sur le grand côté, moins de 1,5 Mo. Ne jamais déposer un fichier brut d’appareil photo.',
+  });
+
+/**
+ * Logo de partenaire. Même dossier que les photos communes — c'est là que le
+ * chantier photos les a déposés (cf. docs/refonte/photos-manifest.json). Le
+ * rendu servira le fichier d'origine sans le recompresser : un logo à plat
+ * supporte mal une repasse JPEG.
+ */
+const imageLogo = (label: string) =>
+  fields.image({
+    label,
+    directory: 'src/assets/photos/commun',
+    publicPath: '/src/assets/photos/commun/',
+    transformFilename: nomDeFichier,
+    description: 'PNG à fond transparent de préférence. Le fichier est servi tel quel.',
+  });
+
+/** Cadrage : remplace le « point focal 50% 40% », incompréhensible pour un prof. */
+const cadrage = fields.select({
+  label: 'Cadrage de la photo',
+  description: 'Quelle partie de la photo garder si elle doit être recadrée.',
+  options: [
+    { label: 'Centre (par défaut)', value: 'centre' },
+    { label: 'Haut / visages', value: 'haut' },
+    { label: 'Bas', value: 'bas' },
+    { label: 'Gauche', value: 'gauche' },
+    { label: 'Droite', value: 'droite' },
+  ],
+  defaultValue: 'centre',
+});
+
+/** Photo = fichier + description alternative (obligatoire à l'usage) + cadrage. */
+const photo = (label: string, dossier: string) =>
+  fields.object(
+    {
+      fichier: imageEditoriale('Fichier', dossier),
+      alt: fields.text({
+        label: 'Description de l’image',
+        description:
+          'Lue à voix haute par les lecteurs d’écran, et affichée si la photo ne charge pas. Ex. « L’équipe sur la piste du gymnase ».',
+      }),
+      cadrage,
+      credit: fields.text({
+        label: 'Crédit photo (facultatif)',
+        // Le « © » est posé au rendu (`creditAffiche`, src/lib/images.ts) : deux
+        // photographes saisis à deux moments différents donnaient sinon deux
+        // formats côte à côte. Un « © » saisi quand même est absorbé, pas doublé.
+        description:
+          'Le nom seul — le « © » est ajouté automatiquement. Ex. « Alexandre Vergne — L’IMAGINARIUM ».',
+      }),
+    },
+    { label },
+  );
+
+/** Bouton / lien : libellé + destination. */
+const lien = (label: string, description?: string) =>
+  fields.object(
+    {
+      libelle: fields.text({ label: 'Texte du bouton' }),
+      url: fields.text({
+        label: 'Adresse',
+        description: 'https://…, mailto:…, tel:… ou une ancre interne (#creneaux).',
+      }),
+    },
+    { label, description },
+  );
+
+/** Affiché / masqué, sans suppression (principe « retirer ≠ supprimer »). */
+const visible = fields.checkbox({
+  label: 'Affiché sur le site',
+  description: 'Décocher pour retirer du site sans perdre la fiche.',
+  defaultValue: true,
+});
+
+/** Ordre d'affichage. Convention 10, 20, 30… pour pouvoir intercaler. */
+const ordre = fields.integer({
+  label: 'Ordre d’affichage',
+  description: 'Le plus petit s’affiche en premier. Utiliser 10, 20, 30… pour pouvoir intercaler.',
+  defaultValue: 100,
+});
+
+/** En-tête de section : sur-titre + titre sur deux lignes + chapô. */
+const enTete = (eyebrow: string, description?: string) =>
+  fields.object(
+    {
+      eyebrow: fields.text({ label: 'Sur-titre', defaultValue: eyebrow }),
+      titreLigne1: fields.text({ label: 'Titre — ligne 1', description: ACCENT }),
+      titreLigne2: fields.text({
+        label: 'Titre — ligne 2',
+        description: `Rendue en ember italique. ${ACCENT}`,
+      }),
+      lede: fields.text({
+        label: 'Chapô',
+        multiline: true,
+        description: RACCOURCIS,
+      }),
+    },
+    { label: eyebrow, description },
+  );
+
+/** Texte riche « corps d'article » : titres, listes, liens, images, citations. */
+const corpsRiche = (label: string, dossierImages: string) =>
+  fields.markdoc({
+    label,
+    options: {
+      heading: [2, 3],
+      bold: true,
+      italic: true,
+      link: true,
+      blockquote: true,
+      orderedList: true,
+      unorderedList: true,
+      divider: true,
+      table: false,
+      code: false,
+      codeBlock: false,
+      strikethrough: false,
+      image: {
+        directory: `src/assets/photos/${dossierImages}`,
+        publicPath: `/src/assets/photos/${dossierImages}/`,
+      },
+    },
+  });
+
+/** Texte riche court : gras, italique, liens. Pas de titre, pas d'image. */
+const texteRiche = (label: string, description?: string) =>
+  fields.markdoc({
+    label,
+    description,
+    options: {
+      heading: false,
+      bold: true,
+      italic: true,
+      link: true,
+      unorderedList: true,
+      orderedList: true,
+      blockquote: false,
+      divider: false,
+      table: false,
+      code: false,
+      codeBlock: false,
+      strikethrough: false,
+      image: false,
+    },
+  });
+
+// ───────────────────────────────────────────────────────────────────────────
+//  Collections par école
+//  Le dossier EST l'école : jamais de champ « École » à remplir.
+//  Cf. multi-ecoles.md §4 (option A) et ARCHITECTURE.md §3.
+// ───────────────────────────────────────────────────────────────────────────
+
+const racine = (e: EcoleConfig) => `src/content/ecoles/${e.slug}`;
+
+/**
+ * Les cinq collections d'une école, sous leur nom générique. Le suffixe
+ * (`profs_clermont`…) est ajouté à l'assemblage : c'est là que le typage
+ * littéral des clés est déclaré, en types mappés — TypeScript ne sait pas le
+ * déduire depuis le corps d'une fonction.
+ */
+function collectionsEcole(e: EcoleConfig) {
+  const dossierPhotos = e.slug;
+
+  return {
+    profs: collection({
+      label: libelleEcole('Encadrants', e),
+      path: `${racine(e)}/profs/*`,
+      slugField: 'nom',
+      format: { data: 'yaml', contentField: 'bio' },
+      entryLayout: 'content',
+      columns: ['nom', 'accroche'],
+      schema: {
+        nom: fields.slug({
+          name: { label: 'Nom complet', validation: { isRequired: true } },
+        }),
+        prenom: fields.text({
+          label: 'Prénom',
+          description: 'Affiché seul sur les cartes mobiles.',
+        }),
+        visible,
+        misEnAvant: fields.checkbox({
+          label: 'Mis en avant',
+          description: 'Carte agrandie sur l’accueil. Réservé au référent principal.',
+          defaultValue: false,
+        }),
+        portrait: photo('Portrait', dossierPhotos),
+        armes: fields.multiRelationship({
+          label: 'Armes enseignées',
+          collection: 'disciplines',
+          description: 'Affichées en spécialité au-dessus du nom, sur la carte de l’accueil.',
+        }),
+        accroche: fields.text({
+          label: 'Accroche',
+          description: 'Une ligne, sous le nom. Ex. « Rapière française & italienne · bolonaise ».',
+          validation: { length: { max: 90 } },
+        }),
+        bio: texteRiche('Biographie'),
+        lienExterne: lien('Lien externe (facultatif)', 'Profil HEMA Ratings, site personnel…'),
+        interview: fields.array(
+          fields.object({
+            question: fields.text({ label: 'Question' }),
+            reponse: fields.text({ label: 'Réponse', multiline: true }),
+          }),
+          {
+            label: 'Interview',
+            description: 'Le bloc reste masqué sur le site tant qu’aucune question n’est saisie.',
+            itemLabel: (p) => p.fields.question.value || 'Question',
+          },
+        ),
+        video: fields.object(
+          {
+            url: fields.text({ label: 'Lien de la vidéo (YouTube, Vimeo…)' }),
+            duree: fields.text({ label: 'Durée', description: 'Ex. 06:24' }),
+            vignette: imageEditoriale('Vignette', dossierPhotos),
+          },
+          {
+            label: 'Vidéo d’interview (facultatif)',
+            description: 'Le bloc reste masqué sur le site tant que le lien est vide.',
+          },
+        ),
+        ordre,
+      },
+    }),
+
+    annonces: collection({
+      label: libelleEcole('Annonces (messages courts)', e),
+      path: `${racine(e)}/annonces/*`,
+      slugField: 'titre',
+      format: { data: 'yaml' },
+      columns: ['titre', 'date'],
+      schema: {
+        titre: fields.slug({
+          name: {
+            label: 'Titre court',
+            validation: { isRequired: true, length: { max: 60 } },
+          },
+        }),
+        date: fields.date({
+          label: 'Date de l’annonce',
+          defaultValue: { kind: 'today' },
+          validation: { isRequired: true },
+        }),
+        message: fields.text({
+          label: 'Message',
+          multiline: true,
+          description: `Une à deux phrases. ${RACCOURCIS}`,
+          validation: { length: { max: 240 } },
+        }),
+        ton: fields.select({
+          label: 'Type de message',
+          options: [
+            { label: 'Information', value: 'info' },
+            { label: 'Important', value: 'important' },
+            { label: 'Urgent (séance annulée…)', value: 'urgent' },
+          ],
+          defaultValue: 'info',
+        }),
+        lien: lien('Lien (facultatif)'),
+        bandeau: fields.checkbox({
+          label: 'Épingler en bandeau',
+          description:
+            'Affiche l’annonce tout en haut du site, au-dessus du menu. Une seule annonce à la fois : la plus récente gagne.',
+          defaultValue: false,
+        }),
+        dateFin: fields.date({
+          label: 'Retirer automatiquement le',
+          description:
+            'Après cette date, l’annonce disparaît du site à la prochaine publication. Laisser vide pour la retirer à la main.',
+        }),
+      },
+    }),
+
+    articles: collection({
+      label: libelleEcole('Articles (actualités)', e),
+      path: `${racine(e)}/articles/*`,
+      slugField: 'titre',
+      format: { data: 'yaml', contentField: 'corps' },
+      entryLayout: 'content',
+      columns: ['titre', 'date'],
+      schema: {
+        titre: fields.slug({ name: { label: 'Titre', validation: { isRequired: true } } }),
+        date: fields.date({
+          label: 'Date de publication',
+          defaultValue: { kind: 'today' },
+          validation: { isRequired: true },
+        }),
+        statut: fields.select({
+          label: 'Statut',
+          description:
+            'Un brouillon n’est pas affiché sur le site et n’a pas d’adresse. Attention : il est tout de même enregistré dans le dépôt, qui est public — écrire un brouillon, ce n’est pas écrire en privé.',
+          options: [
+            { label: 'Brouillon (pas encore affiché sur le site)', value: 'brouillon' },
+            { label: 'Publié', value: 'publie' },
+          ],
+          defaultValue: 'brouillon',
+        }),
+        chapo: fields.text({
+          label: 'Chapô',
+          multiline: true,
+          description:
+            'Deux ou trois lignes, affichées sur la carte et dans les résultats de recherche Google.',
+          validation: { length: { max: 280 } },
+        }),
+        couverture: photo('Image de couverture', dossierPhotos),
+        categorie: fields.select({
+          label: 'Catégorie',
+          options: [
+            { label: 'Vie du club', value: 'vie-du-club' },
+            { label: 'Tournoi', value: 'tournoi' },
+            { label: 'Stage', value: 'stage' },
+            { label: 'Sources & technique', value: 'sources' },
+            { label: 'Matériel', value: 'materiel' },
+          ],
+          defaultValue: 'vie-du-club',
+        }),
+        auteur: fields.relationship({
+          label: 'Écrit par',
+          collection: `profs_${e.slug}`,
+          description: 'Facultatif.',
+        }),
+        epingle: fields.checkbox({
+          label: 'Mettre à la une',
+          description: 'Remonte l’article en tête de la page « Actualités ».',
+          defaultValue: false,
+        }),
+        corps: corpsRiche('Contenu', dossierPhotos),
+        galerie: fields.array(photo('Photo', dossierPhotos), {
+          label: 'Photos de l’article',
+          itemLabel: (p) => p.fields.alt.value || 'Photo',
+        }),
+        liens: fields.array(
+          fields.object({
+            libelle: fields.text({ label: 'Texte' }),
+            url: fields.text({ label: 'Adresse' }),
+          }),
+          { label: 'Liens utiles', itemLabel: (p) => p.fields.libelle.value || 'Lien' },
+        ),
+      },
+    }),
+
+    faq: collection({
+      label: libelleEcole('Questions fréquentes (locales)', e),
+      path: `${racine(e)}/faq/*`,
+      slugField: 'question',
+      format: { data: 'yaml', contentField: 'reponse' },
+      columns: ['question', 'categorie'],
+      schema: {
+        question: fields.slug({ name: { label: 'Question', validation: { isRequired: true } } }),
+        visible,
+        reponse: texteRiche(
+          'Réponse',
+          `Écrire les valeurs avec des raccourcis plutôt qu’en clair, pour qu’elles restent à jour toutes seules. ${RACCOURCIS}`,
+        ),
+        categorie: fields.select({
+          label: 'Catégorie',
+          options: [
+            { label: 'Débuter', value: 'debuter' },
+            { label: 'Sécurité', value: 'securite' },
+            { label: 'Déroulé des séances', value: 'seances' },
+            { label: 'Tarifs & inscription', value: 'tarifs' },
+            { label: 'Compétition', value: 'competition' },
+          ],
+          defaultValue: 'tarifs',
+        }),
+        miseEnAvant: fields.checkbox({
+          label: 'Afficher en premier',
+          description: 'Le mobile met en avant trois questions : cocher les plus utiles.',
+          defaultValue: false,
+        }),
+        ordre,
+      },
+    }),
+
+    galerie: collection({
+      label: libelleEcole('Albums photo', e),
+      path: `${racine(e)}/galerie/*`,
+      slugField: 'titre',
+      format: { data: 'yaml' },
+      columns: ['titre', 'date'],
+      schema: {
+        titre: fields.slug({ name: { label: 'Titre de l’album', validation: { isRequired: true } } }),
+        visible,
+        date: fields.date({ label: 'Date', defaultValue: { kind: 'today' } }),
+        surAccueil: fields.checkbox({
+          label: 'Album affiché sur l’accueil',
+          description:
+            'Les six premières photos alimentent la mosaïque de la page d’accueil. Un seul album à la fois.',
+          defaultValue: false,
+        }),
+        photos: fields.array(
+          fields.object({
+            fichier: imageEditoriale('Photo', dossierPhotos),
+            legende: fields.text({
+              label: 'Légende',
+              description: 'Affichée au survol de la tuile. Ex. « À l’assaut ».',
+            }),
+            alt: fields.text({ label: 'Description de l’image' }),
+            cadrage,
+            credit: fields.text({
+              label: 'Crédit photo (facultatif)',
+              description:
+                'Le nom seul — le « © » est ajouté automatiquement. Ex. « Alexandre Vergne — L’IMAGINARIUM ».',
+            }),
+          }),
+          { label: 'Photos', itemLabel: (p) => p.fields.legende.value || 'Photo' },
+        ),
+      },
+    }),
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+//  Singleton « fiche école » — la source unique du lieu, du contact,
+//  des créneaux et du tarif. Tout le reste du site s'y réfère par raccourcis.
+// ───────────────────────────────────────────────────────────────────────────
+
+function singletonEcole(e: EcoleConfig) {
+  return {
+    ecole: singleton({
+      label: libelleEcole('Lieu, contact, créneaux & tarifs', e),
+      path: `${racine(e)}/ecole`,
+      format: { data: 'yaml' },
+      schema: {
+        nom: fields.text({ label: 'Nom de l’école', defaultValue: e.nom }),
+        ville: fields.text({
+          label: 'Ville',
+          defaultValue: e.ville,
+          description: `Utilisée par le hero (« à ${e.ville} ») et le balisage Google.`,
+        }),
+        statut: fields.select({
+          label: 'Statut',
+          options: [
+            { label: 'Active', value: 'active' },
+            { label: 'Ouverture prochaine', value: 'bientot' },
+            { label: 'Archivée', value: 'archivee' },
+          ],
+          defaultValue: 'active',
+        }),
+        presentation: fields.text({
+          label: 'Phrase de présentation (facultatif)',
+          multiline: true,
+          description: 'Laisser vide pour utiliser le texte commun de la section « Le club ».',
+        }),
+        lieu: fields.object(
+          {
+            nom: fields.text({ label: 'Nom du lieu' }),
+            adresse: fields.text({ label: 'Adresse (rue)' }),
+            codePostal: fields.text({ label: 'Code postal' }),
+            ville: fields.text({ label: 'Ville' }),
+            itineraire: fields.text({
+              label: 'Lien « Itinéraire »',
+              description: 'Lien Google Maps ou OpenStreetMap ouvrant l’itinéraire.',
+            }),
+            latitude: fields.text({
+              label: 'Latitude',
+              description: 'Ex. 45.7772. Sert au balisage Google.',
+            }),
+            longitude: fields.text({ label: 'Longitude', description: 'Ex. 3.0870.' }),
+            // Le plan schématique dessiné en SVG a été retiré : à sa place, une
+            // vraie photo du lieu. Tant qu'elle n'est pas déposée, le bloc
+            // « Lieu & contact » se rend en version compacte — adresse, contact,
+            // bouton « Itinéraire », et rien d'autre. Aucun cadre vide.
+            photo: fields.object(
+              {
+                fichier: imageEditoriale(
+                  'Photo du lieu',
+                  e.slug,
+                  'L’entrée du gymnase, pour que les nouveaux la reconnaissent. Photo en largeur de préférence : elle s’affiche dans un bandeau. JPEG déjà préparé, 2400 px maximum sur le grand côté.',
+                ),
+                alt: fields.text({
+                  label: 'Description de l’image',
+                  description:
+                    'Lue à voix haute par les lecteurs d’écran, et affichée si la photo ne charge pas. Ex. « L’entrée vitrée du gymnase Robert Pras, depuis la rue ».',
+                }),
+                cadrage,
+              },
+              { label: 'Photo du lieu' },
+            ),
+            photosInterieur: fields.array(
+              fields.object({
+                fichier: imageEditoriale(
+                  'Photo',
+                  e.slug,
+                  'Une vue de l’intérieur : la salle, le tapis, les vestiaires. JPEG déjà préparé, 2400 px maximum sur le grand côté.',
+                ),
+                alt: fields.text({
+                  label: 'Description de l’image',
+                  description:
+                    'Lue à voix haute par les lecteurs d’écran. Ex. « La grande salle et son plancher, masques alignés au mur ».',
+                }),
+              }),
+              {
+                label: 'Photos de l’intérieur',
+                description:
+                  'Visibles dans une visionneuse, au clic sur la photo du lieu ci-dessus. Sans photo du lieu, elles ne s’affichent pas.',
+                itemLabel: (p) => p.fields.alt.value || 'Photo de l’intérieur',
+              },
+            ),
+          },
+          { label: 'Lieu d’entraînement' },
+        ),
+        contact: fields.object(
+          {
+            email: fields.text({
+              label: 'E-mail',
+              description: 'Le seul mail affiché sur le site — repris par le raccourci {email}.',
+              validation: {
+                pattern: { regex: /.+@.+\..+/, message: 'Adresse e-mail invalide' },
+              },
+            }),
+            telephone: fields.text({
+              label: 'Téléphone',
+              description: 'Format affiché, ex. 06 61 28 65 11. Le lien « tel: » est déduit.',
+            }),
+            responsable: fields.text({
+              label: 'Directeur / directrice de publication',
+              description: 'Nommé·e dans les mentions légales, sans coordonnées personnelles.',
+            }),
+            fonction: fields.text({ label: 'Fonction', defaultValue: 'Présidente de section' }),
+          },
+          { label: 'Contact' },
+        ),
+        adhesion: fields.object(
+          {
+            montant: fields.integer({ label: 'Adhésion annuelle (€)', defaultValue: 85 }),
+            saison: fields.text({ label: 'Saison', defaultValue: '2025-2026' }),
+            lienInscription: fields.text({ label: 'Lien d’adhésion (HelloAsso)' }),
+            aPrevoir: fields.array(fields.text({ label: 'Équipement' }), {
+              label: 'À se procurer soi-même',
+              itemLabel: (p) => p.value || 'Équipement',
+            }),
+          },
+          { label: 'Adhésion & tarifs' },
+        ),
+        essai: fields.object(
+          {
+            seancesOffertes: fields.integer({ label: 'Séances d’essai offertes', defaultValue: 2 }),
+            materielPrete: fields.checkbox({
+              label: 'Matériel prêté pour l’essai',
+              defaultValue: true,
+            }),
+          },
+          { label: 'Séances d’essai' },
+        ),
+        creneaux: fields.array(
+          fields.object({
+            jour: fields.select({
+              label: 'Jour',
+              options: [
+                { label: 'Lundi', value: 'lundi' },
+                { label: 'Mardi', value: 'mardi' },
+                { label: 'Mercredi', value: 'mercredi' },
+                { label: 'Jeudi', value: 'jeudi' },
+                { label: 'Vendredi', value: 'vendredi' },
+                { label: 'Samedi', value: 'samedi' },
+                { label: 'Dimanche', value: 'dimanche' },
+              ],
+              defaultValue: 'mardi',
+            }),
+            heureDebut: fields.text({
+              label: 'Début',
+              defaultValue: '18:00',
+              validation: { pattern: { regex: /^\d{2}:\d{2}$/, message: 'Format HH:MM' } },
+            }),
+            heureFin: fields.text({
+              label: 'Fin',
+              defaultValue: '20:00',
+              validation: { pattern: { regex: /^\d{2}:\d{2}$/, message: 'Format HH:MM' } },
+            }),
+            armes: fields.multiRelationship({
+              label: 'Armes travaillées',
+              collection: 'disciplines',
+            }),
+            intitule: fields.text({
+              label: 'Intitulé libre',
+              description: 'Ex. « Pratique libre ». Prioritaire sur la liste d’armes.',
+            }),
+            niveau: fields.select({
+              label: 'Niveau',
+              options: [
+                { label: 'Tous niveaux', value: 'tous' },
+                { label: 'Débutants', value: 'debutants' },
+                { label: 'Confirmés', value: 'confirmes' },
+                { label: 'Sans encadrant', value: 'libre' },
+              ],
+              defaultValue: 'tous',
+            }),
+            encadre: fields.checkbox({ label: 'Séance encadrée', defaultValue: true }),
+          }),
+          {
+            label: 'Créneaux hebdomadaires',
+            itemLabel: (p) =>
+              `${p.fields.jour.value} ${p.fields.heureDebut.value}–${p.fields.heureFin.value}`,
+          },
+        ),
+        reseaux: fields.object(
+          {
+            facebook: fields.text({ label: 'Facebook' }),
+            instagram: fields.text({ label: 'Instagram' }),
+            hemaRatings: fields.text({ label: 'HEMA Ratings (fiche club)' }),
+            helloAsso: fields.text({ label: 'HelloAsso (association)' }),
+          },
+          { label: 'Liens & réseaux' },
+        ),
+        affiliation: fields.object(
+          {
+            // Pas de nom de club en dur : la fabrique sert toutes les écoles,
+            // et une deuxième salle n'aurait aucune raison de dépendre de l'USAM
+            // Clermont-Ferrand.
+            club: fields.text({ label: 'Club support' }),
+            lienClub: fields.text({ label: 'Site du club support' }),
+            federation: fields.text({ label: 'Fédération', defaultValue: 'FFAMHE' }),
+            lienFederation: fields.text({ label: 'Site de la fédération' }),
+          },
+          { label: 'Affiliation' },
+        ),
+        photoHero: photo('Photo d’en-tête (facultatif)', e.slug),
+        legal: fields.object(
+          {
+            siege: fields.text({
+              label: 'Siège (si différent du lieu d’entraînement)',
+              multiline: true,
+            }),
+          },
+          { label: 'Mentions légales locales' },
+        ),
+      },
+    }),
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+//  Contenu commun (association) — écrit une fois, servi partout.
+// ───────────────────────────────────────────────────────────────────────────
+
+const collectionsCommunes = {
+  disciplines: collection({
+    label: 'Armes & disciplines',
+    path: 'src/content/commun/disciplines/*',
+    slugField: 'nom',
+    format: { data: 'yaml', contentField: 'description' },
+    entryLayout: 'content',
+    columns: ['nom', 'epoque'],
+    schema: {
+      nom: fields.slug({ name: { label: 'Nom de l’arme', validation: { isRequired: true } } }),
+      affichee: fields.checkbox({
+        label: 'Affichée dans la grille des armes',
+        description:
+          'Décocher pour garder l’arme sélectionnable dans les créneaux et les fiches de profs, sans lui donner de carte sur l’accueil (cas de l’épée-bocle).',
+        defaultValue: true,
+      }),
+      sousTitre: fields.text({ label: 'Sous-titre', validation: { length: { max: 60 } } }),
+      epoque: fields.text({ label: 'Époque', description: 'Ex. « Médiévale », « Renaissance ».' }),
+      dates: fields.text({ label: 'Siècles', description: 'Ex. « XIVᵉ — XVᵉ s. »' }),
+      photo: photo('Photo de l’arme', 'commun'),
+      resume: fields.text({
+        label: 'Chapô de la fiche arme',
+        multiline: true,
+        description:
+          'Le paragraphe d’accroche en haut de la fiche, qui sert AUSSI de description du site pour Google. Une phrase complète, qui se suffit à elle-même. ⚠️ Ne pas y reprendre les premières phrases de la « Description longue » ci-dessous : elles s’afficheraient deux fois à deux blocs d’intervalle. Le chapô situe l’arme, la description la raconte. (La carte d’accueil, elle, affiche le sous-titre.)',
+        validation: { length: { max: 300 } },
+      }),
+      description: corpsRiche('Description longue (fiche arme)', 'commun'),
+      miniCours: fields.array(
+        fields.object({
+          titre: fields.text({
+            label: 'Titre de la leçon',
+            description: 'Ex. « Leçon 01 — Les gardes ».',
+          }),
+          sousTitre: fields.text({
+            label: 'Sous-titre',
+            description: 'Ex. « Bases · posture & distances ».',
+          }),
+          duree: fields.text({ label: 'Durée', description: 'Ex. 04:12' }),
+          video: fields.text({ label: 'Lien de la vidéo' }),
+          vignette: imageEditoriale('Vignette', 'commun'),
+        }),
+        {
+          label: 'Mini-cours (vidéos)',
+          description: 'Le bloc reste masqué sur la fiche arme tant qu’aucune leçon n’est saisie.',
+          itemLabel: (p) => p.fields.titre.value || 'Leçon',
+        },
+      ),
+      source: fields.object(
+        {
+          titre: fields.text({ label: 'Titre', defaultValue: 'Des traités aux assauts.' }),
+          texte: fields.text({ label: 'Texte', multiline: true }),
+          lien: lien('Bouton « Étudier la source »'),
+          image: imageEditoriale('Planche du traité', 'commun'),
+          // Sans description saisie, la fiche retombe sur une formule neutre
+          // (« Planche du traité étudié en salle »), vraie pour n'importe quelle
+          // planche. Le jour où chaque arme a la sienne, c'est ici qu'on décrit
+          // ce qu'elle montre vraiment — la fiche ne peut pas le deviner.
+          imageAlt: fields.text({
+            label: 'Description de la planche (facultatif)',
+            description:
+              'Ce que la gravure montre. Ex. « Deux escrimeurs à l’épée longue, gravure du Fechtbuch de Talhoffer ». Laisser vide reprend une description générique.',
+          }),
+        },
+        { label: 'Encadré « La source »' },
+      ),
+      ordre,
+    },
+  }),
+
+  partenaires: collection({
+    label: 'Partenaires',
+    path: 'src/content/commun/partenaires/*',
+    slugField: 'nom',
+    format: { data: 'yaml', contentField: 'texte' },
+    columns: ['nom', 'categorie'],
+    schema: {
+      nom: fields.slug({ name: { label: 'Nom du partenaire', validation: { isRequired: true } } }),
+      visible,
+      categorie: fields.select({
+        label: 'Catégorie',
+        options: [
+          { label: 'Affiliation', value: 'affiliation' },
+          { label: 'Équipement', value: 'equipement' },
+          { label: 'Institution', value: 'institution' },
+          { label: 'Club ami', value: 'club-ami' },
+        ],
+        defaultValue: 'equipement',
+      }),
+      logo: imageLogo('Logo'),
+      logoAlt: fields.text({ label: 'Description du logo', description: 'Ex. « Logo de la FFAMHE ».' }),
+      // La section « Partenaires » pose une pastille claire commune aux trois
+      // logos, pour qu'ils aient le même traitement quelle que soit la façon
+      // dont la marque livre son fichier. Un logo dessiné en blanc y serait
+      // invisible : cette case le fait inverser. Décoché par défaut — c'est le
+      // cas d'un logo normal, sombre sur fond clair, donc rien ne casse quand
+      // un partenaire est ajouté sans y penser.
+      logoClair: fields.checkbox({
+        label: 'Logo blanc, à inverser sur fond clair',
+        description:
+          'À cocher si le dessin du logo est blanc (détouré, ou blanc sur un aplat noir). Dans le doute, laisser décoché et regarder le rendu.',
+        defaultValue: false,
+      }),
+      texte: texteRiche('Présentation'),
+      lien: lien('Bouton'),
+      ordre,
+    },
+  }),
+
+  faq: collection({
+    label: 'Questions fréquentes (générales)',
+    path: 'src/content/commun/faq/*',
+    slugField: 'question',
+    format: { data: 'yaml', contentField: 'reponse' },
+    columns: ['question', 'categorie'],
+    schema: {
+      question: fields.slug({ name: { label: 'Question', validation: { isRequired: true } } }),
+      visible,
+      reponse: texteRiche(
+        'Réponse',
+        `Les questions qui parlent d’horaires, de lieu ou de tarif appartiennent à la FAQ de l’école, pas ici. ${RACCOURCIS}`,
+      ),
+      categorie: fields.select({
+        label: 'Catégorie',
+        options: [
+          { label: 'Débuter', value: 'debuter' },
+          { label: 'Sécurité', value: 'securite' },
+          { label: 'Déroulé des séances', value: 'seances' },
+          { label: 'Tarifs & inscription', value: 'tarifs' },
+          { label: 'Compétition', value: 'competition' },
+        ],
+        defaultValue: 'debuter',
+      }),
+      miseEnAvant: fields.checkbox({
+        label: 'Afficher en premier',
+        description: 'Le mobile met en avant trois questions : cocher les plus utiles.',
+        defaultValue: false,
+      }),
+      ordre,
+    },
+  }),
+};
+
+// ───────────────────────────────────────────────────────────────────────────
+//  Singletons communs
+// ───────────────────────────────────────────────────────────────────────────
+
+const singletonsCommuns = {
+  identite: singleton({
+    label: 'Identité du site',
+    path: 'src/content/commun/identite',
+    format: { data: 'yaml' },
+    schema: {
+      marque: fields.object(
+        {
+          debut: fields.text({ label: 'Mot 1', defaultValue: 'De' }),
+          feu: fields.text({ label: 'Mot 2 (couleur feu)', defaultValue: 'Feu' }),
+          connecteur: fields.text({ label: 'Mot 3 (italique)', defaultValue: "et d'" }),
+          acier: fields.text({ label: 'Mot 4 (couleur acier)', defaultValue: 'Acier' }),
+        },
+        {
+          label: 'Nom du club (logotype)',
+          description:
+            'Saisi une seule fois : le hero, le pied de page et les mentions légales le reprennent.',
+        },
+      ),
+      baseline: fields.text({
+        label: 'Baseline',
+        defaultValue: 'Arts Martiaux Historiques Européens',
+      }),
+      description: fields.text({
+        label: 'Description du site',
+        multiline: true,
+        description: 'Utilisée par Google et lors du partage d’un lien. 150 à 160 caractères.',
+        validation: { length: { max: 320 } },
+      }),
+      imagePartage: imageEditoriale(
+        'Image de partage (réseaux sociaux)',
+        'commun',
+        'JPEG 1200 × 630 px. Affichée quand quelqu’un partage un lien du site.',
+      ),
+      copyright: fields.text({
+        label: 'Mention de bas de page',
+        // La ville est déjà portée par la fiche d'école : la répéter ici la
+        // figerait pour toutes les implantations.
+        defaultValue: "© De Feu et d'Acier",
+      }),
+    },
+  }),
+
+  hero: singleton({
+    label: 'Accueil · En-tête',
+    path: 'src/content/commun/hero',
+    format: { data: 'yaml' },
+    schema: {
+      photo: photo('Photo de fond', 'commun'),
+      surTitre: fields.text({
+        label: 'Sur-titre',
+        defaultValue: 'Arts martiaux historiques européens',
+      }),
+      accroche: fields.text({
+        label: 'Bandeau d’accroche',
+        description: `Ex. « Mar · Jeu 18h–22h — essai offert ». ${RACCOURCIS}`,
+      }),
+      lieuTexte: fields.text({
+        label: 'Ligne de lieu',
+        description: 'Laisser vide pour afficher automatiquement « à {ville} ».',
+      }),
+      boutonPrincipal: lien('Bouton principal'),
+      boutonSecondaire: lien('Bouton secondaire'),
+      inviteDefilement: fields.text({
+        label: 'Invite de défilement',
+        defaultValue: 'Découvrir le club',
+      }),
+    },
+  }),
+
+  entetes: singleton({
+    label: 'Accueil · Titres des sections',
+    path: 'src/content/commun/entetes',
+    format: { data: 'yaml' },
+    schema: {
+      actualites: enTete('Actualités'),
+      disciplines: enTete(
+        'Les disciplines',
+        'Les raccourcis {nb_armes} et {nb_profs} se recalculent tout seuls : écrire « {nb_armes} armes, » plutôt que « Quatre armes, ».',
+      ),
+      profs: enTete('Les profs'),
+      galerie: enTete('La galerie'),
+      faq: enTete('Questions fréquentes'),
+      partenaires: enTete('Partenaires'),
+    },
+  }),
+
+  club: singleton({
+    label: 'Accueil · Le club',
+    path: 'src/content/commun/club',
+    format: { data: 'yaml' },
+    schema: {
+      eyebrow: fields.text({ label: 'Sur-titre', defaultValue: 'Le club' }),
+      titreLigne1: fields.text({ label: 'Titre — ligne 1' }),
+      titreLigne2: fields.text({ label: 'Titre — ligne 2' }),
+      titreLigne3: fields.text({ label: 'Titre — ligne 3 (facultatif)' }),
+      texte: fields.text({ label: 'Texte', multiline: true, description: RACCOURCIS }),
+      photo: photo('Photo', 'commun'),
+      chiffres: fields.array(
+        fields.object({
+          valeur: fields.text({
+            label: 'Valeur',
+            description: 'Accepte les raccourcis {nb_armes} et {nb_profs}.',
+          }),
+          libelle: fields.text({ label: 'Libellé' }),
+        }),
+        { label: 'Chiffres clés', itemLabel: (p) => p.fields.libelle.value || 'Chiffre' },
+      ),
+      piliers: fields.array(
+        fields.object({
+          titre: fields.text({ label: 'Titre' }),
+          texte: fields.text({ label: 'Texte', multiline: true }),
+        }),
+        {
+          label: 'Piliers (3 maximum)',
+          itemLabel: (p) => p.fields.titre.value || 'Pilier',
+        },
+      ),
+    },
+  }),
+
+  rigueur: singleton({
+    label: 'Accueil · La rigueur',
+    path: 'src/content/commun/rigueur',
+    format: { data: 'yaml' },
+    schema: {
+      eyebrow: fields.text({ label: 'Sur-titre', defaultValue: 'La rigueur' }),
+      titreLigne1: fields.text({ label: 'Titre — ligne 1' }),
+      titreLigne2: fields.text({ label: 'Titre — ligne 2' }),
+      lede: fields.text({ label: 'Chapô', multiline: true }),
+      texte: fields.text({ label: 'Texte', multiline: true }),
+      planche: photo('Planche de traité', 'commun'),
+      legendePlanche: fields.text({ label: 'Légende de la planche', multiline: true }),
+      manifesteMobile: fields.object(
+        {
+          citation: fields.text({ label: 'Citation', multiline: true }),
+          sousTitre: fields.text({ label: 'Sous-titre' }),
+          photo: photo('Photo de fond', 'commun'),
+        },
+        {
+          label: 'Écran « Manifesto » (mobile)',
+          description: 'Bloc plein écran qui remplace la section « La rigueur » sur mobile.',
+        },
+      ),
+    },
+  }),
+
+  rejoindre: singleton({
+    label: 'Accueil · Nous rejoindre',
+    path: 'src/content/commun/rejoindre',
+    format: { data: 'yaml' },
+    schema: {
+      eyebrow: fields.text({ label: 'Sur-titre', defaultValue: 'Nous rejoindre' }),
+      titreLigne1: fields.text({ label: 'Titre — ligne 1', description: ACCENT }),
+      titreLigne2: fields.text({
+        label: 'Titre — ligne 2',
+        description: `Rendue en ember italique. ${ACCENT}`,
+      }),
+      blocEssai: fields.object(
+        {
+          eyebrow: fields.text({ label: 'Sur-titre', defaultValue: 'Viens essayer' }),
+          titre: fields.text({ label: 'Titre', description: `${ACCENT} ${RACCOURCIS}` }),
+          paragraphes: fields.array(fields.text({ label: 'Paragraphe', multiline: true }), {
+            label: 'Paragraphes',
+            itemLabel: (p) => p.value?.slice(0, 60) || 'Paragraphe',
+          }),
+          bouton: lien(
+            'Bouton',
+            'Laisser vide pour utiliser automatiquement le lien « Itinéraire » de l’école.',
+          ),
+        },
+        { label: 'Bloc 01 — Venir essayer' },
+      ),
+      blocAdhesion: fields.object(
+        {
+          eyebrow: fields.text({ label: 'Sur-titre', defaultValue: 'Continuer' }),
+          titre: fields.text({ label: 'Titre', description: `${ACCENT} ${RACCOURCIS}` }),
+          paragraphes: fields.array(fields.text({ label: 'Paragraphe', multiline: true }), {
+            label: 'Paragraphes',
+            itemLabel: (p) => p.value?.slice(0, 60) || 'Paragraphe',
+          }),
+          bouton: lien(
+            'Bouton',
+            'Laisser vide pour utiliser automatiquement le lien d’adhésion de l’école.',
+          ),
+        },
+        { label: 'Bloc 02 — Adhérer' },
+      ),
+      note: fields.text({
+        label: 'Note sous les blocs',
+        multiline: true,
+        description: RACCOURCIS,
+      }),
+    },
+  }),
+
+  tournois: singleton({
+    label: 'Accueil · Tournois & saison',
+    path: 'src/content/commun/tournois',
+    format: { data: 'yaml' },
+    schema: {
+      eyebrow: fields.text({ label: 'Sur-titre', defaultValue: 'Tournois' }),
+      titreLigne1: fields.text({ label: 'Titre — ligne 1' }),
+      titreLigne2: fields.text({ label: 'Titre — ligne 2' }),
+      photo: photo('Photo', 'commun'),
+      overlayEyebrow: fields.text({ label: 'Sur-titre incrusté sur la photo' }),
+      overlayTitre: fields.text({ label: 'Accroche incrustée sur la photo' }),
+      texte: fields.text({ label: 'Texte', multiline: true }),
+      faits: fields.array(
+        fields.object({
+          titre: fields.text({ label: 'Libellé' }),
+          texte: fields.text({ label: 'Valeur', multiline: true }),
+        }),
+        { label: 'Faits', itemLabel: (p) => p.fields.titre.value || 'Fait' },
+      ),
+      boutons: fields.array(
+        fields.object({
+          libelle: fields.text({ label: 'Texte du bouton' }),
+          url: fields.text({ label: 'Adresse' }),
+        }),
+        { label: 'Boutons', itemLabel: (p) => p.fields.libelle.value || 'Bouton' },
+      ),
+    },
+  }),
+
+  fiches: singleton({
+    label: 'Textes des fiches arme & prof',
+    path: 'src/content/commun/fiches',
+    format: { data: 'yaml' },
+    schema: {
+      arme: fields.object(
+        {
+          titre: fields.text({
+            label: 'Titre du bandeau',
+            description: '{arme} est remplacé par le nom de l’arme. Ex. « Envie de tester {arme} ? »',
+          }),
+          sousTitre: fields.text({
+            label: 'Sous-titre',
+            description: `Ex. « {essai} premières séances offertes — matériel prêté. » ${RACCOURCIS}`,
+          }),
+          bouton: lien('Bouton'),
+        },
+        { label: 'Bandeau de fin — fiche arme' },
+      ),
+      prof: fields.object(
+        {
+          titre: fields.text({
+            label: 'Titre du bandeau',
+            description: '{prof} est remplacé par le prénom. Ex. « S’entraîner avec {prof} ? »',
+          }),
+          sousTitre: fields.text({ label: 'Sous-titre', description: RACCOURCIS }),
+          bouton: lien('Bouton'),
+        },
+        { label: 'Bandeau de fin — fiche prof' },
+      ),
+    },
+  }),
+
+  menus: singleton({
+    label: 'Menus & pied de page',
+    path: 'src/content/commun/menus',
+    format: { data: 'yaml' },
+    schema: {
+      menuPrincipal: fields.array(
+        fields.object({
+          libelle: fields.text({ label: 'Libellé' }),
+          lien: fields.text({ label: 'Ancre ou adresse', description: 'Ex. #disciplines' }),
+        }),
+        { label: 'Menu principal', itemLabel: (p) => p.fields.libelle.value || 'Entrée' },
+      ),
+      barreMobile: fields.array(
+        fields.object({
+          libelle: fields.text({ label: 'Libellé' }),
+          icone: fields.select({
+            label: 'Icône',
+            options: [
+              { label: 'Accueil', value: 'house' },
+              { label: 'Armes', value: 'sword' },
+              { label: 'Épées croisées', value: 'swords' },
+              { label: 'Photos', value: 'image' },
+              { label: 'Contact', value: 'phone' },
+            ],
+            defaultValue: 'house',
+          }),
+          lien: fields.text({ label: 'Ancre ou adresse' }),
+        }),
+        {
+          label: 'Barre d’onglets mobile (5 maximum)',
+          itemLabel: (p) => p.fields.libelle.value || 'Onglet',
+        },
+      ),
+      colonnes: fields.array(
+        fields.object({
+          titre: fields.text({ label: 'Titre de la colonne' }),
+          liens: fields.array(
+            fields.object({
+              libelle: fields.text({ label: 'Libellé' }),
+              url: fields.text({
+                label: 'Adresse',
+                description:
+                  'Laisser vide pour « Nous écrire » et « Adhésion » : le site utilise alors le contact et le lien d’adhésion de l’école.',
+              }),
+            }),
+            { label: 'Liens', itemLabel: (p) => p.fields.libelle.value || 'Lien' },
+          ),
+        }),
+        { label: 'Colonnes du pied de page', itemLabel: (p) => p.fields.titre.value || 'Colonne' },
+      ),
+      liensLegaux: fields.array(
+        fields.object({
+          libelle: fields.text({ label: 'Libellé' }),
+          url: fields.text({ label: 'Adresse' }),
+        }),
+        { label: 'Liens légaux', itemLabel: (p) => p.fields.libelle.value || 'Lien' },
+      ),
+    },
+  }),
+
+  legal: singleton({
+    label: 'Mentions légales & confidentialité',
+    path: 'src/content/commun/legal',
+    format: { data: 'yaml' },
+    schema: {
+      mentions: fields.object(
+        {
+          intro: fields.text({ label: 'Introduction', multiline: true, description: RACCOURCIS }),
+          entrees: fields.array(
+            fields.object({
+              titre: fields.text({ label: 'Rubrique' }),
+              texte: fields.text({ label: 'Texte', multiline: true, description: RACCOURCIS }),
+            }),
+            { label: 'Rubriques', itemLabel: (p) => p.fields.titre.value || 'Rubrique' },
+          ),
+          note: fields.text({ label: 'Note (droits photo)', multiline: true }),
+        },
+        {
+          label: 'Mentions légales',
+          description:
+            'Le siège, le contact et les horaires ne se saisissent pas ici : ils viennent de la fiche école, via les raccourcis.',
+        },
+      ),
+      hebergeur: fields.object(
+        {
+          nom: fields.text({ label: 'Nom', defaultValue: 'Cloudflare, Inc.' }),
+          adresse: fields.text({
+            label: 'Adresse',
+            defaultValue: '101 Townsend St, San Francisco, CA 94107, USA',
+          }),
+        },
+        { label: 'Hébergeur' },
+      ),
+      rgpd: fields.object(
+        {
+          paragraphes: fields.array(fields.text({ label: 'Paragraphe', multiline: true }), {
+            label: 'Paragraphes',
+            itemLabel: (p) => p.value?.slice(0, 60) || 'Paragraphe',
+          }),
+          note: fields.text({ label: 'Note', multiline: true, description: RACCOURCIS }),
+        },
+        { label: 'Confidentialité (RGPD)' },
+      ),
+    },
+  }),
+};
+
+// ───────────────────────────────────────────────────────────────────────────
+//  Assemblage
+// ───────────────────────────────────────────────────────────────────────────
+
+type EcoleEntree = (typeof ECOLES)[number];
+type BaseCollectionsEcole = ReturnType<typeof collectionsEcole>;
+type BaseSingletonsEcole = ReturnType<typeof singletonEcole>;
+
+/**
+ * Les clés réelles des collections, dépliées par école :
+ * `profs_clermont`, `annonces_clermont`… et demain `profs_lyon`, etc.
+ * Déclarées en types mappés pour que le Reader Keystatic reste typé côté Astro.
+ */
+type CollectionsEcoles = {
+  [E in EcoleEntree as `profs_${E['slug']}`]: BaseCollectionsEcole['profs'];
+} & {
+  [E in EcoleEntree as `annonces_${E['slug']}`]: BaseCollectionsEcole['annonces'];
+} & {
+  [E in EcoleEntree as `articles_${E['slug']}`]: BaseCollectionsEcole['articles'];
+} & {
+  [E in EcoleEntree as `faq_${E['slug']}`]: BaseCollectionsEcole['faq'];
+} & {
+  [E in EcoleEntree as `galerie_${E['slug']}`]: BaseCollectionsEcole['galerie'];
+};
+
+type SingletonsEcoles = {
+  [E in EcoleEntree as `ecole_${E['slug']}`]: BaseSingletonsEcole['ecole'];
+};
+
+function suffixer(base: Record<string, unknown>, slug: string) {
+  return Object.entries(base).map(([nom, valeur]) => [`${nom}_${slug}`, valeur] as const);
+}
+
+const collectionsEcoles = Object.fromEntries(
+  ECOLES.flatMap((e) => suffixer(collectionsEcole(e), e.slug)),
+) as CollectionsEcoles;
+
+const singletonsEcoles = Object.fromEntries(
+  ECOLES.flatMap((e) => suffixer(singletonEcole(e), e.slug)),
+) as SingletonsEcoles;
+
+const collections = {
+  ...collectionsCommunes,
+  ...collectionsEcoles,
+};
+
+const singletons = {
+  ...singletonsCommuns,
+  ...singletonsEcoles,
+};
+
+/**
+ * Navigation de l'admin, rangée par usage (ce que le prof vient faire),
+ * pas par type technique. Mono-école : les groupes restent plats.
+ * Multi-écoles : un groupe par école apparaît automatiquement.
+ */
+type CleNav = keyof typeof collections | keyof typeof singletons | '---';
+
+const TEXTES_DES_PAGES = [
+  'hero',
+  'entetes',
+  'club',
+  'rigueur',
+  'rejoindre',
+  'tournois',
+  'fiches',
+] satisfies CleNav[];
+
+const REGLAGES = ['identite', 'menus', 'legal'] satisfies CleNav[];
+
+function navigation(): Record<string, CleNav[]> {
+  const k = <P extends string>(prefixe: P, e: EcoleConfig) =>
+    `${prefixe}_${e.slug}` as CleNav;
+
+  if (!MULTI) {
+    const e = ECOLES[0];
+    return {
+      Publier: [k('annonces', e), k('articles', e)],
+      'L’école': [k('ecole', e), k('profs', e)],
+      Enseignement: ['disciplines'],
+      Contenus: [k('galerie', e), k('faq', e), 'faq', 'partenaires'],
+      'Textes des pages': [...TEXTES_DES_PAGES],
+      Réglages: [...REGLAGES],
+    };
+  }
+
+  const groupes: Record<string, CleNav[]> = {};
+  for (const e of ECOLES) {
+    groupes[e.nom] = [
+      k('annonces', e),
+      k('articles', e),
+      k('ecole', e),
+      k('profs', e),
+      k('galerie', e),
+      k('faq', e),
+    ];
+  }
+  groupes['Contenus communs'] = ['disciplines', 'faq', 'partenaires'];
+  groupes['Textes des pages'] = [...TEXTES_DES_PAGES];
+  groupes['Réglages'] = [...REGLAGES];
+  return groupes;
+}
+
+export default config({
+  storage,
+  ui: {
+    brand: { name: "De Feu et d'Acier" },
+    navigation: navigation(),
+  },
+  collections,
+  singletons,
+});

@@ -1,0 +1,314 @@
+---
+/**
+ * Section « Actualités » de l'accueil — gabarit NON maquetté.
+ *
+ * La maquette ne couvre ni carte d'article, ni liste d'actualités (design-spec
+ * §10.2). Le bloc est donc composé avec le vocabulaire déjà établi, sans rien
+ * inventer :
+ *
+ *   - label de section numéroté (`SectionLabel`, numéro calculé au rendu) ;
+ *   - tête de section « titre à gauche / bouton à droite », exactement le
+ *     patron de « 08 · Galerie » (design-spec §3.8) ;
+ *   - cartes photo à contenu incrusté (`MediaCard`), le motif des cartes
+ *     discipline (§3.2) : sur-titre ember, titre Cormorant, sous-titre, lien
+ *     fléché, la carte entière étant le lien ;
+ *   - au-dessous de 820 px, la bande devient un carrousel — le patron mobile
+ *     des armes et des profs (§4.2, §4.5). La parité de contenu est totale :
+ *     mêmes articles, même texte, seule la mise en page se compacte.
+ *
+ * Nombre d'articles → forme du bloc :
+ *   1 article  → une carte large, en bandeau (une carte 3/4 esseulée dans une
+ *                grille de trois colonnes ne ressemblerait à rien) ;
+ *   2 ou 3     → carrousel mobile / grille de N colonnes au-delà de 820 px.
+ *
+ * **La section entière disparaît s'il n'y a aucun article publié** : pas de
+ * titre orphelin, et la numérotation des sections suivantes se recale toute
+ * seule puisque `SectionLabel` n'est alors jamais rendu (ARCHITECTURE.md §5).
+ *
+ * Invariant multi-écoles n° 3 : ce composant ne lit **rien**. L'école, l'en-tête
+ * et les articles arrivent en props, déjà lus par la page (multi-ecoles.md
+ * §6.6). Les annonces ne passent pas par ici : elles vivent dans le bandeau de
+ * tête du site (ARCHITECTURE.md §4, « pas de page dédiée »).
+ */
+import Button from '../ui/Button.astro';
+import Carousel from '../ui/Carousel.astro';
+import MediaCard from '../ui/MediaCard.astro';
+import Reveal from '../ui/Reveal.astro';
+import SectionLabel from '../ui/SectionLabel.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import type { Article } from '../../lib/contenu';
+import type { Ecole } from '../../lib/ecoles';
+import { cadrageCss, resoudrePhoto } from '../../lib/images';
+import { lien, lienArticle } from '../../lib/liens';
+import { contexteDe, resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
+import { typographieFr } from '../../lib/typographie';
+
+/** Forme de `entetes.actualites` (singleton « Accueil · Titres des sections »). */
+export interface EnTeteSection {
+  eyebrow?: string | null;
+  titreLigne1?: string | null;
+  titreLigne2?: string | null;
+  lede?: string | null;
+}
+
+export interface Props {
+  /** École servie par la page (objet de `src/lib/ecoles.ts`). */
+  ecole: Ecole;
+  /** `entetes.actualites`, lu par la page. */
+  entete: EnTeteSection;
+  /** Articles de l'école, lus par la page (`articlesDe(ecole)`). */
+  articles: readonly Article[];
+  /**
+   * Contexte de raccourcis de la page. Facultatif : sans lui on en fabrique un
+   * depuis la fiche école, ce qui suffit au chapô de cette section (il n'a
+   * aucune raison d'employer `{nb_armes}` ou `{nb_profs}`).
+   */
+  ctx?: ContexteRaccourcis;
+  /** Rang de la section, imposé par l'assembleur. Absent ⇒ numéro automatique. */
+  num?: number | string | false;
+  /** Fond alterné. Défaut `ink`. */
+  fond?: 'ink' | 'coal';
+  /** Filet supérieur. À mettre à `false` après une section de même fond. */
+  filetHaut?: boolean;
+  /** Alias toléré de `filetHaut`. */
+  filet?: boolean;
+  /** Nombre maximum de cartes. Défaut 3. */
+  limite?: number;
+  /** Ancre de la section. Défaut `actualites`. */
+  id?: string;
+  class?: string;
+}
+
+const {
+  ecole,
+  entete,
+  articles,
+  ctx,
+  num,
+  fond = 'ink',
+  filetHaut,
+  filet,
+  limite = 3,
+  id = 'actualites',
+  class: classe,
+} = Astro.props;
+
+const avecFilet = filetHaut ?? filet ?? true;
+
+const SOURCE = 'src/content/commun/entetes.yaml (rubrique « Actualités »)';
+
+const contexte = ctx ?? contexteDe(ecole.fiche, { nbArmes: 0, nbProfs: 0 });
+
+// ── Sélection : publiés seulement, épinglés d'abord, puis antéchronologique ──
+
+const parDate = (a: Article, b: Article) => (b.entry.date ?? '').localeCompare(a.entry.date ?? '');
+
+const aLaUne = [...articles]
+  .filter((a) => a.entry.statut === 'publie')
+  .sort(
+    (a, b) => Number(Boolean(b.entry.epingle)) - Number(Boolean(a.entry.epingle)) || parDate(a, b),
+  )
+  .slice(0, Math.max(0, limite));
+
+// ── Habillage ───────────────────────────────────────────────────────────────
+
+/** Libellés des catégories du CMS (`keystatic.config.ts`, collection articles). */
+const CATEGORIES: Record<string, string> = {
+  'vie-du-club': 'Vie du club',
+  tournoi: 'Tournoi',
+  stage: 'Stage',
+  sources: 'Sources & technique',
+  materiel: 'Matériel',
+};
+
+const FORMAT_DATE = new Intl.DateTimeFormat('fr-FR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/** « 2026-07-28 » → « 28 juillet 2026 ». Midi UTC : aucun décalage de jour. */
+const dateLisible = (iso?: string | null) =>
+  iso ? FORMAT_DATE.format(new Date(`${iso}T12:00:00Z`)) : '';
+
+// Titre et chapô d'article sont des champs libres, sans raccourcis : ils ne
+// passent pas par `resoudre()`. La normalisation typographique se pose ici.
+const cartes = aLaUne.map((article) => ({
+  slug: article.slug,
+  href: lienArticle(ecole, article.slug),
+  titre: typographieFr(article.entry.titre),
+  chapo: typographieFr(article.entry.chapo),
+  categorie: CATEGORIES[article.entry.categorie ?? ''] ?? '',
+  date: dateLisible(article.entry.date),
+  image: resoudrePhoto(article.entry.couverture?.fichier),
+  alt: article.entry.couverture?.alt ?? '',
+  cadrage: cadrageCss(article.entry.couverture?.cadrage),
+}));
+
+const premiere = cartes[0];
+const seule = cartes.length === 1;
+const colonnes = Math.min(Math.max(cartes.length, 1), 3);
+
+// Titre de section : la deuxième ligne porte l'accent ember italique, comme
+// les onze autres titres du site (design-spec §9.3).
+const lignesTitre = [
+  { texte: resoudre(entete.titreLigne1, contexte, SOURCE), accent: false },
+  { texte: resoudre(entete.titreLigne2, contexte, SOURCE), accent: true },
+].filter((l) => l.texte.length > 0);
+
+const libelle = entete.eyebrow || 'Actualités';
+const titre = lignesTitre.length > 0 ? lignesTitre : [{ texte: libelle, accent: false }];
+const lede = resoudre(entete.lede, contexte, SOURCE);
+
+const idTitre = `${id}-titre`;
+---
+
+{
+  cartes.length > 0 && premiere && (
+    <section
+      id={id}
+      class:list={[
+        'section',
+        `section--${fond}`,
+        { 'section--sans-filet': !avecFilet },
+        'actualites',
+        classe,
+      ]}
+      aria-labelledby={idTitre}
+    >
+      <div class="gouttiere">
+        <SectionLabel libelle={libelle} numero={num} />
+
+        <Reveal>
+          <div class="actualites__tete">
+            <div class="actualites__intro">
+              <SectionTitle id={idTitre} lignes={titre} taille="xl" />
+              {lede && <p class="lede actualites__lede">{lede}</p>}
+            </div>
+
+            <Button
+              variante="contour"
+              taille="petite"
+              libelle="Toutes les actualités"
+              href={lien(ecole, '/actualites/')}
+              class="actualites__toutes"
+            />
+          </div>
+        </Reveal>
+
+        {seule ? (
+          <Reveal delai={80}>
+            <MediaCard
+              class="actualites__carte actualites__carte--large"
+              href={premiere.href}
+              image={premiere.image}
+              alt={premiere.alt}
+              objectPosition={premiere.cadrage}
+              hauteur="clamp(300px, 16rem + 20vw, 520px)"
+              voile="fort"
+              assise="forte"
+              rayon={2}
+              eyebrow={premiere.categorie}
+              precision={premiere.date}
+              titre={premiere.titre}
+              titreNiveau="h3"
+              sousTitre={premiere.chapo}
+              lien={{ libelle: 'Lire l’article' }}
+              sizes="(min-width: 1440px) 1328px, 92vw"
+              largeurs={[390, 720, 1000, 1328, 1800, 2400]}
+            />
+          </Reveal>
+        ) : (
+          <Reveal delai={80}>
+            <Carousel
+              libelle="Dernières actualités"
+              nombre={cartes.length}
+              grilleDesktop={colonnes}
+              largeurItem="clamp(240px, 74vw, 306px)"
+              indice
+            >
+              {cartes.map((carte) => (
+                <MediaCard
+                  class="actualites__carte"
+                  href={carte.href}
+                  image={carte.image}
+                  alt={carte.alt}
+                  objectPosition={carte.cadrage}
+                  ratio="3 / 4"
+                  voile="fort"
+                  assise="forte"
+                  rayon={2}
+                  eyebrow={carte.categorie}
+                  precision={carte.date}
+                  titre={carte.titre}
+                  titreNiveau="h3"
+                  sousTitre={carte.chapo}
+                  lien={{ libelle: 'Lire l’article' }}
+                  sizes="(min-width: 820px) 33vw, 76vw"
+                  largeurs={[300, 440, 600, 880]}
+                />
+              ))}
+            </Carousel>
+          </Reveal>
+        )}
+      </div>
+    </section>
+  )
+}
+
+<style>
+  /* Tête de section : titre à gauche, bouton à droite, alignés sur la ligne de
+     base basse — le patron de « 08 · Galerie » (esp 56 au-dessus, 64 dessous). */
+  .actualites__tete {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--esp-item);
+    margin-block-start: clamp(30px, 20.343px + 2.4762vw, 56px);
+    padding-block-end: clamp(28px, 14.629px + 3.4286vw, 64px);
+  }
+
+  .actualites__intro {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(14px, 11.029px + 0.7619vw, 22px);
+    min-width: 0;
+    max-width: 46ch;
+  }
+
+  .actualites__lede {
+    max-width: 58ch;
+  }
+
+  /* Sous 820 px la maquette étale les boutons sur toute la largeur. */
+  @media (max-width: 819px) {
+    .actualites__tete {
+      align-items: stretch;
+    }
+
+    .actualites :global(.actualites__toutes) {
+      width: 100%;
+    }
+  }
+
+  /* Le chapô d'un article peut aller jusqu'à 280 signes : sur une carte 3/4 de
+     carrousel, on le borne à trois lignes. Rien n'est perdu — la liste et la
+     page article l'affichent en entier. */
+  .actualites :global(.actualites__carte:not(.actualites__carte--large) .media-card__soustitre) {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    max-width: 42ch;
+    overflow: hidden;
+  }
+
+  /* La carte solitaire est un bandeau de 300 à 520 px de haut sur toute la
+     gouttière : le chapô le plus long (280 signes, ~5 lignes à 58ch) y tient
+     sans déborder de l'assise. On ne le tronque donc pas. */
+  .actualites :global(.actualites__carte--large .media-card__soustitre) {
+    max-width: 58ch;
+  }
+</style>

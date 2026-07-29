@@ -1,0 +1,410 @@
+---
+/**
+ * Section « La rigueur » — design-spec §3.5 (desktop 1440) et §4.3 (mobile 390).
+ *
+ * C'est le manifeste du club : « Le geste juste, avant le costume. » La
+ * maquette lui donne deux formes très différentes.
+ *
+ * — **Desktop** : label, puis un split à la gouttière la plus large du site
+ *   (120 px) — titre sur deux lignes, chapô à 19 px (le seul du site) et
+ *   paragraphe à gauche ; à droite le « cadre traité », un encadré `$char`
+ *   filet 1 px contenant la gravure et sa légende.
+ *
+ * — **Mobile** : une bande pleine largeur de 290 px — la planche de traité, un
+ *   voile à 85 %, et la citation centrée en Cormorant italique.
+ *
+ * Deux partis pris d'intégration :
+ *
+ * — **La bande manifeste ne remplace pas la section, elle l'ouvre.** La
+ *   maquette mobile faisait disparaître chapô, paragraphe et légende ;
+ *   ARCHITECTURE.md §5 impose la parité de contenu. L'ordre mobile devient donc
+ *   bande, chapô, paragraphe, cadre traité — rien n'est perdu, tout est
+ *   resserré. Le label numéroté reste affiché en mobile (la maquette le
+ *   supprimait, ce qui trouait la suite des numéros : design-spec §10.1,
+ *   constat 7), et la bande n'affiche donc pas son propre sur-titre
+ *   « LA RIGUEUR », qui ferait doublon.
+ *
+ * — **Deux titres pour un seul en-tête visible.** Le CMS porte à la fois un
+ *   titre en deux lignes (desktop) et une citation guillemetée (mobile) : ce
+ *   sont deux rédactions du même énoncé, chacune éditable. Les deux sont dans
+ *   le HTML, une seule est affichée à un instant donné — l'arbre d'accessibilité
+ *   ne voit jamais qu'un `<h2>`. La citation passe par `SectionTitle`, donc la
+ *   syntaxe `*…*` y accentue un fragment en ember (la maquette colore
+ *   « avant le costume. » ; il suffit d'entourer ce fragment d'astérisques dans
+ *   l'admin pour le retrouver).
+ */
+import { Picture } from 'astro:assets';
+import SectionLabel from '../ui/SectionLabel.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import Filet from '../ui/Filet.astro';
+import Reveal from '../ui/Reveal.astro';
+import { cadrageCss, creditAffiche, largeursSrcset, resoudrePhoto } from '../../lib/images';
+import { resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
+import type { lireRigueur } from '../../lib/contenu';
+
+/** Contenu du singleton « Accueil · La rigueur » (`lireRigueur()`). */
+export type ContenuRigueur = Awaited<ReturnType<typeof lireRigueur>>;
+
+interface Props {
+  /** Contenu déjà lu par la page. Alias accepté : `contenu`. */
+  rigueur?: ContenuRigueur;
+  contenu?: ContenuRigueur;
+  /** Contexte de raccourcis de l'école courante (`contexteDe()`). */
+  ctx: ContexteRaccourcis;
+  /** Rang de la section, calculé par l'assembleur. Absent ⇒ compteur auto. */
+  num?: number | string | false;
+  /** Alias de `num`. */
+  numero?: number | string | false;
+  /** Ancre de la section. Le pied de page pointe sur `#rigueur`. */
+  id?: string;
+  /** Fond alterné. La maquette place « La rigueur » sur `$ink`. */
+  fond?: 'ink' | 'coal';
+  /**
+   * Filet supérieur. Faux par défaut : la section suit « Le club » en `$coal`,
+   * et le changement de fond suffit à les séparer (design-spec §2.1 et §3.5).
+   */
+  filetHaut?: boolean;
+  /** Accepté pour l'uniformité des sections ; non utilisé ici. */
+  ecole?: unknown;
+  class?: string;
+}
+
+const {
+  rigueur,
+  contenu,
+  ctx,
+  num,
+  numero,
+  id = 'rigueur',
+  fond = 'ink',
+  filetHaut = false,
+  class: classe,
+} = Astro.props;
+
+const donnees = rigueur ?? contenu;
+if (!donnees) {
+  throw new Error(
+    'Rigueur.astro : contenu manquant. Passer « rigueur={await lireRigueur()} » depuis la page.',
+  );
+}
+
+const SOURCE = 'src/content/commun/rigueur.yaml';
+
+// ── Textes ───────────────────────────────────────────────────────────────────
+const lignesTitre = [
+  { texte: donnees.titreLigne1, accent: false },
+  { texte: donnees.titreLigne2, accent: true },
+]
+  .map((ligne) => ({ ...ligne, texte: resoudre(ligne.texte, ctx, `${SOURCE} › titre`) }))
+  .filter((ligne) => ligne.texte.length > 0);
+
+const lede = resoudre(donnees.lede, ctx, `${SOURCE} › chapô`);
+const texte = resoudre(donnees.texte, ctx, `${SOURCE} › texte`);
+const legende = resoudre(donnees.legendePlanche, ctx, `${SOURCE} › légende de la planche`);
+const citation = resoudre(donnees.manifesteMobile?.citation, ctx, `${SOURCE} › citation`);
+const sousTitre = resoudre(donnees.manifesteMobile?.sousTitre, ctx, `${SOURCE} › sous-titre`);
+
+// ── Images ───────────────────────────────────────────────────────────────────
+const planche = resoudrePhoto(donnees.planche?.fichier);
+const altPlanche = donnees.planche?.alt ?? '';
+const cadragePlanche = cadrageCss(donnees.planche?.cadrage);
+const creditPlanche = creditAffiche(donnees.planche?.credit);
+
+const fondManifeste = resoudrePhoto(donnees.manifesteMobile?.photo?.fichier);
+const cadrageManifeste = cadrageCss(donnees.manifesteMobile?.photo?.cadrage);
+
+// La bande mobile reprend le plus souvent la planche du cadre, qui est décrite
+// et légendée juste en dessous : l'image y est alors purement décorative et son
+// alternative doit rester vide. Si le client y met une autre photo, sa propre
+// description reprend ses droits.
+const memeImage =
+  Boolean(donnees.manifesteMobile?.photo?.fichier) &&
+  donnees.manifesteMobile?.photo?.fichier === donnees.planche?.fichier;
+const altManifeste = memeImage ? '' : (donnees.manifesteMobile?.photo?.alt ?? '');
+
+// Politique de largeurs commune (src/lib/images.ts) : les candidats au-delà du
+// master sont écartés, mais la largeur native est alors servie — sans quoi la
+// bande manifeste, plein cadre en mobile, resterait en 390 w sur un master de
+// 580 px.
+const largeursPlanche = largeursSrcset(planche, { largeurs: [488, 976] });
+const largeursManifeste = largeursSrcset(fondManifeste, { largeurs: [390, 780] });
+
+// Sans citation, la bande mobile n'a plus lieu d'être : le titre desktop
+// redevient alors le seul en-tête, à tous les gabarits.
+const bandeMobile = citation.length > 0;
+
+const idTitre = `${id}-titre`;
+---
+
+<section
+  id={id}
+  class:list={[
+    'section',
+    `section--${fond}`,
+    { 'section--sans-filet': !filetHaut },
+    'rigueur',
+    { 'rigueur--sans-bande': !bandeMobile },
+    classe,
+  ]}
+  aria-labelledby={idTitre}
+>
+  <div class="gouttiere">
+    <SectionLabel libelle={donnees.eyebrow || 'La rigueur'} numero={num ?? numero} />
+  </div>
+
+  {/* Bande manifeste — mobile uniquement, pleine largeur, hors gouttière. */}
+  {
+    bandeMobile && (
+      <div class="rigueur__manifeste">
+        <div class="rigueur__manifeste-fond" style={`--rigueur-cadrage:${cadrageManifeste}`}>
+          {fondManifeste && (
+            <Picture
+              src={fondManifeste}
+              alt={altManifeste}
+              formats={['avif', 'webp']}
+              widths={largeursManifeste}
+              sizes="100vw"
+              loading="lazy"
+              decoding="async"
+            />
+          )}
+        </div>
+
+        <div class="rigueur__manifeste-texte">
+          <div class="rigueur__citation">
+            <SectionTitle texte={citation} taille="l" centre />
+          </div>
+          {sousTitre && <p class="rigueur__manifeste-soustitre">{sousTitre}</p>}
+        </div>
+      </div>
+    )
+  }
+
+  <div class="gouttiere">
+    <Reveal>
+      <div class="rigueur__split">
+        <div class="rigueur__texte">
+          <div class="rigueur__titre">
+            <SectionTitle lignes={lignesTitre} taille="xl" id={idTitre} />
+          </div>
+          {lede && <p class="rigueur__lede">{lede}</p>}
+          {texte && <p class="rigueur__para">{texte}</p>}
+        </div>
+
+        <figure class="rigueur__cadre">
+          <div class="rigueur__gravure" style={`--rigueur-cadrage:${cadragePlanche}`}>
+            {
+              planche ? (
+                <Picture
+                  src={planche}
+                  alt={altPlanche}
+                  formats={['avif', 'webp']}
+                  widths={largeursPlanche}
+                  sizes="(min-width: 820px) 34vw, calc(100vw - 44px)"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : null
+            }
+          </div>
+
+          {
+            (legende || creditPlanche) && (
+              <figcaption class="rigueur__legende">
+                <Filet largeur={22} ton="ember" marge="0.62em 0 0" />
+                <span class="rigueur__legende-texte">
+                  {legende}
+                  {creditPlanche && <span class="rigueur__credit">{creditPlanche}</span>}
+                </span>
+              </figcaption>
+            )
+          }
+        </figure>
+      </div>
+    </Reveal>
+  </div>
+</section>
+
+<style>
+  .rigueur {
+    --rigueur-esp-tete: clamp(28px, 17.6px + 2.6667vw, 56px);
+  }
+
+  /* ── Bande manifeste (mobile) ───────────────────────────────────────────── */
+  /*
+   * 390 × 290 dans la maquette : pleine largeur, sans padding ni filet, la
+   * planche de traité derrière un voile à 85 % et la citation centrée dessus.
+   */
+  .rigueur__manifeste {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: clamp(250px, 74.4vw, 320px);
+    margin-block-start: var(--rigueur-esp-tete);
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .rigueur__manifeste-fond {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: var(--char);
+  }
+
+  .rigueur__manifeste-fond :global(picture) {
+    display: block;
+    height: 100%;
+  }
+
+  .rigueur__manifeste-fond :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--rigueur-cadrage, 50% 50%);
+  }
+
+  .rigueur__manifeste::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: var(--veil-ink-85);
+    pointer-events: none;
+  }
+
+  .rigueur__manifeste-texte {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding-inline: var(--gouttiere);
+    text-align: center;
+  }
+
+  /* 30 px à 390 px, comme la maquette ; la bande disparaît à 820 px. */
+  .rigueur__citation :global(.titre-section) {
+    --titre-fs: clamp(30px, 24.544px + 1.3986vw, 36px);
+    --titre-lh: 1.1;
+    font-style: italic;
+  }
+
+  .rigueur__manifeste-soustitre {
+    margin: 10px 0 0;
+    font-size: var(--fs-body-xxs);
+    font-weight: 500;
+    line-height: var(--lh-body-tight);
+    color: var(--parch-soft);
+  }
+
+  /* ── Split : texte | cadre traité ───────────────────────────────────────── */
+  .rigueur__split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: clamp(28px, 21.3px + 1.7143vw, 46px);
+    margin-block-start: clamp(24px, 21.7px + 0.5714vw, 30px);
+  }
+
+  /* Le titre en deux lignes est la forme desktop ; en mobile c'est la citation
+     de la bande qui porte l'énoncé — sauf si le CMS n'en a plus. */
+  .rigueur__titre {
+    display: none;
+  }
+
+  .rigueur--sans-bande .rigueur__titre {
+    display: block;
+    margin-block-end: clamp(20px, 16.3px + 0.9524vw, 30px);
+  }
+
+  .rigueur__lede {
+    max-width: 660px;
+    font-size: var(--fs-body-lede);
+    line-height: 1.6;
+    color: var(--parch-soft);
+  }
+
+  .rigueur__para {
+    max-width: 600px;
+    margin-block-start: clamp(18px, 12.8px + 1.3333vw, 32px);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--parch-mute);
+  }
+
+  /* ── Cadre traité ───────────────────────────────────────────────────────── */
+  .rigueur__cadre {
+    margin: 0;
+    background: var(--char);
+    border: var(--filet);
+  }
+
+  .rigueur__gravure {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 488 / 517;
+    background: var(--char);
+  }
+
+  .rigueur__gravure :global(picture) {
+    display: block;
+    height: 100%;
+  }
+
+  .rigueur__gravure :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--rigueur-cadrage, 50% 50%);
+  }
+
+  .rigueur__legende {
+    display: flex;
+    gap: 12px;
+    padding: 18px 22px 20px;
+    border-top: var(--filet);
+    font-size: var(--fs-body-xxs);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+
+  .rigueur__legende-texte {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .rigueur__credit {
+    display: block;
+    margin-block-start: 8px;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+  }
+
+  /* ── Bascule desktop ────────────────────────────────────────────────────── */
+  @media (min-width: 820px) {
+    .rigueur__manifeste {
+      display: none;
+    }
+
+    .rigueur__split {
+      grid-template-columns: minmax(0, 720fr) minmax(0, 488fr);
+      column-gap: clamp(48px, -47.2px + 11.613vw, 120px);
+      align-items: start;
+      margin-block-start: var(--rigueur-esp-tete);
+    }
+
+    .rigueur__titre {
+      display: block;
+    }
+
+    .rigueur__lede {
+      margin-block-start: clamp(32px, 10.8px + 2.5806vw, 48px);
+    }
+  }
+</style>

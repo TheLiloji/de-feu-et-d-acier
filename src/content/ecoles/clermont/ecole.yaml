@@ -1,0 +1,79 @@
+nom: Clermont-Ferrand
+ville: Clermont-Ferrand
+statut: active
+presentation: ''
+lieu:
+  nom: Gymnase Robert Pras
+  adresse: 3 rue Jean Monnet
+  codePostal: '63100'
+  ville: Clermont-Ferrand
+  itineraire: >-
+    https://www.google.com/maps/dir/?api=1&destination=Gymnase+Robert+Pras%2C+3+rue+Jean+Monnet%2C+63100+Clermont-Ferrand
+  latitude: '45.7772'
+  longitude: '3.0870'
+  photo:
+    fichier: null
+    alt: ''
+    cadrage: centre
+  photosInterieur: []
+contact:
+  email: amhe63.dfda@gmail.com
+  telephone: 06 61 28 65 11
+  responsable: Clémence Sillac
+  fonction: Présidente de section
+adhesion:
+  montant: 85
+  saison: '2025-2026'
+  lienInscription: >-
+    https://www.helloasso.com/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2025-2026
+  aPrevoir:
+    - un masque d'escrime standard
+    - des gants coqués
+essai:
+  seancesOffertes: 2
+  materielPrete: true
+creneaux:
+  - jour: mardi
+    heureDebut: '18:00'
+    heureFin: '20:00'
+    armes:
+      - epee-longue
+      - rapiere
+      - messer
+      - combat-viking
+    intitule: ''
+    niveau: tous
+    encadre: true
+  - jour: jeudi
+    heureDebut: '18:00'
+    heureFin: '20:00'
+    armes: []
+    intitule: Pratique libre
+    niveau: libre
+    encadre: false
+  - jour: jeudi
+    heureDebut: '20:00'
+    heureFin: '22:00'
+    armes:
+      - epee-longue
+      - epee-bocle
+    intitule: ''
+    niveau: tous
+    encadre: true
+reseaux:
+  facebook: https://www.facebook.com/63AMHE/
+  instagram: ''
+  hemaRatings: https://hemaratings.com/clubs/details/1155/
+  helloAsso: https://www.helloasso.com/associations/usam-amhe-clermont-ferrand
+affiliation:
+  club: USAM Clermont-Ferrand
+  lienClub: https://usam-clermont-ferrand.com/amhe-arts-martiaux-historiques-europeens
+  federation: FFAMHE
+  lienFederation: https://ffamhe.fr
+photoHero:
+  fichier: null
+  alt: ''
+  cadrage: centre
+  credit: ''
+legal:
+  siege: ''

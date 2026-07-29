@@ -1,0 +1,215 @@
+---
+/**
+ * Ligne « fait » — un label à gauche, une ou deux valeurs à droite.
+ *
+ * Neuf occurrences (design-spec §9.7) : le bloc PRATIQUE et le bloc TOURNOIS en
+ * desktop, la liste « Essayer » en mobile. La maquette donne deux formes que ce
+ * composant réunit :
+ *
+ *   - **desktop** — label `$eyebrow` `$ember` en colonne bloquée à 200 px,
+ *     valeurs à droite, filet bas, rembourrage vertical 18 px ;
+ *   - **mobile** — le label textuel cède la place à une pastille ronde de
+ *     30 px (`--ember-tint-8`) portant une icône `$ember` de 15 px.
+ *
+ * Le label n'est pas *supprimé* en mobile : il est masqué visuellement mais
+ * reste lu par un lecteur d'écran, sans quoi « 06 61 28 65 11 » arriverait sans
+ * dire qu'il s'agit d'un contact. Une icône n'est pas un mot.
+ *
+ * Le filet haut du premier élément est posé par `:first-child` : il suffit donc
+ * d'empiler les `<FactRow>` dans un conteneur ordinaire.
+ *
+ * Exemples :
+ *   <FactRow libelle="Lieu" valeur="Gymnase Robert Pras"
+ *            secondaire="3 rue Jean Monnet · 63100 Clermont-Ferrand" icone="map-pin" />
+ *   <FactRow libelle="Contact" valeur={fiche.contact.email}
+ *            href={`mailto:${fiche.contact.email}`} icone="phone" />
+ *   <FactRow libelle="Circuit FFAMHE"><p>…balisage libre…</p></FactRow>
+ */
+import Icon from './Icon.astro';
+import type { NomIcone } from './icones';
+
+interface Props {
+  /** Label de gauche. Écrit normalement : la CSS pose les capitales. */
+  libelle: string;
+  /** Valeur principale. Ignorée si un contenu est passé en slot. */
+  valeur?: string;
+  /** Seconde ligne, plus discrète. */
+  secondaire?: string;
+  /** Icône du pendant mobile. Sans elle, le label textuel reste visible. */
+  icone?: NomIcone;
+  /** Rend la valeur principale cliquable (`mailto:`, `tel:`, itinéraire…). */
+  href?: string | undefined;
+  /** Lien sortant : nouvel onglet + `rel` de sécurité. */
+  externe?: boolean;
+  class?: string;
+  [attribut: `data-${string}`]: string | number | boolean | undefined;
+}
+
+const {
+  libelle,
+  valeur,
+  secondaire,
+  icone,
+  href,
+  externe = false,
+  class: classe,
+  ...reste
+} = Astro.props;
+
+const BaliseValeur = href ? 'a' : 'span';
+---
+
+<div class:list={['fait', { 'fait--icone': !!icone }, classe]} {...reste}>
+  {icone && <span class="fait__pastille" aria-hidden="true"><Icon name={icone} /></span>}
+  <span class="fait__etiquette">{libelle}</span>
+  <span class="fait__valeurs">
+    <slot>
+      {
+        valeur && (
+          <BaliseValeur
+            class="fait__valeur"
+            href={href}
+            target={externe && href ? '_blank' : undefined}
+            rel={externe && href ? 'noopener noreferrer' : undefined}
+          >
+            {valeur}
+          </BaliseValeur>
+        )
+      }
+      {secondaire && <span class="fait__secondaire">{secondaire}</span>}
+    </slot>
+  </span>
+</div>
+
+<style>
+  .fait {
+    position: relative; /* ancre le label masqué en mobile */
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 14px;
+    align-items: center;
+    padding-block: clamp(13px, 11.143px + 0.4762vw, 18px);
+    border-bottom: var(--filet);
+  }
+
+  /* Empilées telles quelles, les lignes forment le tableau à filets de la
+     maquette : filet haut sur la première, filet bas sur toutes. */
+  .fait:first-child {
+    border-top: var(--filet);
+  }
+
+  /* Pastille ronde du pendant mobile (design-spec §9.7, variante FactRowIcon). */
+  .fait__pastille {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    grid-column: 1;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-pill);
+    background: var(--ember-tint-8);
+    color: var(--ember);
+    --icone-cote: 15px;
+  }
+
+  .fait__etiquette {
+    grid-column: 2;
+    color: var(--ember);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    letter-spacing: var(--ls-eyebrow);
+    text-transform: uppercase;
+  }
+
+  .fait__valeurs {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    grid-column: 2;
+    min-width: 0;
+  }
+
+  .fait__valeur {
+    color: var(--parch);
+    font-size: clamp(14.5px, 14.129px + 0.0952vw, 15.5px);
+    font-weight: 500;
+    line-height: var(--lh-body-tight);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  a.fait__valeur {
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+  }
+
+  a.fait__valeur:hover,
+  a.fait__valeur:focus-visible {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  .fait__secondaire {
+    color: var(--parch-soft);
+    font-size: clamp(12px, 10.886px + 0.2857vw, 15px);
+    font-weight: 400;
+    line-height: var(--lh-body-tight);
+    overflow-wrap: anywhere;
+  }
+
+  /*
+   * Sous 820 px, l'icône remplace le label — mais seulement quand une icône a
+   * été fournie. Le label reste dans le flux du document pour l'assistance
+   * technique (position absolue : il ne prend pas de place dans la grille).
+   */
+  @media (max-width: 819.98px) {
+    .fait--icone .fait__etiquette {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /*
+     * Sans pastille, la première colonne n'a rien à porter : sa gouttière de
+     * 14 px décalait tout le contenu de la ligne vers la droite, hors de
+     * l'alignement du reste de la page (visible sur les pages légales, où les
+     * rubriques démarraient 14 px après le titre et les filets qui les
+     * séparent). La colonne reste déclarée — elle vaut 0 px, `auto` sur une
+     * colonne vide — seule la gouttière disparaît.
+     */
+    .fait:not(.fait--icone) {
+      column-gap: 0;
+    }
+  }
+
+  /* Desktop : label en colonne bloquée à 200 px, valeurs alignées en haut. */
+  @media (min-width: 820px) {
+    .fait {
+      grid-template-columns: 200px minmax(0, 1fr);
+      column-gap: 24px;
+      align-items: start;
+    }
+
+    .fait__pastille {
+      display: none;
+    }
+
+    .fait__etiquette {
+      grid-column: 1;
+      padding-top: 0.25em; /* aligne l'œil du label sur la première valeur */
+      letter-spacing: 0.257em; /* 2.7 px à 10.5 px */
+    }
+
+    .fait__valeurs {
+      grid-column: 2;
+    }
+  }
+</style>

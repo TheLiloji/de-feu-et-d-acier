@@ -1,0 +1,313 @@
+---
+/**
+ * ProfCard — carte d'encadrant.
+ *
+ * Deux variantes de contenu × deux formats (design-spec §3.3 et §4.5) :
+ *   - `complete` : photo carrée, discipline, nom, accroche, filet, lien
+ *     « LIRE L'INTERVIEW » — la grille de trois cartes du desktop ;
+ *   - `compacte` : photo paysage, prénom seul, discipline, lien « INTERVIEW »
+ *     — les cartes de 158 px du carrousel mobile.
+ *
+ * `misEnAvant` est un booléen porté par la fiche du prof (pas une position
+ * dans la grille) : fond `--ember-tint-5`, bordure `--ember-border`, et un
+ * bandeau ember de 2 px en haut — ce dernier seulement en variante complète,
+ * comme la maquette.
+ *
+ * La carte entière est le lien : le libellé n'est qu'une affordance, ce qui
+ * évite une ancre imbriquée et donne une cible confortable au doigt.
+ */
+import { Picture } from 'astro:assets';
+import Icon from './Icon.astro';
+import { largeursSrcset } from '../../lib/images';
+
+export interface Props {
+  /** Nom complet, affiché en variante complète. */
+  nom: string;
+  /** Prénom seul, affiché en variante compacte. Défaut : premier mot du nom. */
+  prenom?: string;
+  /** Armes enseignées, déjà mises en forme. Ex. « MESSER · VIKING · BOCLE ». */
+  discipline?: string;
+  /** Accroche d'une ligne. Ex. « Rapière française & italienne · bolonaise ». */
+  accroche?: string;
+  portrait?: ImageMetadata | null;
+  /** Repli : URL d'une image du dossier `public/`. */
+  src?: string | null;
+  alt?: string;
+  /** Cadrage du portrait (`cadrageCss()` de src/lib/images.ts). */
+  objectPosition?: string;
+  /** Fiche du prof — `lienProf(ecole, slug)`. */
+  href?: string;
+  libelleLien?: string;
+  misEnAvant?: boolean;
+  variante?: 'complete' | 'compacte';
+  /** Balise du nom. `p` par défaut : la carte n'est pas toujours un titre. */
+  nomNiveau?: 'h2' | 'h3' | 'h4' | 'p';
+  charge?: 'lazy' | 'eager';
+  sizes?: string;
+  /** Largeur CSS maximale du cadre — plafonne l'échelle par défaut à `2 ×`. */
+  rendMax?: number;
+  largeurs?: number[];
+  class?: string;
+}
+
+const {
+  nom,
+  prenom,
+  discipline,
+  accroche,
+  portrait = null,
+  src = null,
+  alt,
+  objectPosition = '50% 20%',
+  href,
+  libelleLien,
+  misEnAvant = false,
+  variante = 'complete',
+  nomNiveau = 'p',
+  charge = 'lazy',
+  sizes = '(min-width: 820px) 33vw, 60vw',
+  largeurs,
+  rendMax = 427,
+  class: classe,
+} = Astro.props;
+
+const compacte = variante === 'compacte';
+const Balise = href ? 'a' : 'article';
+const Nom = nomNiveau;
+
+const nomAffiche = compacte ? (prenom || nom.split(' ')[0]) : nom;
+const libelle = libelleLien ?? (compacte ? 'Interview' : "Lire l'interview");
+const texteAlt = alt ?? `Portrait de ${nom}`;
+
+// Politique de largeurs commune (src/lib/images.ts) : portrait de grille de
+// 427 px au plus (photos.md §5.4), donc jamais plus de 854 px servis.
+const largeursFinales = largeursSrcset(portrait, { largeurs, rendMax });
+---
+
+<Balise
+  class:list={['prof-card', classe]}
+  data-variante={variante}
+  data-avant={misEnAvant ? '' : undefined}
+  data-cliquable={href ? '' : undefined}
+  style={`--prof-position:${objectPosition}`}
+  {...href ? { href } : {}}
+>
+  {misEnAvant && !compacte && <span class="prof-card__bandeau" aria-hidden="true"></span>}
+
+  <div class="prof-card__photo">
+    {
+      portrait ? (
+        <Picture
+          src={portrait}
+          alt={texteAlt}
+          formats={['avif', 'webp']}
+          widths={largeursFinales}
+          sizes={sizes}
+          loading={charge}
+          decoding="async"
+        />
+      ) : src ? (
+        <img src={src} alt={texteAlt} loading={charge} decoding="async" />
+      ) : (
+        <span class="prof-card__photo-vide" aria-hidden="true" />
+      )
+    }
+  </div>
+
+  <div class="prof-card__contenu">
+    {discipline && <p class="prof-card__discipline">{discipline}</p>}
+    <Nom class="prof-card__nom">{nomAffiche}</Nom>
+    {!compacte && accroche && <p class="prof-card__accroche">{accroche}</p>}
+    {!compacte && <span class="prof-card__sep" aria-hidden="true"></span>}
+    {
+      href && (
+        <span class="prof-card__lien">
+          {libelle}
+          <Icon name="arrow-right" />
+        </span>
+      )
+    }
+    <slot />
+  </div>
+</Balise>
+
+<style>
+  .prof-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    background: var(--surface-1);
+    color: inherit;
+    text-decoration: none;
+    transition:
+      border-color var(--transition),
+      background-color var(--transition);
+  }
+
+  .prof-card[data-avant] {
+    border-color: var(--ember-border);
+    background: var(--ember-tint-5);
+  }
+
+  .prof-card__bandeau {
+    display: block;
+    height: 2px;
+    background: var(--ember);
+  }
+
+  .prof-card__photo {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+    background: var(--char);
+  }
+
+  .prof-card[data-variante='compacte'] .prof-card__photo {
+    aspect-ratio: 158 / 150;
+  }
+
+  .prof-card__photo :global(picture),
+  .prof-card__photo :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .prof-card__photo :global(img) {
+    object-fit: cover;
+    object-position: var(--prof-position);
+    transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  .prof-card__photo-vide {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--char);
+  }
+
+  .prof-card__contenu {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(8px, 0.4rem + 0.6vw, 14px);
+    padding: clamp(12px, 0.5rem + 1.4vw, 26px) clamp(12px, 0.5rem + 1.4vw, 26px)
+      clamp(14px, 0.6rem + 1.2vw, 24px);
+  }
+
+  .prof-card[data-variante='compacte'] .prof-card__contenu {
+    gap: 4px;
+    padding: 12px 12px 14px;
+  }
+
+  .prof-card__discipline {
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: clamp(8.5px, 8px + 0.19vw, 10.5px);
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    line-height: 1.5;
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .prof-card__nom {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-display-s);
+    font-weight: 500;
+    line-height: 1.1;
+    color: var(--parch);
+  }
+
+  .prof-card[data-variante='compacte'] .prof-card__nom {
+    font-size: clamp(17px, 1rem + 0.3vw, 20px);
+    line-height: 1;
+  }
+
+  .prof-card__accroche {
+    margin: 0;
+    font-size: var(--fs-body-s);
+    font-weight: 500;
+    line-height: var(--lh-body-tight);
+    color: var(--parch-soft);
+  }
+
+  /* La spécialité passe en pleine lisibilité sur la carte mise en avant. */
+  .prof-card[data-avant] .prof-card__accroche {
+    color: var(--parch);
+  }
+
+  .prof-card__sep {
+    display: block;
+    width: 100%;
+    height: 1px;
+    margin-top: auto;
+    background: var(--parch-line);
+  }
+
+  .prof-card__lien {
+    /* Dimension de l'icône : `Icon.astro` lit `--icone-cote` (son style scopé
+       l'emporte sur un `:global(svg)` posé d'ici). */
+    --icone-cote: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-eyebrow);
+    font-size: clamp(8px, 7.1px + 0.24vw, 10.5px);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--parch);
+    transition: color var(--transition);
+  }
+
+  .prof-card[data-variante='compacte'] .prof-card__lien {
+    padding-top: 4px;
+    color: var(--parch-soft);
+  }
+
+  .prof-card__lien :global(svg) {
+    transition: transform var(--transition);
+  }
+
+  .prof-card[data-cliquable]:hover {
+    border-color: var(--btn-border);
+  }
+
+  .prof-card[data-avant][data-cliquable]:hover {
+    border-color: var(--ember);
+  }
+
+  .prof-card[data-cliquable]:hover .prof-card__lien {
+    color: var(--ember-hot);
+  }
+
+  .prof-card[data-cliquable]:hover .prof-card__lien :global(svg) {
+    transform: translateX(3px);
+  }
+
+  .prof-card[data-cliquable]:hover .prof-card__photo :global(img) {
+    transform: scale(1.04);
+  }
+
+  .prof-card:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .prof-card__photo :global(img),
+    .prof-card__lien :global(svg) {
+      transition: none;
+    }
+
+    .prof-card[data-cliquable]:hover .prof-card__photo :global(img) {
+      transform: none;
+    }
+  }
+</style>

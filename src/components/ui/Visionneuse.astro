@@ -1,0 +1,502 @@
+---
+/**
+ * Visionneuse — série de photos parcourue dans un dialogue plein écran.
+ *
+ * Le composant ne s'affiche jamais tout seul : il rend un `<dialog>` fermé, et
+ * n'importe quel bouton de la page portant `data-ouvrir-visionneuse` et un
+ * `aria-controls` pointant sur son `id` l'ouvre. C'est ce découplage qui permet
+ * à la photo du lieu (`LieuContact`) de servir de déclencheur aujourd'hui, et à
+ * la mosaïque de la galerie de s'en servir demain sans que ce fichier bouge.
+ *
+ * Accessibilité — mêmes fondations que `MenuMobile.astro`, pour les mêmes
+ * raisons : `<dialog>` natif ouvert en `showModal()`, donc piège à focus du
+ * navigateur, reste de la page inerte, `Échap` qui ferme, focus rendu au bouton
+ * d'ouverture. S'y ajoutent, propres à une visionneuse :
+ *
+ *   - `←` / `→` (et `Origine` / `Fin`) d'une photo à l'autre, en boucle — la
+ *     flèche gauche sur la première photo n'est jamais un geste mort ;
+ *   - un compteur visible, doublé d'une annonce « Photo 2 sur 5 » pour les
+ *     lecteurs d'écran (le compteur chiffré, lui, ne se lit pas à voix haute) ;
+ *   - un clic hors de l'image ferme, comme dans toutes les visionneuses ;
+ *   - le fond ne défile plus tant que le dialogue est ouvert.
+ *
+ * Le script n'est embarqué dans une page que si le composant y est rendu :
+ * l'appelant ne le monte que lorsqu'il a réellement des photos à montrer.
+ *
+ * Exemple :
+ *   <Visionneuse id="visionneuse-lieu" titre="Le gymnase" photos={photos} />
+ *   <button data-ouvrir-visionneuse aria-controls="visionneuse-lieu" aria-haspopup="dialog">…</button>
+ */
+import { Picture } from 'astro:assets';
+import Icon from './Icon.astro';
+import { largeursSrcset } from '../../lib/images';
+
+/** Photo affichée. Compatible avec le `PhotoResolue` de src/lib/images.ts. */
+export interface PhotoVisionneuse {
+  source: ImageMetadata;
+  alt?: string;
+  /** Légende visible sous la photo (facultative). */
+  legende?: string;
+  /** Crédit déjà mis en forme (« © Nom »), facultatif. */
+  credit?: string;
+}
+
+interface Props {
+  /** `id` du dialogue — cible de l'`aria-controls` des boutons d'ouverture. */
+  id: string;
+  /** Nom accessible du dialogue. Ex. « Le gymnase ». */
+  titre: string;
+  photos: readonly PhotoVisionneuse[];
+  class?: string;
+}
+
+const { id, titre, photos, class: classe } = Astro.props;
+
+const total = photos.length;
+const plusieurs = total > 1;
+
+// La visionneuse est un cadre plein écran : l'image occupe au plus 92 % de la
+// largeur, plafonnée à 1400 px — mais elle est aussi bridée par la hauteur, et
+// c'est presque toujours la hauteur qui gagne. Une photo de téléphone tenue à
+// la verticale s'affichait ainsi sur 477 px de large à 1440 × 900, pendant que
+// `sizes: min(92vw, 1400px)` en annonçait 1324 : le navigateur téléchargeait le
+// dérivé 1600 w (502 ko) au lieu du 540 w (25 ko).
+//
+// La contrainte de hauteur s'exprime : les proportions du fichier sont connues
+// au build, la place verticale se calcule en `vh`. `RESERVE` est ce que le
+// cadre garde pour lui — barre du haut, rangée de flèches, marges de la scène.
+// Mesuré entre 160 px (390 × 844) et 184 px (1440 × 900) ; on retient la plus
+// petite, qui sur-estime un peu la place libre : mieux vaut un cran trop net
+// qu'un cran trop flou.
+const RESERVE = 150;
+const LARGEURS = [540, 810, 1200, 1800];
+
+const tailles = (source: ImageMetadata) =>
+  `min(92vw, 1400px, calc((100vh - ${RESERVE}px) * ${(source.width / source.height).toFixed(3)}))`;
+---
+
+{
+  total > 0 && (
+    <dialog class:list={['visionneuse', classe]} id={id} aria-label={titre} data-visionneuse>
+      <div class="visionneuse__barre">
+        <p class="visionneuse__compteur" aria-hidden="true">
+          <span data-courant>1</span>
+          <span class="visionneuse__oblique">/</span>
+          <span>{total}</span>
+        </p>
+
+        <button type="button" class="visionneuse__fermer" data-fermer-visionneuse autofocus>
+          <Icon name="x" />
+          <span class="visuellement-cache">Fermer la visionneuse</span>
+        </button>
+      </div>
+
+      <div class="visionneuse__scene">
+        {photos.map((photo, i) => (
+          <figure class="visionneuse__vue" data-vue hidden={i > 0}>
+            <Picture
+              src={photo.source}
+              alt={photo.alt ?? ''}
+              formats={['avif', 'webp']}
+              widths={largeursSrcset(photo.source, { largeurs: LARGEURS })}
+              sizes={tailles(photo.source)}
+              loading="lazy"
+              decoding="async"
+            />
+            {(photo.legende || photo.credit) && (
+              <figcaption class="visionneuse__legende">
+                {photo.legende}
+                {photo.credit && <span class="visionneuse__credit">{photo.credit}</span>}
+              </figcaption>
+            )}
+          </figure>
+        ))}
+      </div>
+
+      {plusieurs && (
+        <div class="visionneuse__nav">
+          <button
+            type="button"
+            class="visionneuse__fleche"
+            data-precedent
+            aria-label="Photo précédente"
+          >
+            <Icon name="arrow-left" />
+          </button>
+          <button
+            type="button"
+            class="visionneuse__fleche"
+            data-suivant
+            aria-label="Photo suivante"
+          >
+            <Icon name="arrow-right" />
+          </button>
+        </div>
+      )}
+
+      <p class="visuellement-cache" role="status" data-annonce />
+    </dialog>
+  )
+}
+
+<script>
+  // Ouverture, navigation, fermeture. Vanilla : le `<dialog>` natif fait le
+  // gros du travail (modalité, piège à focus, Échap), ce script ne branche que
+  // ce qu'il ne sait pas faire — l'index courant et les boutons d'ouverture.
+  document.querySelectorAll<HTMLDialogElement>('dialog[data-visionneuse]').forEach((visionneuse) => {
+    const vues = Array.from(visionneuse.querySelectorAll<HTMLElement>('[data-vue]'));
+    if (vues.length === 0) return;
+
+    const courant = visionneuse.querySelector<HTMLElement>('[data-courant]');
+    const annonce = visionneuse.querySelector<HTMLElement>('[data-annonce]');
+    const natif = typeof visionneuse.showModal === 'function';
+
+    // Un bouton sans `aria-controls` pilote la seule visionneuse de la page ;
+    // avec, il ne pilote que la sienne (même règle que `MenuMobile`).
+    const ouvreurs = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-ouvrir-visionneuse]'),
+    ).filter((bouton) => {
+      const cible = bouton.getAttribute('aria-controls');
+      return !cible || !visionneuse.id || cible === visionneuse.id;
+    });
+
+    let index = 0;
+    let declencheur: HTMLElement | null = null;
+
+    const afficher = (cible: number) => {
+      // Modulo : la navigation boucle, dans les deux sens.
+      index = (cible + vues.length) % vues.length;
+      vues.forEach((vue, i) => vue.toggleAttribute('hidden', i !== index));
+      if (courant) courant.textContent = String(index + 1);
+      if (annonce) annonce.textContent = `Photo ${index + 1} sur ${vues.length}`;
+    };
+
+    const ouvrir = (source: HTMLElement) => {
+      if (visionneuse.open) return;
+      declencheur = source;
+
+      const demande = Number(source.dataset.visionneuseIndex ?? '0');
+      afficher(Number.isFinite(demande) ? demande : 0);
+
+      if (natif) visionneuse.showModal();
+      else visionneuse.setAttribute('open', '');
+
+      // Le fond ne défile pas derrière la visionneuse.
+      document.documentElement.style.setProperty('overflow', 'hidden');
+
+      // `showModal` honore déjà `autofocus` : on refait le même geste, ce qui
+      // rend le comportement identique dans le repli sans `showModal`.
+      visionneuse.querySelector<HTMLElement>('[autofocus]')?.focus();
+    };
+
+    const fermer = () => {
+      if (!visionneuse.open) return;
+      if (natif) visionneuse.close();
+      else {
+        visionneuse.removeAttribute('open');
+        visionneuse.dispatchEvent(new Event('close'));
+      }
+    };
+
+    visionneuse.addEventListener('close', () => {
+      document.documentElement.style.removeProperty('overflow');
+      declencheur?.focus();
+      declencheur = null;
+    });
+
+    ouvreurs.forEach((bouton) => {
+      bouton.addEventListener('click', (evenement) => {
+        evenement.preventDefault();
+        ouvrir(bouton);
+      });
+    });
+
+    visionneuse
+      .querySelector<HTMLElement>('[data-precedent]')
+      ?.addEventListener('click', () => afficher(index - 1));
+    visionneuse
+      .querySelector<HTMLElement>('[data-suivant]')
+      ?.addEventListener('click', () => afficher(index + 1));
+
+    visionneuse
+      .querySelectorAll<HTMLElement>('[data-fermer-visionneuse]')
+      .forEach((bouton) => bouton.addEventListener('click', () => fermer()));
+
+    /**
+     * Le point cliqué tombe-t-il sur les pixels de la photo ?
+     *
+     * `object-fit: contain` met la photo en boîte aux lettres : la boîte de
+     * l'`<img>` déborde largement ce qu'on voit dès que ses proportions ne sont
+     * pas celles de la scène — 1324 px de boîte pour 477 px de photo, mesuré sur
+     * un cliché en portrait à 1440 × 900. Se contenter de `closest('img')`
+     * rendait donc inertes les 850 px de noir autour de la photo, c'est-à-dire
+     * l'endroit même où l'on clique pour fermer.
+     */
+    const surLaPhoto = (image: HTMLImageElement, x: number, y: number) => {
+      const boite = image.getBoundingClientRect();
+      const { naturalWidth: largeurNative, naturalHeight: hauteurNative } = image;
+      // Photo pas encore chargée : pas de proportions, on ne ferme pas.
+      if (!largeurNative || !hauteurNative) return true;
+
+      const echelle = Math.min(boite.width / largeurNative, boite.height / hauteurNative);
+      const largeur = largeurNative * echelle;
+      const hauteur = hauteurNative * echelle;
+      const gauche = boite.left + (boite.width - largeur) / 2;
+      const haut = boite.top + (boite.height - hauteur) / 2;
+
+      return x >= gauche && x <= gauche + largeur && y >= haut && y <= haut + hauteur;
+    };
+
+    // Clic hors de l'image : on ferme. La photo, sa légende et les commandes
+    // gardent la main — cliquer sur la photo ne doit pas la faire disparaître.
+    visionneuse.addEventListener('click', (evenement) => {
+      const cible = evenement.target as Element | null;
+      if (cible?.closest('button, figcaption')) return;
+
+      const image = cible?.closest('img');
+      if (image instanceof HTMLImageElement) {
+        if (surLaPhoto(image, evenement.clientX, evenement.clientY)) return;
+      }
+
+      fermer();
+    });
+
+    visionneuse.addEventListener('keydown', (evenement: KeyboardEvent) => {
+      switch (evenement.key) {
+        case 'ArrowRight':
+          evenement.preventDefault();
+          afficher(index + 1);
+          return;
+        case 'ArrowLeft':
+          evenement.preventDefault();
+          afficher(index - 1);
+          return;
+        case 'Home':
+          evenement.preventDefault();
+          afficher(0);
+          return;
+        case 'End':
+          evenement.preventDefault();
+          afficher(vues.length - 1);
+          return;
+        case 'Escape':
+          // Le dialogue natif ferme déjà tout seul (événement `cancel`).
+          if (!natif) fermer();
+          return;
+        case 'Tab':
+          break;
+        default:
+          return;
+      }
+
+      // Doublon volontaire du piège natif : seul recours si `showModal` manque.
+      const focusables = Array.from(
+        visionneuse.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.getClientRects().length > 0);
+      if (focusables.length === 0) return;
+
+      const premier = focusables[0]!;
+      const dernier = focusables[focusables.length - 1]!;
+      const actif = document.activeElement;
+
+      if (evenement.shiftKey && (actif === premier || !visionneuse.contains(actif))) {
+        evenement.preventDefault();
+        dernier.focus();
+      } else if (!evenement.shiftKey && actif === dernier) {
+        evenement.preventDefault();
+        premier.focus();
+      }
+    });
+  });
+</script>
+
+<style>
+  .visionneuse {
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    display: none;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--veil-ink-96);
+    color: var(--parch);
+    overscroll-behavior: contain;
+  }
+
+  .visionneuse[open] {
+    display: flex;
+    flex-direction: column;
+    animation: visionneuse-apparition 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  .visionneuse::backdrop {
+    background: var(--veil-ink-85);
+  }
+
+  @keyframes visionneuse-apparition {
+    from {
+      opacity: 0;
+    }
+  }
+
+  /* ── Barre du haut : compteur à gauche, fermeture à droite ──────────────── */
+
+  .visionneuse__barre {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex: none;
+    padding: 14px var(--gouttiere);
+  }
+
+  .visionneuse__compteur {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    color: var(--parch-mute);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .visionneuse__oblique {
+    color: var(--parch-line);
+  }
+
+  .visionneuse__fermer {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px; /* cible tactile, l'icône reste à 24 px */
+    height: 44px;
+    margin-right: -10px;
+    --icone-cote: 24px;
+    color: var(--parch);
+    transition: color var(--transition);
+  }
+
+  .visionneuse__fermer:hover,
+  .visionneuse__fermer:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  /* ── La photo ───────────────────────────────────────────────────────────── */
+
+  .visionneuse__scene {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 0 var(--gouttiere) clamp(16px, 1rem + 1vw, 28px);
+  }
+
+  .visionneuse__vue {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    max-width: min(92vw, 1400px);
+    max-height: 100%;
+    margin: 0;
+  }
+
+  /* `hidden` doit l'emporter sur le `display: flex` ci-dessus. */
+  .visionneuse__vue[hidden] {
+    display: none;
+  }
+
+  /* `<Picture>` est un composant : ses nœuds échappent au scope, d'où :global. */
+  .visionneuse__vue :global(picture) {
+    display: flex;
+    min-height: 0;
+  }
+
+  .visionneuse__vue :global(img) {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-1);
+  }
+
+  .visionneuse__legende {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 4px 12px;
+    max-width: 70ch;
+    color: var(--parch-soft);
+    font-size: var(--fs-body-xs);
+    line-height: var(--lh-body-tight);
+    text-align: center;
+  }
+
+  .visionneuse__credit {
+    color: var(--parch-mute);
+    font-size: var(--fs-body-xxs);
+  }
+
+  /* ── Flèches ────────────────────────────────────────────────────────────── */
+  /* Posées au ras du bas plutôt qu'en surimpression des bords : à 390 px, une
+     flèche flottante sur l'image mange la photo qu'on est venu regarder. */
+
+  .visionneuse__nav {
+    display: flex;
+    flex: none;
+    justify-content: center;
+    gap: 12px;
+    padding: 0 var(--gouttiere) clamp(20px, 1rem + 2vw, 40px);
+  }
+
+  .visionneuse__fleche {
+    --icone-cote: 16px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--btn-border);
+    border-radius: var(--radius-pill);
+    color: var(--parch);
+    transition:
+      border-color var(--transition),
+      color var(--transition);
+  }
+
+  .visionneuse__fleche:hover,
+  .visionneuse__fleche:focus-visible {
+    border-color: var(--ember-hot);
+    color: var(--ember-hot);
+  }
+
+  .visionneuse__fermer:focus-visible,
+  .visionneuse__fleche:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .visionneuse[open] {
+      animation: none;
+    }
+
+    .visionneuse__fermer,
+    .visionneuse__fleche {
+      transition: none;
+    }
+  }
+</style>

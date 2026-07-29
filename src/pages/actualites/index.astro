@@ -1,0 +1,529 @@
+---
+/**
+ * `/actualites/` — la liste des articles. Gabarit NON maquetté (design-spec
+ * §10.2 : « aucune page annexe… pas de liste d'actualités »), composé dans le
+ * langage des pages de détail :
+ *
+ *   - page entièrement en `$ink`, aucun fond alterné : le rythme vient des
+ *     filets de 1 px et de l'espacement (design-spec §5.1) ;
+ *   - fil d'Ariane en haut, filet bas, « Retour » à gauche / chemin à droite ;
+ *   - tête de page : sur-titre à tiret, H1 Cormorant à ligne accentuée, chapô ;
+ *   - une rangée par article, séparée par un filet — photo à gauche, date,
+ *     catégorie, titre, chapô et lien fléché à droite. Sous 820 px la rangée
+ *     s'empile, la photo passe au-dessus : rien n'est retiré (parité de
+ *     contenu, ARCHITECTURE.md §5) ;
+ *   - barre d'onglets mobile en pied : c'est du chrome global, rendu sur toutes
+ *     les pages du site, liste d'actualités comprise.
+ *
+ * Les brouillons ne sont jamais rendus : `statut === 'publie'` est le seul
+ * critère d'entrée dans la liste. Les articles « à la une » remontent en tête,
+ * le reste est antéchronologique.
+ */
+import { Picture } from 'astro:assets';
+import Base from '../../layouts/Base.astro';
+import Footer from '../../components/sections/Footer.astro';
+import Nav from '../../components/sections/Nav.astro';
+import Button from '../../components/ui/Button.astro';
+import Eyebrow from '../../components/ui/Eyebrow.astro';
+import Icon from '../../components/ui/Icon.astro';
+import Pill from '../../components/ui/Pill.astro';
+import SectionTitle from '../../components/ui/SectionTitle.astro';
+import TabBar from '../../components/ui/TabBar.astro';
+import TextLink from '../../components/ui/TextLink.astro';
+import { estNomIcone } from '../../components/ui/icones';
+import {
+  articlesDe,
+  lireDisciplines,
+  lireEntetes,
+  lireHero,
+  lireIdentite,
+  lireMenus,
+  profsDe,
+  type Article,
+} from '../../lib/contenu';
+import { getEcolePrincipale } from '../../lib/ecoles';
+import { cadrageCss, largeursSrcset, resoudrePhoto } from '../../lib/images';
+import { lien, lienArticle } from '../../lib/liens';
+import { contexteDe, resoudre } from '../../lib/raccourcis';
+import { typographieFr } from '../../lib/typographie';
+
+const ecole = await getEcolePrincipale();
+const [identite, hero, entetes, menus, articles, disciplines, profs] = await Promise.all([
+  lireIdentite(),
+  lireHero(),
+  lireEntetes(),
+  lireMenus(),
+  articlesDe(ecole),
+  lireDisciplines(),
+  profsDe(ecole),
+]);
+
+const ctx = contexteDe(ecole.fiche, {
+  nbArmes: disciplines.filter((d) => d.entry.affichee).length,
+  nbProfs: profs.filter((p) => p.entry.visible).length,
+});
+
+// Barre d'onglets mobile : c'est du chrome global, présent sur toutes les
+// pages du site. Aucun onglet n'est actif ici — la barre ne comporte pas
+// d'entrée « Actualités » —, et l'onglet central mis en exergue reste celui des
+// épées croisées, repéré par son icône et non par sa position.
+const onglets = (menus.barreMobile ?? []).map((onglet) => ({
+  libelle: onglet.libelle,
+  href: lien(ecole, onglet.lien),
+  icone: estNomIcone(onglet.icone) ? onglet.icone : 'house',
+  exergue: onglet.icone === 'swords',
+}));
+
+const SOURCE = 'src/content/commun/entetes.yaml (rubrique « Actualités »)';
+const entete = entetes.actualites;
+
+const libelle = entete.eyebrow || 'Actualités';
+const lignesTitre = [
+  { texte: resoudre(entete.titreLigne1, ctx, SOURCE), accent: false },
+  { texte: resoudre(entete.titreLigne2, ctx, SOURCE), accent: true },
+].filter((l) => l.texte.length > 0);
+const titre = lignesTitre.length > 0 ? lignesTitre : [{ texte: libelle, accent: false }];
+const lede = resoudre(entete.lede, ctx, SOURCE);
+
+// ── Tri : à la une d'abord, puis du plus récent au plus ancien ──────────────
+
+const parDate = (a: Article, b: Article) => (b.entry.date ?? '').localeCompare(a.entry.date ?? '');
+
+const publies = [...articles]
+  .filter((a) => a.entry.statut === 'publie')
+  .sort(
+    (a, b) => Number(Boolean(b.entry.epingle)) - Number(Boolean(a.entry.epingle)) || parDate(a, b),
+  );
+
+/** Libellés des catégories du CMS (`keystatic.config.ts`, collection articles). */
+const CATEGORIES: Record<string, string> = {
+  'vie-du-club': 'Vie du club',
+  tournoi: 'Tournoi',
+  stage: 'Stage',
+  sources: 'Sources & technique',
+  materiel: 'Matériel',
+};
+
+const FORMAT_DATE = new Intl.DateTimeFormat('fr-FR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/** « 2026-07-28 » → « 28 juillet 2026 ». Midi UTC : aucun décalage de jour. */
+const dateLisible = (iso?: string | null) =>
+  iso ? FORMAT_DATE.format(new Date(`${iso}T12:00:00Z`)) : '';
+
+/** Cartes de la liste : la vignette suit exactement la colonne de la grille
+    (200 → 340 px au-delà de 820 px), et 92 vw en mobile — soit 359 px de rendu
+    maximal, 718 px en dPR 2. Politique de largeurs commune (src/lib/images.ts). */
+const largeurs = (image: ImageMetadata) =>
+  largeursSrcset(image, { largeurs: [280, 360, 480, 560, 720] });
+
+// Titres et chapôs d'article ne transitent pas par `resoudre()` — ce sont des
+// champs libres, sans raccourcis. La normalisation typographique se pose donc
+// ici (apostrophe courbe, fine insécable devant « ? »).
+const entrees = publies.map((article) => ({
+  slug: article.slug,
+  href: lienArticle(ecole, article.slug),
+  titre: typographieFr(article.entry.titre),
+  chapo: typographieFr(article.entry.chapo),
+  categorie: CATEGORIES[article.entry.categorie ?? ''] ?? '',
+  iso: article.entry.date ?? '',
+  date: dateLisible(article.entry.date),
+  epingle: Boolean(article.entry.epingle),
+  image: resoudrePhoto(article.entry.couverture?.fichier),
+  alt: article.entry.couverture?.alt ?? '',
+  cadrage: cadrageCss(article.entry.couverture?.cadrage),
+}));
+
+// Meta description propre à la page. Sans ce repli, `Base` retombe sur la
+// description du site : /actualites/ publiait alors exactement la même
+// `<meta name="description">` et la même `og:description` que l'accueil.
+const description =
+  lede ||
+  'Annonces, comptes rendus de tournoi et vie de la salle du club AMHE à ' +
+    `${ecole.fiche.lieu?.ville || ecole.fiche.ville || ecole.ville}, au fil des saisons.`;
+
+const compte =
+  entrees.length === 0
+    ? ''
+    : entrees.length === 1
+      ? '1 article publié'
+      : `${entrees.length} articles publiés`;
+---
+
+<Base ecole={ecole} identite={identite} titre={libelle} description={description}>
+
+  {/* Page sans hero photographique : la barre garde son fond plein dès le
+      chargement (`fond="solide"`, cf. notes du chantier « chrome »). */}
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+    fond="solide"
+  />
+  <nav class="fil" aria-label="Fil d’Ariane">
+    <div class="gouttiere fil__rangee">
+      <a class="fil__retour" href={lien(ecole, '/')}>
+        <Icon name="arrow-left" size={16} />
+        <span>Retour</span>
+      </a>
+
+      <ol class="fil__chemin" role="list">
+        <li><a class="fil__lien" href={lien(ecole, '/')}>Accueil</a></li>
+        <li class="fil__oblique" aria-hidden="true">/</li>
+        <li><span class="fil__courant" aria-current="page">{libelle}</span></li>
+      </ol>
+    </div>
+  </nav>
+
+  <header class="tete">
+    <div class="gouttiere tete__bloc">
+      <Eyebrow texte={libelle} marque="tiret" />
+      <SectionTitle balise="h1" taille="fiche" lignes={titre} />
+      {lede && <p class="tete__lede">{lede}</p>}
+      {compte && <p class="tete__compte">{compte}</p>}
+    </div>
+  </header>
+
+  <section class="liste" aria-label="Tous les articles">
+    <div class="gouttiere">
+      {
+        entrees.length > 0 ? (
+          <ol class="liste__items" role="list">
+            {entrees.map((entree) => (
+              <li class="item">
+                <a class="carte" href={entree.href} data-sans-photo={entree.image ? undefined : ''}>
+                  {entree.image && (
+                    <div class="carte__photo">
+                      <Picture
+                        src={entree.image}
+                        alt={entree.alt}
+                        formats={['avif', 'webp']}
+                        widths={largeurs(entree.image)}
+                        sizes="(min-width: 1440px) 340px, (min-width: 820px) calc(148px + 13.333vw), 92vw"
+                        loading="lazy"
+                        decoding="async"
+                        style={`object-position:${entree.cadrage}`}
+                      />
+                    </div>
+                  )}
+
+                  <div class="carte__corps">
+                    <p class="carte__meta">
+                      {entree.epingle && <Pill libelle="À la une" />}
+                      {entree.categorie && <span class="carte__categorie">{entree.categorie}</span>}
+                      {entree.categorie && entree.date && (
+                        <span class="carte__point" aria-hidden="true">
+                          ·
+                        </span>
+                      )}
+                      {entree.date && (
+                        <time class="carte__date" datetime={entree.iso}>
+                          {entree.date}
+                        </time>
+                      )}
+                    </p>
+
+                    <h2 class="carte__titre">{entree.titre}</h2>
+                    {entree.chapo && <p class="carte__chapo">{entree.chapo}</p>}
+
+                    <TextLink libelle="Lire l’article" />
+                  </div>
+                </a>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <div class="vide">
+            <p class="vide__titre">Rien de publié pour l’instant.</p>
+            <p class="vide__texte">
+              Comptes rendus de tournoi, stages et nouvelles de la salle paraîtront ici.
+            </p>
+            <Button variante="contour" libelle="Retour à l’accueil" href={lien(ecole, '/')} />
+          </div>
+        )
+      }
+    </div>
+  </section>
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient après le pied de
+        page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide du site" />
+  </Fragment>
+</Base>
+
+<style>
+  /* ── Fil d'Ariane (design-spec §5.3) ─────────────────────────────────────── */
+
+  .fil {
+    border-bottom: var(--filet);
+  }
+
+  .fil__rangee {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esp-item);
+    padding-block: clamp(16px, 13.771px + 0.5714vw, 22px);
+  }
+
+  .fil__retour,
+  .fil__chemin {
+    display: flex;
+    align-items: center;
+    gap: clamp(8px, 6.514px + 0.381vw, 12px);
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: 0.21em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    list-style: none;
+  }
+
+  .fil__retour {
+    --icone-cote: 16px;
+    flex: none;
+    color: var(--parch);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .fil__retour:hover,
+  .fil__retour:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  .fil__chemin {
+    min-width: 0;
+  }
+
+  .fil__lien,
+  .fil__oblique {
+    color: var(--parch-mute);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .fil__lien:hover,
+  .fil__lien:focus-visible {
+    color: var(--parch);
+  }
+
+  .fil__oblique {
+    font-family: var(--font-body);
+    letter-spacing: 0;
+  }
+
+  .fil__courant {
+    color: var(--parch);
+  }
+
+  /* ── Tête de page ────────────────────────────────────────────────────────── */
+
+  .tete__bloc {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(14px, 11.029px + 0.7619vw, 22px);
+    padding-block: clamp(40px, 20.686px + 4.9524vw, 92px)
+      clamp(34px, 19.886px + 3.619vw, 72px);
+  }
+
+  .tete__lede {
+    max-width: 62ch;
+    font-size: var(--fs-body-lede);
+    line-height: 1.6;
+    color: var(--parch-soft);
+  }
+
+  .tete__compte {
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  /* ── Liste ───────────────────────────────────────────────────────────────── */
+
+  .liste {
+    padding-block-end: clamp(60px, 34px + 6.6667vw, 130px);
+  }
+
+  .liste__items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .item {
+    border-top: var(--filet);
+  }
+
+  .item:last-child {
+    border-bottom: var(--filet);
+  }
+
+  /* Vignette : 200 px à 390, 340 px à 1440 — la formule du dépôt atteint son
+     maximum pile à 1440 (200 + 140 px sur la plage, soit 13.333vw, et 148 px
+     d'ordonnée à l'origine). La grille ne s'applique qu'au-delà de 820 px, où
+     la vignette vaut alors 257 px. */
+  .carte {
+    display: grid;
+    grid-template-columns: clamp(200px, 148px + 13.333vw, 340px) minmax(0, 1fr);
+    gap: clamp(20px, 9.6px + 2.6667vw, 48px);
+    align-items: start;
+    padding-block: clamp(24px, 16.571px + 1.9048vw, 44px);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .carte[data-sans-photo] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (max-width: 819px) {
+    .carte {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .carte__photo {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-2);
+    background: var(--char);
+  }
+
+  /* `<Picture>` est un composant : ses nœuds échappent au style scopé. */
+  .carte__photo :global(picture),
+  .carte__photo :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .carte__photo :global(img) {
+    object-fit: cover;
+    transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  .carte__corps {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(10px, 8.514px + 0.381vw, 14px);
+    min-width: 0;
+  }
+
+  .carte__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .carte__categorie {
+    color: var(--ember);
+  }
+
+  .carte__point,
+  .carte__date {
+    color: var(--parch-mute);
+    font-weight: 500;
+  }
+
+  .carte__titre {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-display-m);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--parch);
+    text-wrap: balance;
+  }
+
+  .carte__chapo {
+    max-width: 64ch;
+    margin: 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--parch-soft);
+  }
+
+  /* Convention de `TextLink` : la carte cliquable pilote la couleur et le
+     décalage de la flèche du lien qu'elle contient. */
+  .carte:hover,
+  .carte:focus-visible {
+    --lien-couleur-survol: var(--ember-hot);
+    --lien-decalage: 3px;
+  }
+
+  .carte:hover .carte__photo :global(img) {
+    transform: scale(1.04);
+  }
+
+  .carte:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 4px;
+  }
+
+  @media (max-width: 819px) {
+    .carte__photo {
+      aspect-ratio: 16 / 10;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .carte__photo :global(img),
+    .carte:hover .carte__photo :global(img) {
+      transition: none;
+      transform: none;
+    }
+  }
+
+  /* ── État vide (design-spec §10.2 : aucun état vide n'est maquetté) ──────── */
+
+  .vide {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(12px, 9.771px + 0.5714vw, 18px);
+    padding-block: clamp(40px, 25.886px + 3.619vw, 78px);
+    border-top: var(--filet);
+    border-bottom: var(--filet);
+  }
+
+  .vide__titre {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-display-s);
+    line-height: 1.1;
+    color: var(--parch);
+  }
+
+  .vide__texte {
+    max-width: 52ch;
+    margin: 0 0 clamp(6px, 4.514px + 0.381vw, 10px);
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+</style>

@@ -1,0 +1,403 @@
+---
+/**
+ * Hero — « 01 · Hero » desktop (design-spec §3.1) et « 01 · Accueil (sans
+ * scroll) » mobile (§4.1).
+ *
+ * C'est la seule pile centrée du site. Cinq couches empilées : la photo, le
+ * voile, le contenu, l'invite de défilement — l'en-tête, lui, est un élément à
+ * part (`Nav.astro`) qui se **superpose** au hero grâce à la marge négative
+ * ci-dessous, exactement comme la maquette pose sa barre de nav en absolu
+ * au-dessus de la photo.
+ *
+ * Rythme repris de la maquette (les `esp` deviennent des marges, jamais des div
+ * vides), interpolé entre 390 et 1440 px :
+ *
+ *   logo 88 (desktop seul) · esp 26 · sur-titre 11.5/9.5 · esp 20/18 ·
+ *   logotype 96/62 · esp 28/22 · filet 60×1 / 44×1 · esp 24/20 ·
+ *   « à Clermont-Ferrand » 34/21 italique · esp 30/26 · ligne d'info 11/10 ·
+ *   esp 24/22 · bouton à bordure 50/48
+ *
+ * Le mobile ne supprime rien (parité obligatoire, ARCHITECTURE §5) : il compacte
+ * — seul le logo carré disparaît, parce qu'il est déjà dans la barre du haut,
+ * comme dans la frame V2 mobile.
+ *
+ * Tous les textes viennent du CMS (singleton « Accueil · En-tête »), raccourcis
+ * compris : la ligne d'accroche est en pratique « {creneaux} — {essai} séances
+ * d'essai offertes ».
+ *
+ * Exemple d'assemblage :
+ *   <Hero ecole={ecole} hero={hero} identite={identite} ctx={ctx} />
+ */
+import { Image } from 'astro:assets';
+import Button from '../ui/Button.astro';
+import Filet from '../ui/Filet.astro';
+import Icon from '../ui/Icon.astro';
+import Logotype from '../ui/Logotype.astro';
+import type { Ecole } from '../../lib/ecoles';
+import { lien } from '../../lib/liens';
+import { resoudre as resoudrePhotoCms, resoudrePhoto, type PhotoCms } from '../../lib/images';
+import { contexteDe, resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
+
+/**
+ * Le blason du club n'a pas (encore) de champ dans l'admin : il est résolu par
+ * son chemin. Le jour où il en aura un, seule cette constante bouge — et la
+ * prop `logo` permet déjà de le passer explicitement.
+ */
+const CHEMIN_LOGO = '/src/assets/photos/commun/logo-de-feu-et-d-acier.png';
+
+export interface LienCms {
+  libelle?: string | null;
+  url?: string | null;
+}
+
+export interface MarqueCms {
+  debut?: string | null;
+  feu?: string | null;
+  connecteur?: string | null;
+  acier?: string | null;
+}
+
+/** Singleton « Accueil · En-tête » (`src/content/commun/hero.yaml`). */
+export interface ContenuHero {
+  photo?: PhotoCms | null;
+  surTitre?: string | null;
+  accroche?: string | null;
+  lieuTexte?: string | null;
+  boutonPrincipal?: LienCms | null;
+  boutonSecondaire?: LienCms | null;
+  inviteDefilement?: string | null;
+}
+
+export interface Props {
+  /** École servie par la page (lieu, ville, liens internes). */
+  ecole: Ecole;
+  /** Contenu du singleton « Accueil · En-tête ». */
+  hero: ContenuHero;
+  /** Singleton « Identité du site » — pour le logotype. */
+  identite?: { marque?: MarqueCms | null } | null;
+  /** Fragments du logotype, si l'identité n'est pas passée en entier. */
+  marque?: MarqueCms | null;
+  /** Contexte de raccourcis de la page (`contexteDe(...)`, cf. `index.astro`). */
+  ctx?: ContexteRaccourcis;
+  /** Blason du club. Résolu par défaut depuis `src/assets/photos/commun/`. */
+  logo?: ImageMetadata | null;
+  /** Ancre de l'invite de défilement. Défaut : la section qui suit le hero. */
+  cibleDefilement?: string;
+  /** `id` de la section — cible de l'onglet « Accueil » de la barre mobile. */
+  id?: string;
+  /**
+   * Remonte le hero sous l'en-tête collant pour que la photo passe derrière lui
+   * (c'est la superposition de la maquette). À mettre à `false` si le hero n'est
+   * pas le premier élément de `<main>`.
+   */
+  sousEntete?: boolean;
+  class?: string;
+}
+
+const {
+  ecole,
+  hero,
+  identite,
+  marque,
+  ctx,
+  logo,
+  cibleDefilement = '#disciplines',
+  id = 'hero',
+  sousEntete = true,
+  class: classe,
+} = Astro.props;
+
+const contexte: ContexteRaccourcis = ctx ?? contexteDe(ecole.fiche, { nbArmes: 0, nbProfs: 0 });
+const source = 'src/content/commun/hero.yaml';
+
+const photo = resoudrePhotoCms(hero.photo);
+
+// « Laisser vide pour afficher automatiquement "à {ville}" » (libellé de l'admin).
+const ville = ecole.fiche.lieu?.ville || ecole.fiche.ville || ecole.ville;
+const ligneLieu = resoudre(hero.lieuTexte, contexte, source) || (ville ? `à ${ville}` : '');
+
+const surTitre = resoudre(hero.surTitre, contexte, source);
+const accroche = resoudre(hero.accroche, contexte, source);
+const invite = resoudre(hero.inviteDefilement, contexte, source);
+
+const boutons = [hero.boutonPrincipal, hero.boutonSecondaire]
+  .filter((b): b is LienCms => Boolean(b?.libelle && b?.url))
+  .map((b) => ({ libelle: b.libelle!, href: lien(ecole, b.url) }));
+
+const fragments = marque ?? identite?.marque ?? null;
+const blason = logo ?? resoudrePhoto(CHEMIN_LOGO);
+---
+
+<section class:list={['hero', { 'hero--sous-entete': sousEntete }, classe]} id={id}>
+  {
+    photo && (
+      <div class="hero__photo">
+        <Image
+          src={photo.source}
+          alt={photo.alt}
+          widths={[640, 960, 1280, 1600, 2048]}
+          sizes="100vw"
+          quality={78}
+          loading="eager"
+          decoding="async"
+          fetchpriority="high"
+          style={`object-position:${photo.objectPosition}`}
+        />
+      </div>
+    )
+  }
+  <div class="hero__voile" aria-hidden="true"></div>
+
+  <div class="hero__contenu gouttiere">
+    {
+      blason && (
+        <div class="hero__blason">
+          <Image src={blason} alt="" width={110} densities={[1, 2]} loading="eager" decoding="async" />
+        </div>
+      )
+    }
+
+    {surTitre && <p class="hero__surtitre">{surTitre}</p>}
+
+    <Logotype class="hero__logotype" marque={fragments} taille="hero" balise="h1" />
+
+    <Filet class="hero__filet" largeur="clamp(44px, 38.057px + 1.5238vw, 60px)" ton="logo" />
+
+    {ligneLieu && <p class="hero__lieu">{ligneLieu}</p>}
+    {accroche && <p class="hero__accroche">{accroche}</p>}
+
+    {
+      boutons.length > 0 && (
+        <p class="hero__actions">
+          {boutons.map((b, i) => (
+            <Button
+              variante={i === 0 ? 'contour' : 'lien'}
+              libelle={b.libelle}
+              href={b.href}
+            />
+          ))}
+        </p>
+      )
+    }
+  </div>
+
+  {
+    invite && (
+      <a class="hero__invite" href={lien(ecole, cibleDefilement)}>
+        <span class="hero__chevron" aria-hidden="true">
+          <Icon name="chevron-down" />
+        </span>
+        <span class="hero__invite-texte">{invite}</span>
+      </a>
+    )
+  }
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    z-index: 0; /* reste sous l'en-tête collant (z-index 50) */
+    display: grid;
+    grid-template-rows: 1fr auto;
+    min-height: 100svh;
+    overflow: hidden;
+    background: var(--ink);
+    text-align: center;
+  }
+
+  /*
+   * La superposition de la maquette : le hero remonte de la hauteur exacte de
+   * l'en-tête et la lui rend en padding. La photo passe donc derrière la barre
+   * de nav, et le contenu centré reste centré dans ce qui se voit vraiment.
+   * `--hauteur-entete` est publiée par Nav.astro ; la valeur de repli est la
+   * même, au cas où le hero servirait sans en-tête.
+   */
+  .hero--sous-entete {
+    --entete: var(--hauteur-entete, clamp(66px, 60.057px + 1.5238vw, 82px));
+    margin-top: calc(-1 * var(--entete));
+    padding-top: var(--entete);
+  }
+
+  /* La barre d'onglets mobile est fixée en bas : l'invite de défilement ne doit
+     pas se glisser dessous. */
+  @media (max-width: 819px) {
+    .hero {
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    }
+  }
+
+  /* `<Image>` est un composant : ses nœuds échappent au scope, d'où :global. */
+  .hero__photo {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+  }
+
+  .hero__photo :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Voile : 72 % en mobile, 67 % en desktop (design-spec §1.2, familles B). */
+  .hero__voile {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--veil-ink-72);
+  }
+
+  @media (min-width: 820px) {
+    .hero__voile {
+      background: var(--veil-ink-67);
+    }
+  }
+
+  .hero__contenu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    grid-row: 1;
+    padding-block: clamp(28px, 20.2px + 2vw, 49px);
+  }
+
+  /*
+   * Blason 88 px. Le mobile ne le montre pas : il est déjà dans la barre du
+   * haut (frame V2 mobile), et le répéter mangerait un tiers de l'écran.
+   */
+  .hero__blason {
+    display: none;
+    margin-bottom: 26px;
+  }
+
+  .hero__blason :global(img) {
+    width: auto;
+    height: 88px;
+  }
+
+  @media (min-width: 820px) {
+    .hero__blason {
+      display: block;
+    }
+  }
+
+  /* ── Sur-titre ────────────────────────────────────────────────────────── */
+  .hero__surtitre {
+    margin: 0 0 clamp(18px, 17.257px + 0.1905vw, 20px);
+    font-family: var(--font-eyebrow);
+    font-size: clamp(9.5px, 8.757px + 0.1905vw, 11.5px);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    letter-spacing: var(--ls-eyebrow-wide);
+    text-transform: uppercase;
+    color: var(--parch-soft);
+    /* L'interlettrage ajoute une chasse après la dernière lettre : on la reprend,
+       sinon le sur-titre centré paraît décalé vers la gauche. */
+    text-indent: var(--ls-eyebrow-wide);
+  }
+
+  /* ── Logotype et filet ────────────────────────────────────────────────── */
+  /* Composants : leurs nœuds échappent au scope, d'où :global sous un ancêtre
+     scopé (même convention que MediaCard / ProfCard). */
+  .hero__contenu :global(.hero__logotype) {
+    margin-bottom: clamp(22px, 19.771px + 0.5714vw, 28px);
+  }
+
+  .hero__contenu :global(.hero__filet) {
+    margin-bottom: clamp(20px, 18.514px + 0.381vw, 24px);
+  }
+
+  /* ── Lieu ─────────────────────────────────────────────────────────────── */
+  .hero__lieu {
+    margin: 0 0 clamp(26px, 24.514px + 0.381vw, 30px);
+    font-family: var(--font-display);
+    font-size: clamp(21px, 16.171px + 1.2381vw, 34px);
+    font-style: italic;
+    font-weight: 500;
+    line-height: 1.15;
+    color: var(--parch);
+  }
+
+  /* ── Ligne d'information (créneaux, essai offert) ─────────────────────── */
+  /* La maquette (§3.1 et §4.1) pose ce nœud sur UNE ligne. L'ancien plafond de
+     34ch mesurait la chasse du « 0 » **sans** l'interlettrage : à 11 px la boîte
+     tombait à ~225 px pour ~23 capitales réelles, et la ligne se repliait sur
+     trois. Le plafond est donc exprimé dans l'unité qui décrit vraiment la
+     mesure — chasse + tracking — et le tracking sort en variable pour que
+     `letter-spacing`, `text-indent` et le calcul ne puissent plus diverger. */
+  .hero__accroche {
+    --hero-accroche-ls: 0.24em;
+    max-width: min(100%, calc(34 * (1ch + var(--hero-accroche-ls))));
+    margin: 0 0 clamp(22px, 21.257px + 0.1905vw, 24px);
+    font-family: var(--font-eyebrow);
+    font-size: clamp(10px, 9.629px + 0.0952vw, 11px);
+    font-weight: 500;
+    line-height: 1.8;
+    letter-spacing: var(--hero-accroche-ls);
+    text-transform: uppercase;
+    text-indent: var(--hero-accroche-ls);
+    color: var(--parch-mute);
+  }
+
+  /* ── Boutons ──────────────────────────────────────────────────────────── */
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(14px, 12.514px + 0.381vw, 18px);
+    margin: 0;
+  }
+
+  /* ── Invite de défilement ─────────────────────────────────────────────── */
+  .hero__invite {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(6px, 5.257px + 0.1905vw, 8px);
+    grid-row: 2;
+    justify-self: center;
+    margin-bottom: clamp(22px, 16.057px + 1.5238vw, 38px);
+    color: var(--parch-mute);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .hero__invite:hover,
+  .hero__invite:focus-visible {
+    color: var(--parch);
+  }
+
+  .hero__chevron {
+    display: inline-flex;
+    --icone-cote: clamp(18px, 16.514px + 0.381vw, 22px);
+    animation: hero-descendre 2.6s ease-in-out infinite;
+  }
+
+  .hero__invite-texte {
+    font-family: var(--font-eyebrow);
+    font-size: clamp(8.5px, 7.943px + 0.1429vw, 10px);
+    font-weight: 500;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    text-indent: 0.3em;
+  }
+
+  @keyframes hero-descendre {
+    0%,
+    70%,
+    100% {
+      transform: translateY(0);
+    }
+    82% {
+      transform: translateY(4px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero__chevron {
+      animation: none;
+    }
+  }
+</style>

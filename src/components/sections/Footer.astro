@@ -1,0 +1,580 @@
+---
+/**
+ * Pied de page — `design-spec.md` §3.11 (desktop) et §4.10 (mobile).
+ *
+ * Trois bandes, comme la maquette :
+ *
+ *   1. `Marquee` — le logotype repris en très grand (115 px en desktop, 34 en
+ *      mobile). C'est le plus grand texte du site.
+ *   2. `Grille` — la colonne de marque (logo, description, contact) puis les
+ *      colonnes de liens saisies dans « Menus & pied de page ».
+ *   3. `Bas de page` — copyright et liens légaux.
+ *
+ * Trois écarts assumés par rapport à la maquette, tous justifiés :
+ *
+ *   - **L'année du copyright est calculée au build** (ARCHITECTURE.md §5) : la
+ *     maquette écrit « © 2026 » en dur, et le CMS ne stocke que la mention
+ *     (« De Feu et d'Acier · Clermont-Ferrand »). Un site qui affiche une année
+ *     périmée fait daté ; celui-ci ne le fera jamais.
+ *   - **Le contact figure sur les deux tailles d'écran.** La maquette desktop
+ *     ne l'affiche pas, la maquette mobile si. La parité de contenu est une
+ *     règle du projet (ARCHITECTURE.md §5), et le contact unique de la fiche
+ *     école est justement ce qui remplace les deux adresses divergentes de
+ *     l'ancien site (ARCHITECTURE.md §1).
+ *   - **Les colonnes de liens restent affichées en mobile**, compactées sur
+ *     deux colonnes. La maquette les supprimait au profit de la tab-bar, mais
+ *     celle-ci ne compte que cinq entrées et n'atteint ni la FAQ, ni les
+ *     tournois, ni HelloAsso, ni la fédération. Même règle de parité.
+ *
+ * Aucun texte n'est écrit ici : le logotype, la description et la mention de
+ * bas de page viennent du singleton « Identité du site » ; les colonnes et les
+ * liens légaux de « Menus & pied de page » ; le contact, les réseaux et
+ * l'affiliation de la fiche école. Un lien de menu laissé vide dans l'admin est
+ * résolu depuis la fiche école (`cibleAutomatique` ci-dessous) — c'est ce que
+ * promet l'aide du champ dans Keystatic.
+ *
+ * Exemple :
+ *   <Footer ecole={ecole} identite={identite} menus={menus} />
+ */
+import { Image } from 'astro:assets';
+import Logotype from '../ui/Logotype.astro';
+import Icon from '../ui/Icon.astro';
+import type { NomIcone } from '../ui/icones';
+import type { Ecole } from '../../lib/ecoles';
+import type { Identite, lireMenus } from '../../lib/contenu';
+import { lien } from '../../lib/liens';
+import { lienTelephone } from '../../lib/raccourcis';
+import { typographieFr } from '../../lib/typographie';
+import { resoudrePhoto } from '../../lib/images';
+
+type Menus = Awaited<ReturnType<typeof lireMenus>>;
+
+interface Props {
+  /** École servie par la page : contact, réseaux et affiliation en viennent. */
+  ecole: Ecole;
+  /** Singleton « Identité du site » : logotype, description, mention de bas de page. */
+  identite: Identite;
+  /** Singleton « Menus & pied de page » : colonnes et liens légaux. */
+  menus: Menus;
+  class?: string;
+}
+
+const { ecole, identite, menus, class: classe } = Astro.props;
+
+const fiche = ecole.fiche;
+const contact = fiche.contact ?? null;
+const reseauxFiche = fiche.reseaux ?? null;
+const affiliation = fiche.affiliation ?? null;
+
+// Contact unique de l'association, saisi une seule fois dans la fiche école
+// (ARCHITECTURE.md §1). Le pied de page ne connaît pas d'autre adresse.
+const email = contact?.email?.trim() ?? '';
+const telephone = contact?.telephone?.trim() ?? '';
+
+// ── Liens de colonnes ──────────────────────────────────────────────────────
+//
+// L'admin autorise une adresse vide sur « Nous écrire », « Adhésion » et
+// « HelloAsso » : le site prend alors celle de l'école. C'est la
+// recommandation de content-model.md §5.9 — un lien saisi deux fois est un
+// lien qui divergera. La reconnaissance se fait sur le libellé, débarrassé de
+// ses accents et de sa casse.
+
+const sansAccent = (texte: string) =>
+  texte
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+function cibleAutomatique(libelle: string): string {
+  const l = sansAccent(libelle);
+  if (/ecrire|courriel|\bmail\b|contact/.test(l)) return contact?.email ? `mailto:${contact.email}` : '';
+  if (/telephone|appeler/.test(l)) return lienTelephone(contact?.telephone);
+  if (/helloasso/.test(l)) return reseauxFiche?.helloAsso || fiche.adhesion?.lienInscription || '';
+  if (/adhesion|adherer|inscri|cotisation/.test(l))
+    return fiche.adhesion?.lienInscription || reseauxFiche?.helloAsso || '';
+  if (/facebook/.test(l)) return reseauxFiche?.facebook || '';
+  if (/instagram/.test(l)) return reseauxFiche?.instagram || '';
+  if (/hema/.test(l)) return reseauxFiche?.hemaRatings || '';
+  if (/ffamhe|federation/.test(l)) return affiliation?.lienFederation || '';
+  if (/usam|club support/.test(l)) return affiliation?.lienClub || '';
+  if (/itineraire|acces|venir/.test(l)) return fiche.lieu?.itineraire || '';
+  return '';
+}
+
+const colonnes = (menus.colonnes ?? []).map((colonne, index) => ({
+  id: `pied-colonne-${index}`,
+  titre: colonne.titre ?? '',
+  liens: (colonne.liens ?? [])
+    .filter((entree) => !!entree.libelle)
+    .map((entree) => {
+      const cible = entree.url?.trim() ? entree.url.trim() : cibleAutomatique(entree.libelle);
+      return {
+        libelle: entree.libelle,
+        // `lien()` préfixe les cibles internes par la racine de l'école
+        // (invariant 5 de multi-ecoles.md) et laisse passer https:, mailto:, tel:.
+        href: cible ? lien(ecole, cible) : '',
+      };
+    }),
+}));
+
+// ── Pastilles de réseaux (mobile) ──────────────────────────────────────────
+//
+// La maquette mobile remplace la colonne « Suivre » par trois pastilles
+// rondes : Facebook, HEMA Ratings (trophée) et la fédération (bouclier). Elles
+// se construisent depuis la fiche école, pas depuis le menu : une pastille
+// sans URL n'a aucun sens, et une école sans Facebook ne doit pas en afficher.
+
+// L'annotation porte sur le littéral, pas sur le résultat du `filter` : le type
+// contextuel ne traverse pas l'appel de méthode, et `icone` s'élargirait en
+// `string` (donc incompatible avec `NomIcone`).
+const reseauxPossibles: { nom: string; url: string; icone: NomIcone }[] = [
+  { nom: 'Facebook', url: reseauxFiche?.facebook ?? '', icone: 'facebook' },
+  { nom: 'Instagram', url: reseauxFiche?.instagram ?? '', icone: 'instagram' },
+  { nom: 'HEMA Ratings', url: reseauxFiche?.hemaRatings ?? '', icone: 'trophy' },
+  {
+    nom: affiliation?.federation || 'FFAMHE',
+    url: affiliation?.lienFederation ?? '',
+    icone: 'shield',
+  },
+];
+
+const reseaux = reseauxPossibles.filter((r) => !!r.url);
+
+// ── Copyright ──────────────────────────────────────────────────────────────
+//
+// Le CMS stocke la mention sans année (« © De Feu et d'Acier ·
+// Clermont-Ferrand ») ; l'année est ajoutée ici. Si quelqu'un en saisit une
+// malgré tout, elle est retirée plutôt que doublée.
+
+const annee = new Date().getFullYear();
+const mention = typographieFr(identite.copyright)
+  .trim()
+  .replace(/^©\s*/, '')
+  .replace(/^\d{4}(\s*[–—-]\s*\d{4})?\s*[·•|,-]?\s*/, '')
+  .trim();
+const copyright = mention ? `© ${annee} · ${mention}` : `© ${annee}`;
+
+// Les mentions légales et la confidentialité appartiennent à l'association,
+// pas à une implantation : leur adresse n'est jamais préfixée par l'école.
+const liensLegaux = (menus.liensLegaux ?? []).filter((l) => !!l.libelle && !!l.url);
+
+// Le logotype porte déjà le nom : la marque figurée est décorative (alt vide).
+// Pas de champ CMS pour ce fichier — il est fourni par le chantier photos ;
+// s'il manque, le pied de page se rend sans lui plutôt que de casser le build.
+const logo = resoudrePhoto('/src/assets/photos/commun/logo-de-feu-et-d-acier.png');
+---
+
+<footer class:list={['pied', classe]}>
+  <div class="gouttiere pied__interieur">
+    <Logotype
+      marque={identite.marque}
+      taille="footer"
+      disposition="inline"
+      class="pied__marquee"
+    />
+
+    <div class="pied__grille">
+      <div class="pied__marque">
+        {
+          logo && (
+            <Image src={logo} alt="" height={112} class="pied__logo" loading="lazy" decoding="async" />
+          )
+        }
+
+        {identite.description && (
+          <p class="pied__baseline">{typographieFr(identite.description)}</p>
+        )}
+
+        {
+          (email || telephone) && (
+            <p class="pied__contact">
+              {email && (
+                <a class="pied__contact-lien" href={`mailto:${email}`}>
+                  {email}
+                </a>
+              )}
+              {/* La puce n'est pas un frère du lien mais un `::before` de ce
+                  groupe : séparateur et numéro ne peuvent plus être séparés
+                  par un repli de ligne. */}
+              {telephone && (
+                <span class:list={['pied__telephone', { 'pied__telephone--separe': !!email }]}>
+                  <a class="pied__contact-lien" href={lienTelephone(telephone)}>
+                    {telephone}
+                  </a>
+                </span>
+              )}
+            </p>
+          )
+        }
+
+        {
+          reseaux.length > 0 && (
+            <ul class="pied__reseaux" role="list">
+              {reseaux.map((reseau) => (
+                <li>
+                  <a
+                    class="pied__pastille"
+                    href={reseau.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${reseau.nom} (nouvel onglet)`}
+                  >
+                    <Icon name={reseau.icone} />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </div>
+
+      {
+        colonnes.map((colonne) => (
+          <nav class="pied__colonne" aria-labelledby={colonne.id}>
+            <p class="pied__colonne-titre" id={colonne.id}>
+              {colonne.titre}
+            </p>
+            <ul class="pied__liens" role="list">
+              {colonne.liens.map((entree) => (
+                <li>
+                  {entree.href ? (
+                    <a class="pied__lien" href={entree.href}>
+                      {entree.libelle}
+                    </a>
+                  ) : (
+                    <span class="pied__lien pied__lien--inerte">{entree.libelle}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))
+      }
+    </div>
+
+    <div class="pied__bas">
+      <p class="pied__copyright">{copyright}</p>
+
+      {
+        liensLegaux.length > 0 && (
+          <ul class="pied__legal" role="list">
+            {liensLegaux.map((entree) => (
+              <li>
+                <a class="pied__legal-lien" href={entree.url}>
+                  {entree.libelle}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+  </div>
+</footer>
+
+<style>
+  /*
+   * Mobile d'abord (design-spec §4.10) : colonne centrée, gouttière 22 px.
+   * Le passage aux quatre colonnes du desktop se fait à 820 px, la bascule
+   * unique du projet (ARCHITECTURE.md §5).
+   */
+  .pied {
+    background: var(--ink);
+    border-top: var(--filet);
+    padding-block: clamp(40px, 25.143px + 3.8095vw, 80px) clamp(28px, 26.514px + 0.381vw, 32px);
+  }
+
+  .pied__interieur {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Bande 1 — le marquee. 34 px en mobile, 115 px en desktop : la taille est
+     portée par `--fs-display-footer`, le composant Logotype s'en charge. */
+  .pied__marquee {
+    justify-content: center;
+  }
+
+  /*
+   * Bande 2 — marque et colonnes de liens. En mobile la marque occupe toute la
+   * largeur et les colonnes se rangent par deux ; à partir de 820 px, les
+   * quatre colonnes de la maquette desktop.
+   */
+  .pied__grille {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    column-gap: clamp(18px, 14.286px + 0.9524vw, 28px);
+    row-gap: 26px;
+    margin-block-start: 14px;
+  }
+
+  .pied__marque {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    grid-column: 1 / -1;
+    gap: 14px;
+    text-align: center;
+  }
+
+  /* Le logo figuré n'existe que sur la maquette desktop, où il tient la tête
+     de la colonne de marque. Décoratif (le nom est déjà écrit juste au-dessus),
+     donc son absence en mobile ne retire aucun contenu. */
+  .pied__logo {
+    display: none;
+    width: auto;
+    height: 56px;
+    object-fit: contain;
+  }
+
+  .pied__baseline {
+    max-width: 46ch;
+    color: var(--parch-mute);
+    font-size: var(--fs-body-xxs);
+    line-height: 1.6;
+  }
+
+  /* Contact : « courriel · téléphone », séparés par le point ember de 3 px. */
+  .pied__contact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--parch-soft);
+    font-size: var(--fs-body-xxs);
+  }
+
+  /* Le numéro et sa puce forment un seul élément de flux : la puce ne peut
+     plus rester suspendue en fin de première ligne pendant que le téléphone
+     passe dessous (colonne de marque étroite du pied à quatre colonnes). */
+  .pied__telephone {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pied__telephone--separe::before {
+    content: '';
+    flex: none;
+    width: 3px;
+    height: 3px;
+    border-radius: var(--radius-pill);
+    background: var(--ember);
+  }
+
+  .pied__contact-lien {
+    color: inherit;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    transition: color var(--transition);
+  }
+
+  .pied__contact-lien:hover,
+  .pied__contact-lien:focus-visible {
+    color: var(--ember-hot);
+    text-decoration: underline;
+  }
+
+  /* Pastilles de réseaux — 34 px, cerclées `$parch-line`, icône 13 px. */
+  .pied__reseaux {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .pied__pastille {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: var(--filet);
+    border-radius: var(--radius-pill);
+    color: var(--parch-mute);
+    --icone-cote: 13px;
+    transition:
+      color var(--transition),
+      border-color var(--transition);
+  }
+
+  .pied__pastille:hover,
+  .pied__pastille:focus-visible {
+    color: var(--ember-hot);
+    border-color: var(--ember);
+  }
+
+  /* Colonnes de liens : deux par rangée en mobile, quatre au-delà de 820 px. */
+  .pied__colonne {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .pied__colonne-titre {
+    color: var(--parch-mute);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+  }
+
+  .pied__liens {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .pied__lien {
+    display: inline-block;
+    color: var(--parch);
+    font-size: var(--fs-body-xs);
+    line-height: var(--lh-body-tight);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  a.pied__lien:hover,
+  a.pied__lien:focus-visible {
+    color: var(--ember-hot);
+    text-decoration: underline;
+  }
+
+  /* Libellé sans adresse : ni lien mort, ni entrée disparue de l'admin. */
+  .pied__lien--inerte {
+    color: var(--parch-mute);
+  }
+
+  /* Bande 3 — copyright et liens légaux. */
+  .pied__bas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-block-start: clamp(24px, 18.429px + 1.4286vw, 40px);
+    padding-block-start: clamp(22px, 18.286px + 0.9524vw, 32px);
+    border-top: var(--filet);
+    text-align: center;
+  }
+
+  .pied__copyright,
+  .pied__legal-lien {
+    color: var(--parch-mute);
+    font-family: var(--font-eyebrow);
+    font-size: clamp(8.5px, 7.943px + 0.1429vw, 10px);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .pied__legal {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px 8px;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* En mobile la maquette écrit « MENTIONS LÉGALES · CONFIDENTIALITÉ » : le
+     point médian est une décoration, pas un mot à lire. */
+  .pied__legal li + li::before {
+    content: '·';
+    margin-inline-end: 8px;
+    color: var(--parch-mute);
+  }
+
+  .pied__legal-lien {
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .pied__legal-lien:hover,
+  .pied__legal-lien:focus-visible {
+    color: var(--ember-hot);
+    text-decoration: underline;
+  }
+
+  /* ── Desktop (design-spec §3.11) ───────────────────────────────────────── */
+
+  @media (min-width: 820px) {
+    /* 4 × 296 + 3 × 48 = 1328 px, soit 1440 moins les deux gouttières de 56. */
+    .pied__grille {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      column-gap: clamp(28px, 1.55px + 3.2258vw, 48px);
+      row-gap: 0;
+      margin-block-start: clamp(28px, -19.613px + 5.8065vw, 64px);
+      padding-block: clamp(32px, -0.774px + 3.871vw, 56px) clamp(36px, -1.29px + 4.5161vw, 64px);
+      border-top: var(--filet);
+    }
+
+    .pied__marque {
+      align-items: flex-start;
+      grid-column: auto;
+      gap: 20px;
+      text-align: start;
+    }
+
+    .pied__logo {
+      display: block;
+    }
+
+    .pied__baseline {
+      max-width: 260px;
+    }
+
+    /*
+     * La colonne de marque fait ~186 px à 820 px et ~296 px à 1440 :
+     * « courriel · téléphone » n'y tient pas d'un bout à l'autre de la plage,
+     * et la longueur de l'adresse est saisie au CMS — on ne peut donc pas
+     * parier dessus. Plutôt qu'un repli au hasard, on empile ; le séparateur,
+     * qui ne sépare plus rien, disparaît.
+     */
+    .pied__contact {
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 6px;
+    }
+
+    .pied__telephone--separe::before {
+      display: none;
+    }
+
+    /* Facebook, HEMA Ratings et la fédération sont dans la colonne « Suivre »
+       en desktop : les pastilles feraient doublon. */
+    .pied__reseaux {
+      display: none;
+    }
+
+    .pied__bas {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 22px;
+      margin-block-start: 0;
+      text-align: start;
+    }
+
+    .pied__legal {
+      justify-content: flex-end;
+      gap: 22px;
+    }
+
+    .pied__legal li + li::before {
+      content: none;
+    }
+  }
+
+</style>

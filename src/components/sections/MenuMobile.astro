@@ -1,0 +1,456 @@
+---
+/**
+ * Menu mobile plein écran — frame « Mobile — Menu ouvert » (design-spec §7).
+ *
+ * C'est le seul état de navigation déroulante maquetté. Il n'a pas de version
+ * V2 : on le reprend tel quel, avec la liste de liens de la V2 (celle du CMS).
+ *
+ * Structure de la maquette : fond `#0a0908f5` quasi opaque **sans flou**, barre
+ * du haut identique à celle du hero (blason 38 px + `x` 24 px), puis un tiroir
+ * de six lignes en `$display` 26 px — pas de capitales ici, c'est le contraste
+ * assumé avec la nav desktop — chacune fléchée d'un `arrow-up-right` et séparée
+ * par un filet, un bouton plein `$ember` et la mention du club.
+ *
+ * Accessibilité — construit sur `<dialog>` natif ouvert en `showModal()` :
+ *   - le piège à focus est celui du navigateur, le plus fiable qui soit ;
+ *   - le reste de la page devient inerte, donc invisible aux lecteurs d'écran ;
+ *   - `Escape` ferme (événement `cancel` natif) ;
+ *   - le focus revient sur le bouton qui a ouvert le menu.
+ * Un piège à focus écrit à la main double le natif : il ne sert que dans le cas
+ * (rare) où `showModal` n'existe pas, et ne coûte rien sinon.
+ *
+ * Le composant est normalement rendu **par `Nav.astro`** : c'est lui qui porte
+ * le bouton `[data-ouvrir-menu]` et l'`aria-controls` correspondant. L'inclure
+ * une seconde fois dans la page dupliquerait l'`id`.
+ */
+import { Image } from 'astro:assets';
+import Button from '../ui/Button.astro';
+import Icon from '../ui/Icon.astro';
+import Logotype from '../ui/Logotype.astro';
+import type { Ecole } from '../../lib/ecoles';
+import { lien } from '../../lib/liens';
+
+export interface EntreeMenu {
+  libelle?: string | null;
+  lien?: string | null;
+}
+
+export interface LienCms {
+  libelle?: string | null;
+  url?: string | null;
+}
+
+export interface MarqueCms {
+  debut?: string | null;
+  feu?: string | null;
+  connecteur?: string | null;
+  acier?: string | null;
+}
+
+export interface Props {
+  /** École servie par la page. */
+  ecole: Ecole;
+  /** `id` du dialogue — cible de l'`aria-controls` du bouton d'ouverture. */
+  id?: string;
+  /** Entrées du menu (`menus.menuPrincipal`). */
+  liens?: readonly EntreeMenu[] | null;
+  /** Bouton plein en bas du tiroir (en pratique `hero.boutonPrincipal`). */
+  cta?: LienCms | null;
+  /** Fragments du logotype (`identite.marque`) — repli sans blason. */
+  marque?: MarqueCms | null;
+  /** Blason du club, résolu par `Nav.astro`. */
+  logo?: ImageMetadata | null;
+  /** Mention de bas de tiroir. Défaut : « AMHE · <club affilié> ». */
+  mention?: string | null;
+  class?: string;
+}
+
+const {
+  ecole,
+  id = 'menu-mobile',
+  liens,
+  cta,
+  marque,
+  logo,
+  mention,
+  class: classe,
+} = Astro.props;
+
+const entrees = (liens ?? []).filter((e) => e?.libelle && e?.lien);
+
+// Nom lisible de la marque : sert de nom accessible au lien « accueil ».
+const nomMarque =
+  [marque?.debut, marque?.feu, marque?.connecteur, marque?.acier]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+(?=['’])/g, '')
+    .replace(/['’]\s+/g, '’')
+    .trim() || 'Accueil';
+
+// « AMHE · USAM Clermont-Ferrand » : le club support vient de la fiche école,
+// jamais du code. Seul le sigle de la discipline est constant — c'est le nom du
+// sport, pas un contenu éditorial —, et la prop `mention` le remplace au besoin.
+const clubAffilie = ecole.fiche.affiliation?.club ?? '';
+const mentionFinale = (mention ?? ['AMHE', clubAffilie].filter(Boolean).join(' · ')).trim();
+
+const accueil = lien(ecole, '/');
+---
+
+<dialog class:list={['menu', classe]} id={id} aria-label="Menu" data-menu-mobile>
+  <div class="menu__barre gouttiere">
+    <a class="menu__marque" href={accueil}>
+      {
+        logo ? (
+          <span class="menu__blason">
+            <Image src={logo} alt={nomMarque} width={80} densities={[1, 2]} />
+          </span>
+        ) : (
+          <Logotype class="menu__logotype" marque={marque} disposition="inline" balise="span" />
+        )
+      }
+    </a>
+
+    <button class="menu__fermer" type="button" data-fermer-menu autofocus>
+      <Icon name="x" />
+      <span class="visuellement-cache">Fermer le menu</span>
+    </button>
+  </div>
+
+  <nav class="menu__tiroir gouttiere" aria-label="Menu principal">
+    <ul class="menu__liste" role="list">
+      {
+        entrees.map((entree) => (
+          <li class="menu__item">
+            <a class="menu__lien" href={lien(ecole, entree.lien)}>
+              <span class="menu__libelle">{entree.libelle}</span>
+              <span class="menu__fleche" aria-hidden="true">
+                <Icon name="arrow-up-right" />
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+
+    {
+      cta?.libelle && cta?.url && (
+        <Button
+          class="menu__cta"
+          variante="pleine"
+          libelle={cta.libelle}
+          href={lien(ecole, cta.url)}
+        />
+      )
+    }
+
+    {mentionFinale && <p class="menu__mention">{mentionFinale}</p>}
+  </nav>
+</dialog>
+
+<script>
+  // Ouverture, fermeture, piège à focus. Vanilla, sans dépendance : le natif
+  // fait l'essentiel, ce script ne fait que le brancher aux boutons de la nav.
+  import { REQUETE_NAV_DESKTOP } from '../../lib/breakpoints';
+
+  document.querySelectorAll<HTMLDialogElement>('dialog[data-menu-mobile]').forEach((menu) => {
+    const identifiant = menu.id;
+
+    // Un bouton sans `aria-controls` pilote le seul menu de la page ; avec, il
+    // ne pilote que le sien.
+    const ouvreurs = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-ouvrir-menu]'),
+    ).filter((bouton) => {
+      const cible = bouton.getAttribute('aria-controls');
+      return !cible || !identifiant || cible === identifiant;
+    });
+
+    // Le tiroir n'a de raison d'être que tant que la page est en chrome mobile :
+    // il se ferme au passage en nav desktop, pas un pixel avant (cf.
+    // `BASCULE_NAV`, src/lib/breakpoints.ts).
+    const grandEcran = window.matchMedia(REQUETE_NAV_DESKTOP);
+    const natif = typeof menu.showModal === 'function';
+
+    let declencheur: HTMLElement | null = null;
+    let rendreLeFocus = true;
+
+    /** Éléments réellement atteignables au clavier dans le tiroir. */
+    const focusables = () =>
+      Array.from(
+        menu.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.getClientRects().length > 0);
+
+    const ouvrir = (source?: HTMLElement) => {
+      if (menu.open) return;
+      declencheur = source ?? (document.activeElement as HTMLElement | null);
+      rendreLeFocus = true;
+
+      if (natif) menu.showModal();
+      else menu.setAttribute('open', '');
+
+      // Le fond ne défile pas derrière le menu.
+      document.documentElement.style.setProperty('overflow', 'hidden');
+      ouvreurs.forEach((bouton) => bouton.setAttribute('aria-expanded', 'true'));
+
+      // `showModal` honore déjà `autofocus` : on refait le même geste, ce qui
+      // rend le comportement identique dans le repli sans `showModal`.
+      const premier = menu.querySelector<HTMLElement>('[autofocus]') ?? focusables()[0] ?? null;
+      premier?.focus();
+    };
+
+    const fermer = (rendre = true) => {
+      rendreLeFocus = rendre;
+      if (!menu.open) return;
+      if (natif) menu.close();
+      else {
+        menu.removeAttribute('open');
+        menu.dispatchEvent(new Event('close'));
+      }
+    };
+
+    menu.addEventListener('close', () => {
+      document.documentElement.style.removeProperty('overflow');
+      ouvreurs.forEach((bouton) => bouton.setAttribute('aria-expanded', 'false'));
+      if (rendreLeFocus) declencheur?.focus();
+      declencheur = null;
+      rendreLeFocus = true;
+    });
+
+    ouvreurs.forEach((bouton) => {
+      bouton.setAttribute('aria-expanded', 'false');
+      bouton.addEventListener('click', (evenement) => {
+        evenement.preventDefault();
+        ouvrir(bouton);
+      });
+    });
+
+    menu.querySelectorAll<HTMLElement>('[data-fermer-menu]').forEach((bouton) => {
+      bouton.addEventListener('click', () => fermer());
+    });
+
+    // Suivre un lien ferme le menu — et sans rendre le focus au bouton
+    // hamburger, sinon il volerait la vedette à l'ancre visée.
+    menu.addEventListener('click', (evenement) => {
+      const cible = (evenement.target as Element | null)?.closest('a[href]');
+      if (cible) fermer(false);
+    });
+
+    menu.addEventListener('keydown', (evenement: KeyboardEvent) => {
+      if (evenement.key === 'Escape') {
+        evenement.preventDefault();
+        fermer();
+        return;
+      }
+      if (evenement.key !== 'Tab') return;
+
+      // Doublon volontaire du piège natif : seul recours si `showModal` manque.
+      const liste = focusables();
+      if (liste.length === 0) return;
+      const premier = liste[0]!;
+      const dernier = liste[liste.length - 1]!;
+      const actif = document.activeElement;
+
+      if (evenement.shiftKey && (actif === premier || !menu.contains(actif))) {
+        evenement.preventDefault();
+        dernier.focus();
+      } else if (!evenement.shiftKey && actif === dernier) {
+        evenement.preventDefault();
+        premier.focus();
+      }
+    });
+
+    // Passage en desktop pendant que le menu est ouvert (rotation, fenêtre
+    // redimensionnée) : la nav complète reprend la main.
+    const surBascule = () => {
+      if (grandEcran.matches) fermer(false);
+    };
+    if (typeof grandEcran.addEventListener === 'function') {
+      grandEcran.addEventListener('change', surBascule);
+    }
+  });
+</script>
+
+<style>
+  .menu {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: none;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    /* 96 % — quasi opaque, et surtout pas de flou : décision de la maquette. */
+    background: var(--veil-ink-96);
+    color: var(--parch);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .menu[open] {
+    display: flex;
+    flex-direction: column;
+    animation: menu-apparition 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  .menu::backdrop {
+    background: var(--veil-ink-85);
+  }
+
+  /* Ceinture et bretelles : le script ferme le menu au passage en desktop, et
+     la CSS l'empêche d'y réapparaître. Le seuil est celui de la bascule de nav
+     (`BASCULE_NAV`, src/lib/breakpoints.ts) et non les 820 px des bascules de
+     contenu : entre 820 et 1000 la page est encore en chrome mobile, le burger
+     est le seul accès à la navigation — masquer le tiroir y laissait une bande
+     de 180 px sans aucun menu. */
+  @media (min-width: 1000px) {
+    .menu[open] {
+      display: none;
+    }
+  }
+
+  @keyframes menu-apparition {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .menu[open] {
+      animation: none;
+    }
+  }
+
+  /* ── Barre du haut (identique à celle du hero) ────────────────────────── */
+  .menu__barre {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: var(--hauteur-entete, clamp(66px, 60.057px + 1.5238vw, 82px));
+    padding-block: 14px;
+  }
+
+  .menu__marque {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+  }
+
+  /* `<Image>`, `Logotype` et `Button` sont des composants : leurs nœuds
+     échappent au scope, d'où :global sous un ancêtre scopé. */
+  .menu__blason {
+    display: inline-flex;
+  }
+
+  .menu__blason :global(img) {
+    width: auto;
+    height: 38px;
+  }
+
+  .menu__marque :global(.menu__logotype) {
+    --logo-fs: 20px;
+  }
+
+  .menu__fermer {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px; /* cible tactile, l'icône reste à 24 px */
+    height: 44px;
+    margin-right: -10px;
+    --icone-cote: 24px;
+    color: var(--parch);
+    transition: color var(--transition);
+  }
+
+  .menu__fermer:hover,
+  .menu__fermer:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  /* ── Tiroir ───────────────────────────────────────────────────────────── */
+  .menu__tiroir {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding-block: clamp(28px, 24.4px + 0.9231vw, 44px) 40px;
+  }
+
+  .menu__liste {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Filet à partir de la deuxième ligne (design-spec §7). */
+  .menu__item + .menu__item {
+    border-top: var(--filet);
+  }
+
+  .menu__lien {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 4px;
+    color: var(--parch);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .menu__libelle {
+    font-family: var(--font-display);
+    font-size: clamp(26px, 20.545px + 1.3986vw, 32px);
+    font-weight: 400;
+    line-height: 1.1;
+  }
+
+  .menu__fleche {
+    display: inline-flex;
+    flex: none;
+    --icone-cote: 16px;
+    color: var(--parch-mute);
+    transition:
+      color var(--transition),
+      transform var(--transition);
+  }
+
+  .menu__lien:hover,
+  .menu__lien:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  .menu__lien:hover .menu__fleche,
+  .menu__lien:focus-visible .menu__fleche {
+    color: var(--ember-hot);
+    transform: translate(2px, -2px);
+  }
+
+  .menu__tiroir :global(.menu__cta) {
+    align-self: flex-start;
+    margin-top: 28px;
+  }
+
+  .menu__mention {
+    margin: 24px 0 0;
+    font-family: var(--font-eyebrow);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .menu__lien:hover .menu__fleche,
+    .menu__lien:focus-visible .menu__fleche {
+      transform: none;
+    }
+  }
+</style>

@@ -1,0 +1,300 @@
+---
+/**
+ * Section « FAQ » — les questions fréquentes (design-spec §3.9 desktop, §4.8 mobile).
+ *
+ * Fond `$ink`, filet haut, padding 120/56/130/56 en desktop et 56/22/60/22 en
+ * mobile : ce sont exactement les valeurs des primitives `.section` et
+ * `.gouttiere` de `global.css`, donc rien à redéclarer ici.
+ *
+ * Deux collections, une seule liste
+ * --------------------------------
+ * Les questions générales vivent dans `src/content/commun/faq/` (elles valent
+ * pour toute l'association) et les questions d'horaires, de lieu et de tarif
+ * dans `src/content/ecoles/<école>/faq/` (elles changent d'une salle à
+ * l'autre). Le visiteur, lui, ne voit qu'une FAQ. La fusion se fait ici, à
+ * l'affichage, sans jamais dupliquer un contenu (multi-ecoles.md §4).
+ *
+ * L'ordre reste piloté par le champ « Ordre d'affichage » du CMS. Les questions
+ * locales forment un bloc, inséré dans la suite des générales au rang
+ * `rangLocales` (45 par défaut) : c'est la place que leur donne la maquette,
+ * entre « Que dois-je apporter… » (ordre 40) et « Faut-il venir à toutes les
+ * séances ? » (ordre 50). À l'intérieur du bloc, leur `ordre` respectif décide.
+ *
+ * Parité desktop / mobile
+ * -----------------------
+ * La maquette mobile ne montre que trois questions et renvoie le reste vers un
+ * lien « TOUTES LES QUESTIONS » — page qui n'existe pas. ARCHITECTURE.md §5
+ * impose la parité de contenu : on rend les huit questions dans les deux
+ * formats. L'accordéon est déjà la forme compacte, la section mobile ne pèse
+ * donc pas plus lourd, et les réponses restent dans le HTML pour les moteurs.
+ * Le titre et le chapô, absents de la maquette mobile, sont conservés pour la
+ * même raison.
+ *
+ * Réponses
+ * --------
+ * Les réponses sont du markdoc (gras, italique, liens, listes). Elles sont
+ * rendues en HTML au build, puis passées au résolveur de raccourcis : c'est ce
+ * qui fait que « {tarif} pour la saison {saison} » devient « 85 € pour la
+ * saison 2025-2026 » sans que personne n'ait à le recopier. Un raccourci
+ * inconnu fait échouer le build, avec le nom de la question fautive.
+ * Enfin l'adresse de contact, où qu'elle apparaisse, devient un lien `mailto:`.
+ */
+import SectionLabel from '../ui/SectionLabel.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import Accordion from '../ui/Accordion.astro';
+import Reveal from '../ui/Reveal.astro';
+import type { Ecole } from '../../lib/ecoles';
+import { rendreMarkdoc } from '../../lib/markdoc';
+import { contexteDe, resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
+import { typographieFr } from '../../lib/typographie';
+
+/**
+ * Une entrée de FAQ telle que la rend le lecteur Keystatic — `lireFaqGenerale()`
+ * ou `faqLocaleDe(ecole)`. Décrite structurellement plutôt qu'importée : les
+ * deux collections ont le même schéma et le composant n'a pas à savoir de
+ * laquelle vient une question.
+ */
+export interface EntreeFaq {
+  slug: string;
+  entry: {
+    question: string;
+    visible?: boolean;
+    categorie?: string;
+    miseEnAvant?: boolean;
+    /** `null` quand le champ est laissé vide dans l'admin — Keystatic ne rend
+     *  jamais `undefined` sur un champ d'entier facultatif. */
+    ordre?: number | null;
+    /** Corps markdoc, résolu à la demande par le lecteur. */
+    reponse: () => Promise<{ node: unknown }>;
+  };
+}
+
+/** En-tête de section, tel que saisi dans « Accueil · Titres des sections ». */
+export interface EnteteFaq {
+  eyebrow?: string | null;
+  titreLigne1?: string | null;
+  titreLigne2?: string | null;
+  lede?: string | null;
+}
+
+interface Props {
+  /** École servie par la page : fournit contact, tarif, créneaux aux réponses. */
+  ecole: Ecole;
+  /** Singleton `entetes.faq`. */
+  entete: EnteteFaq;
+  /** Questions générales — `lireFaqGenerale()`. */
+  questions?: EntreeFaq[];
+  /** Questions de l'école — `faqLocaleDe(ecole)`. */
+  questionsLocales?: EntreeFaq[];
+  /**
+   * Contexte de raccourcis de la page. L'assembleur le calcule une fois (il
+   * seul connaît le nombre d'armes et d'encadrants affichés) et le passe à
+   * toutes les sections. À défaut, un contexte minimal est reconstruit ici.
+   */
+  ctx?: ContexteRaccourcis;
+  /** Rang de section. Absent ⇒ numérotation automatique ; `false` ⇒ aucun numéro. */
+  num?: number | string | false;
+  /** Rang d'insertion du bloc de questions locales dans la suite des générales. */
+  rangLocales?: number;
+  /** Ouvre une réponse au chargement, comme la maquette desktop. Défaut : oui. */
+  ouvrirPremiere?: boolean;
+  /** Ancre de la section. Le menu principal pointe sur `#faq`. */
+  id?: string;
+  class?: string;
+}
+
+const {
+  ecole,
+  entete,
+  questions = [],
+  questionsLocales = [],
+  ctx,
+  num,
+  rangLocales = 45,
+  ouvrirPremiere = true,
+  id = 'faq',
+  class: classe,
+} = Astro.props;
+
+const contexte = ctx ?? contexteDe(ecole.fiche, { nbArmes: 0, nbProfs: 0 });
+const email = contexte.email;
+
+// ── Fusion des deux collections ─────────────────────────────────────────────
+
+interface QuestionRangee extends EntreeFaq {
+  locale: boolean;
+  rang: number;
+}
+
+const rangee = (q: EntreeFaq, locale: boolean): QuestionRangee => ({
+  ...q,
+  locale,
+  // Les locales occupent un rang unique dans la suite des générales ; leur
+  // « ordre » propre ne fait que les départager à l'intérieur du bloc.
+  rang: locale ? rangLocales + (q.entry.ordre ?? 100) / 1000 : (q.entry.ordre ?? 100),
+});
+
+const retenues: QuestionRangee[] = [
+  ...questions.map((q) => rangee(q, false)),
+  ...questionsLocales.map((q) => rangee(q, true)),
+]
+  .filter((q) => q.entry.visible !== false && Boolean(q.entry.question))
+  .sort((a, b) => a.rang - b.rang);
+
+// La maquette ouvre la première question. Le CMS, lui, sait laquelle mérite
+// d'être lue d'emblée (« Afficher en premier ») : on ouvre la première
+// question ainsi marquée, et à défaut la première de la liste.
+const indexOuvert = ouvrirPremiere
+  ? Math.max(
+      0,
+      retenues.findIndex((q) => q.entry.miseEnAvant),
+    )
+  : -1;
+
+// ── Rendu des réponses ──────────────────────────────────────────────────────
+//
+// `rendreMarkdoc` vit dans `src/lib/markdoc.ts` : le rendu était écrit à
+// l'identique ici, dans `Partenaires.astro` et dans `fiches/bio.ts`.
+
+/**
+ * Transforme l'adresse de contact en lien `mailto:` partout où elle apparaît
+ * en clair, sans toucher à ce qui est déjà un lien : on ne parcourt que les
+ * segments de texte, jamais l'intérieur d'une balise ni d'un `<a>`.
+ */
+function lierEmail(html: string, adresse: string): string {
+  if (!adresse || !html.includes(adresse)) return html;
+  let profondeurLien = 0;
+  return html
+    .split(/(<[^>]+>)/)
+    .map((morceau) => {
+      if (morceau.startsWith('<')) {
+        if (/^<a[\s>]/i.test(morceau)) profondeurLien += 1;
+        else if (/^<\/a\s*>/i.test(morceau)) profondeurLien -= 1;
+        return morceau;
+      }
+      if (profondeurLien > 0) return morceau;
+      return morceau.split(adresse).join(`<a href="mailto:${adresse}">${adresse}</a>`);
+    })
+    .join('');
+}
+
+const items = await Promise.all(
+  retenues.map(async (q, index) => {
+    const dossier = q.locale ? `ecoles/${ecole.slug}` : 'commun';
+    const source = `la réponse de « ${q.entry.question} » (src/content/${dossier}/faq/${q.slug}.mdoc)`;
+    const { node } = await q.entry.reponse();
+    return {
+      id: `faq-${q.slug}`,
+      // Les questions ne transitent pas par `resoudre()` (ce sont des slugs
+      // de collection, pas du texte à raccourcis) : la fine insécable devant
+      // le « ? » se pose ici. Cf. src/lib/typographie.ts.
+      question: typographieFr(q.entry.question),
+      reponseHtml: lierEmail(resoudre(rendreMarkdoc(node), contexte, source), email),
+      ouvert: index === indexOuvert,
+    };
+  }),
+);
+
+// ── En-tête ─────────────────────────────────────────────────────────────────
+
+const sourceEntetes = 'src/content/commun/entetes.yaml (rubrique « Questions fréquentes »)';
+const eyebrow = entete.eyebrow || 'Questions fréquentes';
+
+// Ligne 1 en parchemin, ligne 2 en ember italique : le motif des onze titres
+// de section de la maquette (design-spec §9.3).
+const lignesTitre = [
+  { texte: resoudre(entete.titreLigne1, contexte, sourceEntetes), accent: false },
+  { texte: resoudre(entete.titreLigne2, contexte, sourceEntetes), accent: true },
+].filter((ligne) => ligne.texte.length > 0);
+
+const lede = resoudre(entete.lede, contexte, sourceEntetes);
+// « …écrivez-nous à amhe63.dfda@gmail.com — on répond. » : l'adresse devient
+// cliquable sans que le CMS ait à connaître la syntaxe d'un lien.
+const morceauxLede = email && lede.includes(email) ? lede.split(email) : lede ? [lede] : [];
+
+const idTitre = `${id}-titre`;
+const classes = ['section', 'section--ink', 'faq', classe].filter(Boolean).join(' ');
+---
+
+{
+  items.length > 0 && (
+    <section id={id} class={classes} aria-labelledby={idTitre}>
+      <div class="gouttiere">
+        <SectionLabel libelle={eyebrow} numero={num} />
+
+        <Reveal>
+          <div class="faq__tete">
+            {lignesTitre.length > 0 && (
+              <SectionTitle lignes={lignesTitre} taille="xl" balise="h2" id={idTitre} />
+            )}
+
+            {morceauxLede.length > 0 && (
+              <p class="faq__lede">
+                {morceauxLede.map((morceau, index) => (
+                  <Fragment>
+                    {morceau}
+                    {index < morceauxLede.length - 1 && <a href={`mailto:${email}`}>{email}</a>}
+                  </Fragment>
+                ))}
+              </p>
+            )}
+          </div>
+        </Reveal>
+
+        <Accordion items={items} nom="faq" />
+      </div>
+    </section>
+  )
+}
+
+<style>
+  /*
+   * Tête de section : titre à gauche, chapô à droite, alignés sur leur ligne
+   * de base basse (design-spec §3.9, `justify: space_between`, `align: end`).
+   * L'`esp 56` de la maquette devient la marge haute, l'`esp 64` la marge
+   * basse — jamais des div vides (design-spec §0.3).
+   */
+  .faq__tete {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: clamp(18px, 9.371px + 2.2857vw, 42px);
+    margin-top: clamp(28px, 17.6px + 2.6667vw, 56px);
+    padding-bottom: clamp(28px, 14.629px + 3.4286vw, 64px);
+  }
+
+  /* Largeur bloquée à 460 dans la maquette : convertie en max-width (§10.2). */
+  .faq__lede {
+    flex: 0 1 460px;
+    max-width: 460px;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--parch-mute);
+  }
+
+  .faq__lede a {
+    color: var(--parch-soft);
+    text-decoration: underline;
+    text-decoration-color: var(--ember);
+    transition: color var(--transition);
+  }
+
+  .faq__lede a:hover,
+  .faq__lede a:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  /* Sous la bascule, le chapô passe sous le titre et reprend toute la largeur. */
+  @media (max-width: 819px) {
+    .faq__tete {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: clamp(14px, 12.5px + 0.4vw, 20px);
+    }
+
+    .faq__lede {
+      flex: 1 1 auto;
+      max-width: 62ch;
+    }
+  }
+</style>

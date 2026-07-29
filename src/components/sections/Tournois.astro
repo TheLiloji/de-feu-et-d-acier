@@ -1,0 +1,323 @@
+---
+/**
+ * Section « Tournois & saison » (design-spec §3.7, frame V2 desktop).
+ *
+ * Deux colonnes, photo à **gauche** — l'inverse de « Le club », c'est ce qui
+ * empêche la page de se lire comme une succession de blocs identiques :
+ *
+ *   ┌─────────────┐  Saison
+ *   │   photo     │  de compétition.        ← ligne 2 en ember, italique, w300
+ *   │             │
+ *   │ ◆ COMPÉTIT. │  paragraphe (580 px)
+ *   │ accroche    │  ─── trois lignes « fait » ───
+ *   └─────────────┘  [ HEMA RATINGS ] [ CALENDRIER FFAMHE ]
+ *
+ * Trois écarts assumés par rapport à la maquette :
+ *
+ *   1. la photo est **celle du swap préventif** (`IMG_3364.jpg`, cf.
+ *      ARCHITECTURE §1) : elle vient du CMS, pas d'un chemin en dur, donc le
+ *      jour où l'autorisation du portrait d'origine arrive, le remplacement se
+ *      fait dans l'admin sans toucher au code ;
+ *   2. le second bouton (« Calendrier FFAMHE ») est **harmonisé** : la maquette
+ *      le laissait sans fond ni bordure, ce que design-spec §3.7 signale
+ *      lui-même comme une incohérence probable. Les deux CTA sont donc rendus
+ *      en variante `contour`, comme partout ailleurs sur le site ;
+ *   3. la maquette **mobile n'a pas de section Tournois**. La parité de contenu
+ *      étant obligatoire (ARCHITECTURE §5), la section existe sous 820 px : la
+ *      grille se replie en colonne, rien n'est retiré.
+ *
+ * Le composant ne lit aucun contenu — il reçoit l'école et le singleton
+ * `tournois` en props (multi-ecoles.md §6.6, invariants 3 et 4).
+ */
+import type { Ecole } from '../../lib/ecoles';
+import type { lireTournois } from '../../lib/contenu';
+import type { ContexteRaccourcis } from '../../lib/raccourcis';
+import { resoudre as resoudreTexte } from '../../lib/raccourcis';
+import { resoudre as resoudrePhotoCms } from '../../lib/images';
+import { lien as lienEcole } from '../../lib/liens';
+import SectionLabel from '../ui/SectionLabel.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import MediaCard from '../ui/MediaCard.astro';
+import FactRow from '../ui/FactRow.astro';
+import Button from '../ui/Button.astro';
+import Eyebrow from '../ui/Eyebrow.astro';
+import Reveal from '../ui/Reveal.astro';
+
+/** Le singleton « Accueil · Tournois & saison », déjà lu par la page. */
+export type ContenuTournois = Awaited<ReturnType<typeof lireTournois>>;
+
+export interface Props {
+  /** École servie par la page (`src/lib/ecoles.ts`). */
+  ecole: Ecole;
+  /** Contenu du singleton `tournois`, lu par l'assembleur. */
+  contenu: ContenuTournois;
+  /**
+   * Contexte des raccourcis `{email}`, `{tarif}`… Facultatif aujourd'hui : les
+   * champs de cette section n'en contiennent pas. S'il en apparaît un et que le
+   * contexte manque, le build échoue avec un message clair plutôt que
+   * d'afficher « {email} » en production (ARCHITECTURE §7).
+   */
+  ctx?: ContexteRaccourcis;
+  /** Rang forcé du label (`7`, `'07'`, `false`). Absent ⇒ numérotation auto. */
+  num?: number | string | false;
+  /** Fond alterné. La maquette place « Tournois » sur `$ink`. */
+  fond?: 'ink' | 'coal';
+  /** Filet supérieur. À mettre à `false` après une section de même fond. */
+  filetHaut?: boolean;
+  /** Ancre de la section. Doit rester `tournois` (cf. `menus.yaml`). */
+  id?: string;
+  class?: string;
+}
+
+const {
+  ecole,
+  contenu,
+  ctx,
+  num,
+  fond = 'ink',
+  filetHaut = true,
+  id = 'tournois',
+  class: classe,
+} = Astro.props;
+
+const SOURCE = 'src/content/commun/tournois.yaml';
+const MOTIF_RACCOURCI = /\{[a-z_]+\}/;
+
+/** Résout les raccourcis d'un champ, ou refuse de rendre un raccourci brut. */
+function texte(valeur: string | null | undefined, champ: string): string {
+  const brut = valeur ?? '';
+  if (!brut) return '';
+  if (ctx) return resoudreTexte(brut, ctx, `${SOURCE} (${champ})`);
+  if (MOTIF_RACCOURCI.test(brut)) {
+    throw new Error(
+      `Tournois.astro : le champ « ${champ} » de ${SOURCE} contient un raccourci, ` +
+        'mais la section a été rendue sans sa prop « ctx ». ' +
+        'Passer contexteDe(ecole.fiche, comptes) depuis la page.',
+    );
+  }
+  return brut;
+}
+
+const photo = resoudrePhotoCms(contenu.photo);
+
+const titre = [
+  { texte: texte(contenu.titreLigne1, 'titreLigne1') },
+  { texte: texte(contenu.titreLigne2, 'titreLigne2'), accent: true },
+].filter((ligne) => ligne.texte.length > 0);
+
+const corps = texte(contenu.texte, 'texte');
+const overlayEyebrow = texte(contenu.overlayEyebrow, 'overlayEyebrow');
+const overlayTitre = texte(contenu.overlayTitre, 'overlayTitre');
+
+const faits = (contenu.faits ?? []).filter((fait) => fait.titre || fait.texte);
+
+// `lien()` laisse les URL externes intactes et préfixe les cibles internes par
+// la racine de l'école : aucune ancre en dur ici (multi-ecoles.md, invariant 5).
+const boutons = (contenu.boutons ?? [])
+  .map((bouton) => ({
+    libelle: texte(bouton.libelle, 'boutons.libelle'),
+    href: lienEcole(ecole, bouton.url),
+    externe: /^https?:\/\//i.test(bouton.url ?? ''),
+  }))
+  .filter((bouton) => bouton.libelle && bouton.href);
+
+const idTitre = `${id}-titre`;
+---
+
+<section
+  class:list={[
+    'section',
+    `section--${fond}`,
+    { 'section--sans-filet': !filetHaut },
+    'tournois',
+    classe,
+  ]}
+  id={id}
+  aria-labelledby={titre.length > 0 ? idTitre : undefined}
+  aria-label={titre.length > 0 ? undefined : 'Tournois et saison'}
+>
+  <div class="gouttiere">
+    <SectionLabel libelle={contenu.eyebrow || 'Tournois & saison'} numero={num} />
+
+    <div class="tournois__split">
+      <div class="tournois__visuel">
+        <Reveal>
+          <MediaCard
+            image={photo?.source ?? null}
+            alt={photo?.alt ?? ''}
+            objectPosition={photo?.objectPosition ?? '50% 50%'}
+            ratio="3 / 4"
+            voile="nul"
+            assise="forte"
+            rayon={2}
+            sizes="(min-width: 820px) 36vw, calc(100vw - 44px)"
+            largeurs={[390, 489, 735, 980]}
+          >
+            {/* Le conteneur du slot est rendu inconditionnellement : un élément
+                `slot="…"` placé dans une expression n'est pas toujours reconnu
+                comme slot nommé par le compilateur. Les deux lignes qu'il porte
+                restent, elles, conditionnelles. */}
+            <div slot="bas" class="tournois__overlay">
+              {overlayEyebrow && <Eyebrow texte={overlayEyebrow} marque="diamant" ton="soft" taille="petite" />}
+              {overlayTitre && <p class="tournois__accroche">{overlayTitre}</p>}
+            </div>
+          </MediaCard>
+          {photo?.credit && <p class="tournois__credit">{photo.credit}</p>}
+        </Reveal>
+      </div>
+
+      <div class="tournois__contenu">
+        <Reveal delai={90}>
+          {titre.length > 0 && <SectionTitle lignes={titre} taille="l" id={idTitre} />}
+
+          {corps && <p class="tournois__corps">{corps}</p>}
+
+          {
+            faits.length > 0 && (
+              <div class="tournois__faits">
+                {faits.map((fait) => (
+                  <FactRow
+                    libelle={texte(fait.titre, 'faits.titre')}
+                    valeur={texte(fait.texte, 'faits.texte')}
+                  />
+                ))}
+              </div>
+            )
+          }
+
+          {
+            boutons.length > 0 && (
+              <div class="tournois__ctas">
+                {boutons.map((bouton) => (
+                  <Button
+                    variante="contour"
+                    taille="petite"
+                    libelle={bouton.libelle}
+                    href={bouton.href}
+                    externe={bouton.externe}
+                  />
+                ))}
+              </div>
+            )
+          }
+        </Reveal>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /*
+   * Espacements. La maquette donne les valeurs desktop (esp 56, 28, 36, 40) ;
+   * les valeurs mobile sont interpolées linéairement entre 390 et 1440 px
+   * (ARCHITECTURE §5 : fluide, aucun breakpoint tablette maquetté).
+   */
+  .tournois {
+    --tournois-esp-tete: clamp(32px, 23.086px + 2.2857vw, 56px); /* label → split */
+    --tournois-esp-titre: clamp(20px, 17.029px + 0.7619vw, 28px); /* titre → corps */
+    --tournois-esp-corps: clamp(26px, 22.286px + 0.9524vw, 36px); /* corps → faits */
+    --tournois-esp-faits: clamp(28px, 23.543px + 1.1429vw, 40px); /* faits → CTA */
+  }
+
+  /*
+   * Photo 489.2 / contenu 782.8 sur une largeur utile de 1328 (gouttière 56),
+   * gouttière interne 56. En colonne sous 820 px : la photo d'abord, puis le
+   * texte — l'ordre du DOM, aucun `order` à rattraper au clavier.
+   */
+  .tournois__split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--tournois-esp-tete);
+    margin-top: var(--tournois-esp-tete);
+  }
+
+  @media (min-width: 820px) {
+    .tournois__split {
+      grid-template-columns: minmax(0, 489fr) minmax(0, 783fr);
+      gap: 56px;
+      align-items: start;
+    }
+  }
+
+  /* ── Photo et son incrustation ─────────────────────────────────────────── */
+
+  /* La maquette pose l'overlay à 28 px du bord ; MediaCard applique 16→36 par
+     défaut, on ramène la marge interne à la valeur de la frame. */
+  .tournois__visuel :global(.media-card) {
+    --media-pad: clamp(18px, 14.286px + 0.9524vw, 28px);
+  }
+
+  .tournois__overlay {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 46ch;
+  }
+
+  /* Overlay vide (les deux champs non renseignés) : rien à incruster. */
+  .tournois__overlay:empty {
+    display: none;
+  }
+
+  /* $display 24 / lh 1.1 / $parch — l'accroche « Plusieurs membres engagés… ». */
+  .tournois__accroche {
+    margin: 0;
+    color: var(--parch);
+    font-family: var(--font-display);
+    font-size: clamp(18px, 15.771px + 0.5714vw, 24px);
+    font-weight: 400;
+    line-height: 1.1;
+    text-wrap: pretty;
+  }
+
+  /* Crédit photo : présent dans le CMS, affiché seulement s'il est renseigné. */
+  .tournois__credit {
+    margin: 10px 0 0;
+    color: var(--parch-mute);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: var(--lh-body-tight);
+  }
+
+  /* ── Colonne de texte ──────────────────────────────────────────────────── */
+
+  /*
+   * La maquette donne 66 px à ce titre — une valeur à elle, plus petite que les
+   * 70 px habituels parce que la colonne est étroite. On surcharge donc le
+   * corps du composant plutôt que d'arrondir à la taille standard.
+   */
+  .tournois__contenu :global(.titre-section) {
+    --titre-fs: clamp(25px, 9.771px + 3.9048vw, 66px);
+  }
+
+  .tournois__corps {
+    max-width: 580px;
+    margin: var(--tournois-esp-titre) 0 0;
+    color: var(--parch-soft);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+  }
+
+  /* Les `FactRow` empilés forment d'eux-mêmes le tableau à filets : filet haut
+     sur la première ligne, filet bas sur toutes. */
+  .tournois__faits {
+    margin-top: var(--tournois-esp-corps);
+  }
+
+  .tournois__ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(12px, 10.514px + 0.381vw, 16px);
+    margin-top: var(--tournois-esp-faits);
+  }
+
+  /* Sous 560 px, les deux CTA passent l'un sous l'autre et occupent toute la
+     largeur — la règle de la maquette mobile pour les boutons (§9.5). */
+  @media (max-width: 559.98px) {
+    .tournois__ctas {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+</style>

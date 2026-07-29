@@ -1,0 +1,78 @@
+---
+/**
+ * Filet — le trait de 1 px qui rythme tout le site.
+ *
+ * La maquette compte 157 traits `$parch-line` (design-spec §1.6). L'immense
+ * majorité sont des **bordures** : séparateur inter-sections, filet bas d'un
+ * label, cadre d'une carte. Celles-là s'écrivent `border-top: var(--filet)`
+ * dans le composant concerné — inutile d'ajouter un élément pour ça.
+ *
+ * Ce composant ne sert qu'aux filets **autonomes**, ceux qui existent pour
+ * eux-mêmes et qu'aucune bordure ne peut porter :
+ *
+ *   - le trait de 60 × 1 px sous le logotype du hero (`ton="logo"`) ;
+ *   - le trait de 36 × 1 px `$ember` au-dessus d'un lien de carte (`ton="ember"`) ;
+ *   - le séparateur interne d'une carte prof (`largeur="pleine"`).
+ *
+ * Purement décoratif, donc masqué à l'assistance technique.
+ *
+ * Exemples :
+ *   <Filet largeur={60} ton="logo" />
+ *   <Filet largeur={36} ton="ember" marge="12px 0 0" />
+ *   <Filet />
+ */
+
+interface Props {
+  /** Largeur en px si numérique, `"pleine"` pour 100 %. Défaut : `"pleine"`. */
+  largeur?: number | string;
+  /** Épaisseur en px. Défaut 1 — la maquette n'en connaît pas d'autre. */
+  epaisseur?: number;
+  /** Couleur : `ligne` 12 % · `forte` 22 % · `logo` 32 % · `ember`. */
+  ton?: 'ligne' | 'forte' | 'logo' | 'ember';
+  /** Valeur de `margin` (raccourci CSS complet). */
+  marge?: string;
+  class?: string;
+}
+
+const { largeur = 'pleine', epaisseur = 1, ton = 'ligne', marge, class: classe } = Astro.props;
+
+const largeurCss =
+  largeur === 'pleine' ? '100%' : typeof largeur === 'number' ? `${largeur}px` : largeur;
+
+const styles = [
+  `--filet-largeur:${largeurCss}`,
+  `--filet-epaisseur:${epaisseur}px`,
+  marge ? `margin:${marge}` : null,
+]
+  .filter(Boolean)
+  .join(';');
+---
+
+<span class:list={['filet-ui', `filet-ui--${ton}`, classe]} style={styles} aria-hidden="true"></span>
+
+<style>
+  .filet-ui {
+    display: block;
+    flex: none;
+    width: var(--filet-largeur, 100%);
+    max-width: 100%;
+    height: var(--filet-epaisseur, 1px);
+    background: var(--filet-couleur, var(--parch-line));
+  }
+
+  .filet-ui--ligne {
+    --filet-couleur: var(--parch-line);
+  }
+
+  .filet-ui--forte {
+    --filet-couleur: var(--line-strong);
+  }
+
+  .filet-ui--logo {
+    --filet-couleur: var(--line-logo);
+  }
+
+  .filet-ui--ember {
+    --filet-couleur: var(--ember);
+  }
+</style>

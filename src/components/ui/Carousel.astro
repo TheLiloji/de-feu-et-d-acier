@@ -1,0 +1,482 @@
+---
+/**
+ * Carousel — bande défilable (armes, profs, galerie, mini-cours).
+ *
+ * design-spec §9.11 : la maquette positionne les cartes en absolu à partir de
+ * x = 22 avec un pas de `largeur + 12`. En intégration, `display: flex` +
+ * `overflow-x: auto` + `scroll-snap-type: x mandatory` avec `padding-inline`
+ * égal à la gouttière reproduit exactement ce rendu, en restant fluide.
+ *
+ * Le composant ajoute ce que la maquette mobile ne montrait pas : des flèches,
+ * un compteur et une pagination optionnelle — la parité desktop/mobile impose
+ * que la même bande serve aussi au pointeur et au clavier (ARCHITECTURE.md §5).
+ *
+ * Navigation clavier complète sur la piste : ← → d'un élément à l'autre,
+ * Origine / Fin aux extrémités. `prefers-reduced-motion` coupe le défilement
+ * animé (la règle globale neutralise déjà `scroll-behavior`).
+ *
+ * `grilleDesktop` transforme la bande en grille de N colonnes au-dessus de
+ * 820 px : la même liste sert alors le carrousel mobile et la grille desktop,
+ * sans dupliquer le balisage.
+ *
+ * Les enfants sont passés en slot ; chacun devient un « pas » du défilement.
+ */
+import Icon from './Icon.astro';
+
+export interface Props {
+  /** Libellé de la zone défilable, lu par les lecteurs d'écran. */
+  libelle: string;
+  /** Largeur CSS d'un élément. Maquette : 258 (armes), 158 (profs), 236 (galerie). */
+  largeurItem?: string;
+  /** Espace entre les éléments. Maquette : 12 px. */
+  gap?: string;
+  /** Nombre d'éléments — permet de rendre compteur et pastilles dès le HTML. */
+  nombre?: number;
+  fleches?: boolean;
+  compteur?: boolean;
+  /** Pastilles de pagination (la maquette n'en met que sous les armes). */
+  points?: boolean;
+  /** Indicateur « GLISSER » + chevrons, à droite de la barre. */
+  indice?: boolean;
+  /** Fait déborder la bande hors de la gouttière, comme la maquette. */
+  debordement?: boolean;
+  /** ≥ 820 px : grille de N colonnes, sans défilement ni commandes. */
+  grilleDesktop?: number;
+  class?: string;
+}
+
+const {
+  libelle,
+  largeurItem = 'clamp(220px, 66vw, 258px)',
+  gap = '12px',
+  nombre,
+  fleches = true,
+  compteur = true,
+  points = false,
+  indice = false,
+  debordement = true,
+  grilleDesktop,
+  class: classe,
+} = Astro.props;
+
+const aBarre = fleches || compteur || indice;
+const total = nombre ?? 0;
+
+const style = [
+  `--carrousel-largeur:${largeurItem}`,
+  `--carrousel-gap:${gap}`,
+  grilleDesktop ? `--carrousel-colonnes:${grilleDesktop}` : '',
+]
+  .filter(Boolean)
+  .join(';');
+---
+
+<div
+  class:list={['carrousel', classe]}
+  data-carrousel
+  data-debordement={debordement ? '' : undefined}
+  data-grille={grilleDesktop ? '' : undefined}
+  style={style}
+>
+  {
+    aBarre && (
+      <div class="carrousel__barre">
+        {indice && (
+          <p class="carrousel__glisser">
+            Glisser
+            <Icon name="chevrons-right" />
+          </p>
+        )}
+
+        <div class="carrousel__cmd">
+          {compteur && (
+            <p class="carrousel__compteur" aria-hidden="true">
+              <span data-courant>1</span>
+              <span class="carrousel__barre-oblique">/</span>
+              <span data-total>{total || 1}</span>
+            </p>
+          )}
+
+          {fleches && (
+            <div class="carrousel__fleches">
+              <button type="button" class="carrousel__fleche" data-prec aria-label="Élément précédent">
+                <Icon name="arrow-left" />
+              </button>
+              <button type="button" class="carrousel__fleche" data-suiv aria-label="Élément suivant">
+                <Icon name="arrow-right" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  {/* `tabindex` posé par le script : la piste n'est un arrêt de tabulation que
+      lorsqu'elle défile vraiment (cf. `mettreAJour()`). En grille desktop, ou
+      quand tout tient à l'écran, il n'y a rien à faire défiler au clavier. */}
+  <div class="carrousel__piste" data-piste role="group" aria-label={libelle}>
+    <slot />
+  </div>
+
+  {
+    points && (
+      <div class="carrousel__points" data-points role="group" aria-label={`Pagination — ${libelle}`}>
+        {Array.from({ length: total }, (_, i) => (
+          <button
+            type="button"
+            class="carrousel__point"
+            data-index={i}
+            aria-label={`Aller à l’élément ${i + 1}`}
+            aria-current={i === 0 ? 'true' : undefined}
+          />
+        ))}
+      </div>
+    )
+  }
+</div>
+
+<script>
+  // Carrousel : défilement par pas, flèches, compteur, pastilles, clavier.
+  // Vanilla, une seule passe pour tous les carrousels de la page.
+  const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const initialiser = (racine: HTMLElement) => {
+    const piste = racine.querySelector<HTMLElement>('[data-piste]');
+    if (!piste) return;
+
+    const prec = racine.querySelector<HTMLButtonElement>('[data-prec]');
+    const suiv = racine.querySelector<HTMLButtonElement>('[data-suiv]');
+    const courant = racine.querySelector<HTMLElement>('[data-courant]');
+    const total = racine.querySelector<HTMLElement>('[data-total]');
+    const points = racine.querySelector<HTMLElement>('[data-points]');
+
+    const elements = () => Array.from(piste.children) as HTMLElement[];
+
+    // Au-dessus de 820 px, `grilleDesktop` remplace la bande par une grille :
+    // plus rien à piloter.
+    const grille = window.matchMedia('(min-width: 820px)');
+    const enGrille = () => racine.hasAttribute('data-grille') && grille.matches;
+
+    const decalage = () => parseFloat(getComputedStyle(piste).paddingLeft) || 0;
+    const cible = (el: HTMLElement) => el.offsetLeft - decalage();
+
+    const indexCourant = () => {
+      const els = elements();
+      let index = 0;
+      let ecart = Number.POSITIVE_INFINITY;
+      els.forEach((el, i) => {
+        const d = Math.abs(cible(el) - piste.scrollLeft);
+        if (d < ecart) {
+          ecart = d;
+          index = i;
+        }
+      });
+      return index;
+    };
+
+    const aller = (index: number) => {
+      const els = elements();
+      if (els.length === 0) return;
+      const borne = Math.min(Math.max(index, 0), els.length - 1);
+      piste.scrollTo({ left: cible(els[borne]), behavior: reduit ? 'auto' : 'smooth' });
+    };
+
+    // Les pastilles sont reconstruites si leur nombre ne colle pas au contenu
+    // réellement rendu (contenu piloté par le CMS).
+    const synchroniserPoints = () => {
+      if (!points) return;
+      const els = elements();
+      if (points.children.length === els.length) return;
+      points.replaceChildren();
+      els.forEach((_, i) => {
+        const bouton = document.createElement('button');
+        bouton.type = 'button';
+        bouton.className = 'carrousel__point';
+        bouton.dataset.index = String(i);
+        bouton.setAttribute('aria-label', `Aller à l’élément ${i + 1}`);
+        points.append(bouton);
+      });
+    };
+
+    const mettreAJour = () => {
+      const els = elements();
+      if (total) total.textContent = String(els.length);
+      piste.tabIndex = enGrille() || piste.scrollWidth <= piste.clientWidth ? -1 : 0;
+      if (enGrille()) return;
+
+      const index = indexCourant();
+      const debut = piste.scrollLeft <= 1;
+      const fin = piste.scrollLeft >= piste.scrollWidth - piste.clientWidth - 1;
+
+      if (courant) courant.textContent = String(index + 1);
+      // `aria-disabled` et non `disabled` : un bouton qui devient `disabled`
+      // alors qu'il a le focus voit celui-ci rendu au <body> par le navigateur,
+      // et la tabulation suivante repart du début du document. Ici les deux
+      // flèches restent focalisables — en prime, « précédent » entre enfin dans
+      // l'ordre de tabulation dès le chargement.
+      if (prec) prec.setAttribute('aria-disabled', String(debut));
+      if (suiv) suiv.setAttribute('aria-disabled', String(fin));
+
+      if (points) {
+        Array.from(points.children).forEach((point, i) => {
+          if (i === index) point.setAttribute('aria-current', 'true');
+          else point.removeAttribute('aria-current');
+        });
+      }
+    };
+
+    const enButee = (bouton: HTMLButtonElement) =>
+      bouton.getAttribute('aria-disabled') === 'true';
+
+    prec?.addEventListener('click', () => {
+      if (enButee(prec)) return;
+      aller(indexCourant() - 1);
+    });
+    suiv?.addEventListener('click', () => {
+      if (enButee(suiv)) return;
+      aller(indexCourant() + 1);
+    });
+
+    points?.addEventListener('click', (evenement) => {
+      const bouton = (evenement.target as HTMLElement).closest<HTMLElement>('[data-index]');
+      if (!bouton) return;
+      aller(Number(bouton.dataset.index));
+    });
+
+    piste.addEventListener('keydown', (evenement: KeyboardEvent) => {
+      if (enGrille()) return;
+      const source = evenement.target as HTMLElement;
+      if (source.closest('input, textarea, select')) return;
+
+      switch (evenement.key) {
+        case 'ArrowRight':
+          evenement.preventDefault();
+          aller(indexCourant() + 1);
+          break;
+        case 'ArrowLeft':
+          evenement.preventDefault();
+          aller(indexCourant() - 1);
+          break;
+        case 'Home':
+          evenement.preventDefault();
+          aller(0);
+          break;
+        case 'End':
+          evenement.preventDefault();
+          aller(elements().length - 1);
+          break;
+      }
+    });
+
+    let attente = 0;
+    piste.addEventListener(
+      'scroll',
+      () => {
+        if (attente) return;
+        attente = window.requestAnimationFrame(() => {
+          attente = 0;
+          mettreAJour();
+        });
+      },
+      { passive: true },
+    );
+
+    window.addEventListener('resize', mettreAJour, { passive: true });
+    grille.addEventListener('change', mettreAJour);
+
+    synchroniserPoints();
+    mettreAJour();
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-carrousel]').forEach(initialiser);
+</script>
+
+<style>
+  .carrousel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .carrousel__barre {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  /* Sans indicateur « GLISSER », les commandes se calent à droite. */
+  .carrousel__cmd {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-left: auto;
+  }
+
+  .carrousel__glisser {
+    /* `Icon.astro` se dimensionne par `--icone-cote` (variable héritée) : son
+       style scopé l'emporte sur un `:global(svg)` écrit ici. */
+    --icone-cote: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  .carrousel__compteur {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    color: var(--parch-mute);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .carrousel__barre-oblique {
+    color: var(--parch-line);
+  }
+
+  .carrousel__fleches {
+    display: flex;
+    gap: 8px;
+  }
+
+  .carrousel__fleche {
+    --icone-cote: 14px;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--btn-border);
+    border-radius: var(--radius-pill);
+    color: var(--parch);
+    transition:
+      border-color var(--transition),
+      color var(--transition),
+      opacity var(--transition);
+  }
+
+  .carrousel__fleche:hover:not([aria-disabled='true']) {
+    border-color: var(--ember-hot);
+    color: var(--ember-hot);
+  }
+
+  .carrousel__fleche[aria-disabled='true'] {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  /* ── La piste ───────────────────────────────────────────────────────────── */
+
+  .carrousel__piste {
+    position: relative;
+    display: flex;
+    gap: var(--carrousel-gap, 12px);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    /* Les contours de focus des cartes ne doivent pas être rognés. */
+    margin-block: -4px;
+    padding-block: 4px;
+    scrollbar-width: none;
+  }
+
+  .carrousel__piste::-webkit-scrollbar {
+    display: none;
+  }
+
+  .carrousel__piste:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 2px;
+  }
+
+  /* Les enfants arrivent par le slot : hors de la portée du style scopé. */
+  .carrousel__piste > :global(*) {
+    flex: 0 0 var(--carrousel-largeur, 258px);
+    scroll-snap-align: start;
+  }
+
+  /* Débordement : la bande sort de la gouttière, comme dans la maquette. */
+  .carrousel[data-debordement] .carrousel__piste {
+    margin-inline: calc(-1 * var(--gouttiere));
+    padding-inline: var(--gouttiere);
+    scroll-padding-inline: var(--gouttiere);
+  }
+
+  /* ── Pastilles ──────────────────────────────────────────────────────────── */
+
+  .carrousel__points {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    min-height: 3px;
+    padding-top: 2px;
+  }
+
+  .carrousel__point {
+    width: 7px;
+    height: 3px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-1);
+    background: var(--line-strong);
+    transition:
+      width var(--transition),
+      background-color var(--transition);
+  }
+
+  .carrousel__point[aria-current='true'] {
+    width: 18px;
+    background: var(--ember);
+  }
+
+  /* Cible tactile confortable sans grossir la pastille. */
+  .carrousel__point::after {
+    content: '';
+    display: block;
+    height: 24px;
+    margin-top: -10px;
+  }
+
+  /* ── ≥ 820 px : bascule en grille ───────────────────────────────────────── */
+
+  @media (min-width: 820px) {
+    .carrousel[data-grille] .carrousel__barre,
+    .carrousel[data-grille] .carrousel__points {
+      display: none;
+    }
+
+    .carrousel[data-grille] .carrousel__piste {
+      display: grid;
+      grid-template-columns: repeat(var(--carrousel-colonnes, 3), minmax(0, 1fr));
+      gap: clamp(16px, 1rem + 0.8vw, 24px);
+      overflow: visible;
+      margin-inline: 0;
+      padding-inline: 0;
+    }
+
+    .carrousel[data-grille] .carrousel__piste > :global(*) {
+      flex: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .carrousel__point,
+    .carrousel__fleche {
+      transition: none;
+    }
+  }
+</style>

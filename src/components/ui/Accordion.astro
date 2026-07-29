@@ -1,0 +1,260 @@
+---
+/**
+ * Accordion — liste de questions dépliables (FAQ).
+ *
+ * design-spec §3.9 et §9.13 : conteneur à filet haut `--line-strong`, items à
+ * filet bas ; ligne de question en `space_between` avec une icône `plus`, et à
+ * l'ouverture un fond `--ember-tint-3`, la question en `--ember` et l'icône
+ * `minus`.
+ *
+ * Construit sur `<details>` / `<summary>` natifs : ouverture et fermeture,
+ * navigation clavier (Tab, Entrée, Espace), recherche dans la page et impression
+ * fonctionnent sans une ligne de JavaScript. L'attribut `name` rend l'accordéon
+ * exclusif côté navigateur (une seule réponse ouverte à la fois).
+ *
+ * Trois façons de fournir une réponse, par ordre de priorité :
+ *   1. `Corps`       — le composant rendu d'une entrée markdoc :
+ *                      `const { Content } = await render(entree)` puis
+ *                      `{ question, Corps: Content }` ;
+ *   2. `reponseHtml` — du HTML déjà produit ;
+ *   3. `reponse`     — du texte simple.
+ */
+import Icon from './Icon.astro';
+
+export interface ItemAccordeon {
+  question: string;
+  reponse?: string;
+  reponseHtml?: string;
+  /** Composant Astro (corps markdoc rendu). */
+  Corps?: any;
+  /** Ouvert au chargement — la maquette ouvre la première question. */
+  ouvert?: boolean;
+  /** Ancre : permet un lien direct vers la question. */
+  id?: string;
+}
+
+export interface Props {
+  items: ItemAccordeon[];
+  /** Une seule réponse ouverte à la fois (comportement natif `name`). */
+  exclusif?: boolean;
+  /** Nom du groupe exclusif. Généré si absent. */
+  nom?: string;
+  class?: string;
+}
+
+const { items = [], exclusif = true, nom, class: classe } = Astro.props;
+
+// Deux accordéons de la même page ne doivent pas se refermer l'un l'autre :
+// le nom de groupe est unique par instance quand l'appelant n'en impose pas.
+const groupe = nom ?? `accordeon-${Math.random().toString(36).slice(2, 9)}`;
+---
+
+<div class:list={['accordeon', classe]}>
+  {
+    items.map((item, index) => {
+      const Corps = item.Corps;
+      const idItem = item.id ?? `${groupe}-${index + 1}`;
+      return (
+        <details
+          class="accordeon__item"
+          id={idItem}
+          open={item.ouvert}
+          {...(exclusif ? { name: groupe } : {})}
+        >
+          <summary class="accordeon__question">
+            <span class="accordeon__texte">{item.question}</span>
+            <span class="accordeon__icone accordeon__icone--plus" aria-hidden="true">
+              <Icon name="plus" />
+            </span>
+            <span class="accordeon__icone accordeon__icone--moins" aria-hidden="true">
+              <Icon name="minus" />
+            </span>
+          </summary>
+
+          <div class="accordeon__reponse">
+            {Corps ? (
+              <Corps />
+            ) : item.reponseHtml ? (
+              <div set:html={item.reponseHtml} />
+            ) : item.reponse ? (
+              <p>{item.reponse}</p>
+            ) : null}
+          </div>
+        </details>
+      );
+    })
+  }
+</div>
+
+<script>
+  // Lien direct vers une question : « …/#faq-3 » ouvre l'item correspondant.
+  // Le reste du composant est purement natif — ce script est un confort, pas
+  // une dépendance.
+  const ouvrirDepuisAncre = () => {
+    const brut = window.location.hash.slice(1);
+    // `decodeURIComponent` lève une URIError sur un « % » isolé (« #100%25 »
+    // mal recopié, lien tronqué…). Sans ce filet, l'exception remonte à
+    // l'appel initial et l'écouteur `hashchange` n'est jamais posé.
+    let ancre: string;
+    try {
+      ancre = decodeURIComponent(brut);
+    } catch {
+      ancre = brut;
+    }
+    if (!ancre) return;
+    const cible = document.getElementById(ancre);
+    if (cible instanceof HTMLDetailsElement && cible.classList.contains('accordeon__item')) {
+      cible.open = true;
+    }
+  };
+
+  ouvrirDepuisAncre();
+  window.addEventListener('hashchange', ouvrirDepuisAncre);
+</script>
+
+<style>
+  .accordeon {
+    border-top: var(--filet-fort);
+    /* Autorise la transition entre 0 et `auto` sur ::details-content. */
+    interpolate-size: allow-keywords;
+  }
+
+  .accordeon__item {
+    border-bottom: var(--filet-fort);
+    transition: background-color var(--transition);
+  }
+
+  .accordeon__item[open] {
+    background: var(--ember-tint-3);
+  }
+
+  .accordeon__question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: clamp(18px, 0.8rem + 1.1vw, 26px) clamp(4px, 0.1rem + 1.2vw, 16px);
+    cursor: pointer;
+    font-size: clamp(14.5px, 13.6px + 0.24vw, 17px);
+    font-weight: 500;
+    line-height: var(--lh-body-tight);
+    color: var(--parch);
+    list-style: none;
+    transition: color var(--transition);
+  }
+
+  /* Le triangle natif de Safari et de Chrome. */
+  .accordeon__question::-webkit-details-marker {
+    display: none;
+  }
+  .accordeon__question::marker {
+    content: '';
+  }
+
+  .accordeon__item[open] > .accordeon__question {
+    color: var(--ember);
+  }
+
+  .accordeon__question:hover {
+    color: var(--ember-hot);
+  }
+
+  .accordeon__question:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: -2px;
+  }
+
+  .accordeon__texte {
+    max-width: 62ch;
+  }
+
+  .accordeon__icone {
+    /* `Icon.astro` lit `--icone-cote` par héritage : son style scopé
+       l'emporterait sur un `:global(svg)` écrit ici. */
+    --icone-cote: clamp(13px, 0.7rem + 0.1vw, 14px);
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: var(--parch-soft);
+  }
+
+  .accordeon__icone--moins {
+    display: none;
+    color: var(--ember);
+  }
+
+  .accordeon__item[open] > .accordeon__question .accordeon__icone--plus {
+    display: none;
+  }
+
+  .accordeon__item[open] > .accordeon__question .accordeon__icone--moins {
+    display: grid;
+  }
+
+  .accordeon__reponse {
+    max-width: 82ch;
+    padding: 0 clamp(4px, 0.1rem + 1.2vw, 16px) clamp(20px, 0.9rem + 1.3vw, 30px);
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--parch-soft);
+  }
+
+  .accordeon__reponse :global(p) {
+    margin: 0 0 0.9em;
+  }
+
+  .accordeon__reponse :global(p:last-child),
+  .accordeon__reponse :global(ul:last-child),
+  .accordeon__reponse :global(ol:last-child) {
+    margin-bottom: 0;
+  }
+
+  .accordeon__reponse :global(ul),
+  .accordeon__reponse :global(ol) {
+    margin: 0 0 0.9em;
+    padding-left: 1.2em;
+  }
+
+  .accordeon__reponse :global(li) {
+    margin-bottom: 0.3em;
+  }
+
+  .accordeon__reponse :global(a) {
+    color: var(--parch);
+    text-decoration: underline;
+    text-decoration-color: var(--ember);
+  }
+
+  .accordeon__reponse :global(a:hover) {
+    color: var(--ember-hot);
+  }
+
+  /* Dépliage animé là où le navigateur sait le faire ; ailleurs, bascule
+     instantanée, ce qui est le comportement natif de <details>. */
+  @supports selector(::details-content) {
+    .accordeon__item::details-content {
+      block-size: 0;
+      overflow: hidden;
+      transition:
+        block-size 280ms cubic-bezier(0.22, 0.61, 0.36, 1),
+        content-visibility 280ms allow-discrete;
+    }
+
+    .accordeon__item[open]::details-content {
+      block-size: auto;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .accordeon__item,
+    .accordeon__question {
+      transition: none;
+    }
+
+    @supports selector(::details-content) {
+      .accordeon__item::details-content {
+        transition: none;
+      }
+    }
+  }
+</style>

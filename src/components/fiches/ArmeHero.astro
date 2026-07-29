@@ -1,0 +1,476 @@
+---
+/**
+ * Hero de la fiche arme — design-spec §5.1 (bloc 2), §5.3 et §5.4.
+ *
+ * Deux mises en page, **un seul balisage** :
+ *
+ *   - desktop : colonne de texte de 640 à gauche, photo 588×660 à droite,
+ *     `gap: 100`, alignées au centre ; le résumé et les deux boutons sont dans
+ *     la colonne de texte ;
+ *   - mobile : la photo devient un cadre de 390×430 sur lequel se posent la
+ *     barre de retour (pastille ronde + tag « FICHE ARME ») et le bloc de
+ *     titre ; le résumé passe dessous, dans le flux (bloc `Desc` de §5.2).
+ *
+ * La bascule tient en une grille : sous 1000 px, `.fiche-hero__texte` passe en
+ * `display: contents`, ce qui fait de `intro` et `suite` deux cellules de la
+ * grille — `intro` par-dessus la photo, `suite` en dessous. Au-dessus de
+ * 1000 px, la même enveloppe redevient une colonne flex. Aucun contenu n'est
+ * dupliqué dans le DOM.
+ *
+ * **1000 px et non 820** : à 820 px les deux colonnes ne disposaient que de
+ * 700 px, la photo tombait à 335×376 — plus petite que le cadre plein écran du
+ * mobile (390×429), pour une fenêtre deux fois plus large. Même seuil que la
+ * nav (`Nav.astro`), pour que la page ne change pas de gabarit en deux temps.
+ *
+ * La ligne d'époque suit le même principe : un seul nœud, un tiret + deux
+ * teintes en desktop, une pastille en mobile.
+ */
+import { Picture } from 'astro:assets';
+import Button from '../ui/Button.astro';
+import Pill from '../ui/Pill.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import { largeursSrcset } from '../../lib/images';
+
+export interface Props {
+  nom: string;
+  sousTitre?: string | null;
+  /** Ex. « Médiévale ». */
+  epoque?: string | null;
+  /** Ex. « XIVᵉ — XVᵉ s. ». */
+  dates?: string | null;
+  /** Paragraphe d'accroche (champ « Résumé » du catalogue). */
+  resume?: string | null;
+  image?: ImageMetadata | null;
+  alt?: string;
+  objectPosition?: string;
+  credit?: string | null;
+  /** Cible de la pastille de retour (mobile). */
+  retourHref: string;
+  /** CTA primaire — l'ancre « Nous rejoindre » de l'accueil. */
+  essayerHref: string;
+  essayerLibelle?: string;
+  /** CTA secondaire. `null` quand la fiche n'a pas de mini-cours. */
+  miniCoursHref?: string | null;
+  miniCoursLibelle?: string;
+  /** Tag affiché en haut à droite du hero mobile. */
+  tag?: string;
+  /** `id` du titre, pour l'`aria-labelledby` de la page. */
+  idTitre?: string;
+}
+
+const {
+  nom,
+  sousTitre,
+  epoque,
+  dates,
+  resume,
+  image = null,
+  alt = '',
+  objectPosition = '50% 50%',
+  credit,
+  retourHref,
+  essayerHref,
+  essayerLibelle = 'Essayer cette arme',
+  miniCoursHref = null,
+  miniCoursLibelle = 'Voir le mini-cours',
+  tag = 'Fiche arme',
+  idTitre = 'fiche-titre',
+} = Astro.props;
+
+// Hero de fiche arme : 588 px de rendu maximal (photos.md §5.4).
+const largeurs = largeursSrcset(image, { largeurs: [390, 588, 880, 1176] });
+
+/**
+ * Plafond d'agrandissement du cadre desktop.
+ *
+ * La maquette dessine 588×660 (design-spec §5.3), mais un master plus étroit
+ * que le cadre n'a pas à être étiré pour autant : la photo du combat viking ne
+ * fait que 353 px de large et se retrouvait interpolée ×3,3 en écran dense.
+ * Le cadre se cale alors sur la taille native — plus petit, mais net. Le jour
+ * où un master correct arrive (TODO client), la règle s'efface d'elle-même.
+ */
+const LARGEUR_CADRE = 588;
+const largeurMedia = image ? Math.min(LARGEUR_CADRE, image.width) : LARGEUR_CADRE;
+
+const aEpoque = Boolean(epoque);
+const aDates = Boolean(dates);
+---
+
+<header class="fiche-hero">
+  <div
+    class:list={['fiche-hero__media', { 'fiche-hero__media--credit': Boolean(credit) }]}
+    style={`--fiche-hero-position:${objectPosition};--fiche-hero-media:${largeurMedia}px`}
+  >
+    {
+      image && (
+        <Picture
+          src={image}
+          alt={alt}
+          formats={['avif', 'webp']}
+          widths={largeurs}
+          sizes="(min-width: 1000px) 45vw, 100vw"
+          loading="eager"
+          decoding="async"
+        />
+      )
+    }
+    <span class="fiche-hero__voile" aria-hidden="true"></span>
+    <span class="fiche-hero__assise" aria-hidden="true"></span>
+    {credit && <p class="fiche-hero__credit">{credit}</p>}
+  </div>
+
+  <div class="fiche-hero__barre">
+    <Pill variante="ronde" icone="arrow-left" href={retourHref} titre="Retour aux armes" cote={36} />
+    {tag && <Pill variante="tag" libelle={tag} />}
+  </div>
+
+  <div class="fiche-hero__texte">
+    <div class="fiche-hero__intro">
+      {
+        (aEpoque || aDates) && (
+          <p class="fiche-hero__era">
+            <span class="fiche-hero__tiret" aria-hidden="true" />
+            {aEpoque && <span class="fiche-hero__epoque">{epoque}</span>}
+            {aEpoque && aDates && (
+              <span class="fiche-hero__point" aria-hidden="true">
+                ·
+              </span>
+            )}
+            {aDates && <span class="fiche-hero__dates">{dates}</span>}
+          </p>
+        )
+      }
+
+      <SectionTitle
+        lignes={[{ texte: nom }]}
+        balise="h1"
+        taille="fiche"
+        id={idTitre}
+        class="fiche-hero__nom"
+      />
+
+      {sousTitre && <p class="fiche-hero__soustitre">{sousTitre}</p>}
+    </div>
+
+    <div class="fiche-hero__suite">
+      {resume && <p class="fiche-hero__resume">{resume}</p>}
+
+      <div class="fiche-hero__ctas">
+        <Button variante="pleine" libelle={essayerLibelle} href={essayerHref} />
+        {miniCoursHref && (
+          <Button variante="contour" libelle={miniCoursLibelle} href={miniCoursHref} />
+        )}
+      </div>
+    </div>
+  </div>
+</header>
+
+<style>
+  /* ── Mobile : la photo est un cadre de 390×430, le texte se pose dessus ──── */
+
+  .fiche-hero {
+    display: grid;
+    grid-template-columns: 100%;
+    /* 390 × 430 dans la maquette ; au-delà, la bande se plafonne plutôt que de
+       s'étirer en meurtrière sur les grandes tablettes. */
+    grid-template-rows: min(110vw, 500px) auto;
+    max-width: var(--largeur-max);
+    margin-inline: auto;
+  }
+
+  /* `display: contents` fait de `intro` et `suite` deux cellules de la grille. */
+  .fiche-hero__texte {
+    display: contents;
+  }
+
+  .fiche-hero__media,
+  .fiche-hero__barre,
+  .fiche-hero__intro {
+    grid-area: 1 / 1;
+  }
+
+  .fiche-hero__suite {
+    grid-area: 2 / 1;
+    padding: 26px var(--gouttiere) 0;
+  }
+
+  /* ── La photo ───────────────────────────────────────────────────────────── */
+
+  .fiche-hero__media {
+    position: relative;
+    overflow: hidden;
+    background: var(--char);
+  }
+
+  /* `<Picture>` est un composant : ses nœuds échappent au scope, d'où :global. */
+  .fiche-hero__media :global(picture),
+  .fiche-hero__media :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .fiche-hero__media :global(img) {
+    object-fit: cover;
+    object-position: var(--fiche-hero-position, 50% 50%);
+  }
+
+  .fiche-hero__voile {
+    position: absolute;
+    inset: 0;
+    background: var(--veil-ink-50);
+  }
+
+  .fiche-hero__assise {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 56%;
+    background: linear-gradient(to top, var(--veil-ink-85), var(--veil-ink-35) 65%, transparent);
+  }
+
+  .fiche-hero__credit {
+    position: absolute;
+    right: var(--gouttiere);
+    bottom: 6px;
+    margin: 0;
+    font-size: 9.5px;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    color: var(--parch-mute);
+  }
+
+  /* ── Barre du haut (mobile) ─────────────────────────────────────────────── */
+
+  .fiche-hero__barre {
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    align-self: start;
+    padding: 14px 18px;
+  }
+
+  /* ── Bloc de titre ──────────────────────────────────────────────────────── */
+
+  .fiche-hero__intro {
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: end;
+    gap: 10px;
+    padding: 0 var(--gouttiere) 30px;
+  }
+
+  /* Époque : pastille en mobile, tiret + deux teintes en desktop. */
+  .fiche-hero__era {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 6px 10px;
+    border: var(--filet-fort);
+    border-radius: var(--radius-pill);
+    background: var(--veil-ink-65);
+    font-family: var(--font-eyebrow);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--parch);
+  }
+
+  .fiche-hero__tiret {
+    display: none;
+    width: 22px;
+    height: 1px;
+    flex: none;
+    background: var(--ember);
+  }
+
+  /*
+   * H1 de la fiche arme : 42 px en mobile, 90 px en desktop (design-spec §5.2
+   * et §5.4). La rampe partagée `--fs-display-fiche` de SectionTitle est, elle,
+   * calibrée sur la fiche prof, dont le H1 mobile fait 36 px — d'où une rampe
+   * dédiée. L'interligne suit la même distinction : 1 en mobile, 0,9 en desktop.
+   */
+  .fiche-hero :global(.fiche-hero__nom) {
+    --titre-fs: var(--fs-display-fiche-arme);
+    --titre-lh: 1;
+  }
+
+  .fiche-hero__soustitre {
+    max-width: 46ch;
+    font-size: clamp(13px, 11.143px + 0.4762vw, 18px);
+    line-height: var(--lh-body-tight);
+    color: var(--parch-soft);
+  }
+
+  /* ── Résumé et boutons ──────────────────────────────────────────────────── */
+
+  /*
+   * Sous la bascule, le résumé est immédiatement suivi du corps de la fiche —
+   * même fonte, même corps, même couleur, même mesure : les deux blocs se
+   * lisaient comme un seul paragraphe fleuve. Le filet le clôt, comme partout
+   * ailleurs sur le site où deux blocs de texte se succèdent.
+   * (La redondance de rédaction entre le résumé et le corps reste, elle, à
+   * traiter côté contenu.)
+   */
+  .fiche-hero__resume {
+    max-width: 68ch; /* la mesure du corps de la fiche (ArmeCorps) */
+    padding-bottom: 26px;
+    border-bottom: var(--filet);
+    font-size: clamp(14.5px, 13.571px + 0.2381vw, 17px);
+    line-height: 1.65;
+    color: var(--parch-soft);
+  }
+
+  /* La maquette mobile n'a pas de bouton dans le hero : l'appel à l'action
+     mobile est la bande de fin de page (§5.2, bloc 5), qui porte le même lien. */
+  .fiche-hero__ctas {
+    display: none;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 40px;
+  }
+
+  /* ── ≥ 820 px : le fil d'Ariane prend le relais de la pastille de retour ── */
+
+  /* `ArmeFilAriane` s'affiche dès 820 px : garder en plus la barre incrustée
+     (pastille « retour » + tag « FICHE ARME ») ferait deux chemins de retour
+     l'un sur l'autre. Le gabarit du hero, lui, reste mobile jusqu'à 1000 px. */
+  @media (min-width: 820px) {
+    .fiche-hero__barre {
+      display: none;
+    }
+  }
+
+  /* ── ≥ 1000 px : deux colonnes ──────────────────────────────────────────── */
+
+  @media (min-width: 1000px) {
+    /* design-spec §5.4 : 90 px, lh 0,9. */
+    .fiche-hero :global(.fiche-hero__nom) {
+      --titre-lh: var(--lh-display-tight);
+    }
+
+    .fiche-hero {
+      display: flex;
+      align-items: center;
+      /* Rampe recalée sur la nouvelle bascule : 48 px à 1000, 100 px à 1440. */
+      gap: clamp(48px, -70.182px + 11.8182vw, 100px);
+      padding: clamp(40px, -2.2px + 5.14vw, 72px) var(--gouttiere)
+        clamp(52px, 4.4px + 5.8vw, 88px);
+    }
+
+    .fiche-hero__texte {
+      display: flex;
+      flex: 1 1 640px;
+      min-width: 0;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    /*
+     * Plancher de 420 px sur la photo : sans lui, les deux bases flex (640 +
+     * 588) se rétractent au prorata et la colonne image tombait sous la taille
+     * qu'elle a en plein cadre mobile. Le plafond, lui, est la taille native du
+     * master quand elle est inférieure au cadre (cf. `largeurMedia`).
+     */
+    .fiche-hero__media {
+      order: 2;
+      flex: 0 1 var(--fiche-hero-media, 588px);
+      min-width: min(420px, var(--fiche-hero-media, 588px));
+      max-width: var(--fiche-hero-media, 588px);
+      align-self: center;
+      aspect-ratio: 588 / 660;
+      border-radius: var(--radius-2);
+    }
+
+    .fiche-hero__voile,
+    .fiche-hero__assise {
+      display: none;
+    }
+
+    /*
+     * Le crédit reste posé sur la photo alors que voile et assise disparaissent :
+     * sur une zone claire du cliché il tombait à 1,1:1. On lui rend une assise
+     * courte — 88 px de haut, dont 34 px pleins sous la ligne de texte —, et
+     * seulement quand il y a un crédit à lire, pour ne pas assombrir sans
+     * raison les photos qui n'en portent pas (ARCHITECTURE §5, contrastes).
+     */
+    .fiche-hero__media--credit .fiche-hero__assise {
+      display: block;
+      height: 88px;
+      background: linear-gradient(
+        to top,
+        var(--veil-ink-85) 0,
+        var(--veil-ink-85) 34px,
+        transparent
+      );
+    }
+
+    .fiche-hero__credit {
+      right: 12px;
+      bottom: 10px;
+    }
+
+    /* `align-self: end` sert au calage bas du hero mobile ; dans la colonne
+       flex du desktop, il pousserait le bloc à droite. On le neutralise. */
+    .fiche-hero__intro {
+      align-self: stretch;
+      gap: 14px;
+      padding: 0;
+    }
+
+    .fiche-hero__suite {
+      align-self: stretch;
+      padding: 0;
+    }
+
+    /* En desktop le résumé est isolé dans la colonne du hero, face à la photo :
+       il n'a plus besoin du filet qui le détache du corps en mobile. */
+    .fiche-hero__resume {
+      max-width: 600px; /* design-spec §5.3 */
+      margin-top: 28px;
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    /* L'époque redevient une ligne nue : tiret ember, nom en ember, siècles en
+       parchemin atténué (design-spec §5.3, bloc « Era »). */
+    .fiche-hero__era {
+      gap: 10px;
+      margin-bottom: 8px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: none;
+      font-size: var(--fs-eyebrow);
+      letter-spacing: 0.28em;
+      color: var(--parch-mute);
+    }
+
+    .fiche-hero__tiret {
+      display: block;
+    }
+
+    .fiche-hero__epoque {
+      color: var(--ember);
+    }
+
+    .fiche-hero__point {
+      font-family: var(--font-body);
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+
+    .fiche-hero__dates {
+      letter-spacing: 0.19em;
+    }
+
+    .fiche-hero__ctas {
+      display: flex;
+    }
+  }
+</style>

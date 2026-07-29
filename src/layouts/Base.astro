@@ -1,0 +1,202 @@
+---
+/**
+ * Gabarit de base : <head> complet, données structurées, squelette de page.
+ *
+ * Tout ce qui dépend d'une école (nom, ville, contact, créneaux, balisage
+ * SportsClub) arrive en props — jamais lu depuis le layout. C'est la règle qui
+ * rend l'ouverture d'une deuxième salle indolore (multi-ecoles.md §6.6).
+ */
+import { getImage } from 'astro:assets';
+import '../styles/global.css';
+import cormorantLatin from '@fontsource-variable/cormorant-garamond/files/cormorant-garamond-latin-wght-normal.woff2?url';
+import cormorantLatinItalique from '@fontsource-variable/cormorant-garamond/files/cormorant-garamond-latin-wght-italic.woff2?url';
+import interLatin from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import type { Ecole } from '../lib/ecoles';
+import type { Identite } from '../lib/contenu';
+import { jsonLdSportsClub } from '../lib/jsonld';
+import { typographieFr } from '../lib/typographie';
+import { resoudrePhoto } from '../lib/images';
+import { validerContenu } from '../lib/validation';
+
+interface Props {
+  /** École servie par la page. Pilote le balisage et les liens internes. */
+  ecole: Ecole;
+  /** Singleton « Identité du site ». */
+  identite: Identite;
+  /** Titre de l'onglet. Le nom de l'association est ajouté automatiquement. */
+  titre?: string;
+  /** Meta description. Par défaut : celle de l'identité du site. */
+  description?: string;
+  /** `article` sur une page d'actualité, `website` ailleurs. */
+  typeOg?: 'website' | 'article';
+  /** Retire la page de l'index des moteurs (brouillons, pages techniques). */
+  noIndex?: boolean;
+  /** Classes supplémentaires sur `<body>`. */
+  classeBody?: string | undefined;
+}
+
+const {
+  ecole,
+  identite,
+  titre,
+  description,
+  typeOg = 'website',
+  noIndex = false,
+  classeBody,
+} = Astro.props;
+
+// Garde-fous du build (ARCHITECTURE.md §7) : raccourci inconnu ou mal
+// orthographié, école principale manquante, image de contenu sans alt, doublon
+// de bandeau épinglé, image dans un format que le build ne sait pas traiter.
+// Toutes les pages traversent ce gabarit, et le contrôle est mémoïsé : une
+// seule passe par build.
+await validerContenu();
+
+// Le nom composé alimente la balise `title`, l'OpenGraph et le nœud JSON-LD.
+// Même typographie que le logotype visible (`Logotype.astro`) : le nom du club
+// s'écrit d'une seule façon, à l'écran comme dans les métadonnées.
+const nomAssociation = typographieFr(
+  [
+    identite.marque?.debut,
+    identite.marque?.feu,
+    identite.marque?.connecteur,
+    identite.marque?.acier,
+  ]
+    .filter(Boolean)
+    .join(' '),
+)
+  .replace(/\s+(?=[’'])/g, '')
+  .replace(/([’'])\s+/g, '$1');
+
+const ville = ecole.fiche.lieu?.ville || ecole.fiche.ville || ecole.ville;
+
+const titreComplet = titre
+  ? `${titre} — ${nomAssociation}`
+  : `${nomAssociation} — ${identite.baseline || 'AMHE'} à ${ville}`;
+
+const descriptionFinale = typographieFr(description || identite.description);
+
+const site = Astro.site ?? new URL('https://dfda-amhe.fr');
+const canonical = new URL(Astro.url.pathname, site).href;
+
+// Image de partage : passée par sharp au build (1200 × 630, JPEG — le format le
+// mieux compris par les robots des réseaux sociaux). Cf. photos.md §5.3.
+const sourcePartage = resoudrePhoto(identite.imagePartage);
+const imagePartage = sourcePartage
+  ? new URL(
+      (
+        await getImage({
+          src: sourcePartage,
+          width: 1200,
+          height: 630,
+          format: 'jpeg',
+          quality: 82,
+        })
+      ).src,
+      site,
+    ).href
+  : null;
+
+// Le nœud `SportsClub` décrit l'association, pas la page : sa description est
+// celle de l'identité du site, jamais `descriptionFinale` (qui, elle, alimente
+// à juste titre la meta description, l'OpenGraph et Twitter).
+const jsonLd = jsonLdSportsClub({
+  ecole,
+  site,
+  nom: nomAssociation,
+  description: typographieFr(identite.description),
+  image: imagePartage,
+});
+
+/**
+ * `</script>` ou un séparateur de ligne Unicode dans une chaîne du CMS
+ * fermerait la balise et casserait le `<head>` de toutes les pages. On échappe
+ * donc avant l'injection — le JSON reste valide, les échappements `\uXXXX`
+ * étant compris par tout parseur.
+ */
+const jsonLdSerialise = JSON.stringify(jsonLd)
+  .replace(/</g, '\\u003c')
+  .replace(/>/g, '\\u003e')
+  .replace(/&/g, '\\u0026')
+  .replace(/[\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16)}`);
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a0908" />
+    <meta name="color-scheme" content="dark" />
+
+    <title>{titreComplet}</title>
+    {descriptionFinale && <meta name="description" content={descriptionFinale} />}
+    <link rel="canonical" href={canonical} />
+    {noIndex && <meta name="robots" content="noindex, nofollow" />}
+
+    <link rel="icon" href="/favicon.png" type="image/png" sizes="64x64" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    {/* La police d'affichage porte le logotype du hero : sans preload, elle
+        arrive après le premier rendu et le titre saute. L'italique est
+        préchargée pour la même raison : le H1 du hero et tous les titres de
+        section en contiennent un fragment (l'accent ember est italique). Les
+        autres sous-ensembles — cyrillique, vietnamien, latin-ext — ne le sont
+        pas, à dessein. */}
+    <link rel="preload" href={cormorantLatin} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={cormorantLatinItalique} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={interLatin} as="font" type="font/woff2" crossorigin />
+
+    <meta property="og:type" content={typeOg} />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:site_name" content={nomAssociation} />
+    <meta property="og:title" content={titre ?? `${nomAssociation} — AMHE à ${ville}`} />
+    {descriptionFinale && <meta property="og:description" content={descriptionFinale} />}
+    <meta property="og:url" content={canonical} />
+    {imagePartage && <meta property="og:image" content={imagePartage} />}
+    {imagePartage && <meta property="og:image:width" content="1200" />}
+    {imagePartage && <meta property="og:image:height" content="630" />}
+
+    <meta name="twitter:card" content={imagePartage ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:title" content={titre ?? `${nomAssociation} — AMHE à ${ville}`} />
+    {descriptionFinale && <meta name="twitter:description" content={descriptionFinale} />}
+    {imagePartage && <meta name="twitter:image" content={imagePartage} />}
+
+    <script type="application/ld+json" is:inline set:html={jsonLdSerialise} />
+
+    <slot name="head" />
+  </head>
+
+  <body class={classeBody}>
+    <a class="lien-evitement" href="#contenu">Aller au contenu</a>
+    <slot name="bandeau" />
+    <slot name="entete" />
+    <main id="contenu">
+      <slot />
+    </main>
+    <slot name="pied" />
+
+    <script>
+      // Apparition au défilement. Vanilla, aucune dépendance, et neutralisée
+      // si la personne a demandé moins d'animations (ARCHITECTURE.md §5).
+      const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const cibles = document.querySelectorAll<HTMLElement>('.reveal');
+
+      if (reduit || !('IntersectionObserver' in window)) {
+        cibles.forEach((el) => el.classList.add('est-visible'));
+      } else {
+        const observateur = new IntersectionObserver(
+          (entrees) => {
+            for (const entree of entrees) {
+              if (!entree.isIntersecting) continue;
+              entree.target.classList.add('est-visible');
+              observateur.unobserve(entree.target);
+            }
+          },
+          { threshold: 0.1, rootMargin: '0px 0px -80px 0px' },
+        );
+        cibles.forEach((el) => observateur.observe(el));
+      }
+    </script>
+  </body>
+</html>

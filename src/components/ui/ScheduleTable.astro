@@ -1,0 +1,284 @@
+---
+/**
+ * ScheduleTable — tableau des créneaux hebdomadaires.
+ *
+ * design-spec §3.6, bloc « CRÉNEAUX HEBDOMADAIRES » : un vrai tableau à quatre
+ * colonnes (JOUR / HORAIRE / DISCIPLINE / NIVEAU), filet haut sur le conteneur,
+ * filet bas sur chaque ligne, en-têtes en `--parch-mute` très espacés.
+ *
+ * C'est de la donnée tabulaire : le composant rend un `<table>`, pas une pile
+ * de `<div>`. Sous 820 px la mise en page devient une pile de blocs (les 588 px
+ * de la colonne « discipline » ne tiennent pas sur 390 px), mais **les rôles
+ * ARIA sont écrits explicitement** : `display: block` casse la sémantique
+ * native du tableau dans plusieurs navigateurs, les rôles la rétablissent. La
+ * ligne d'en-tête n'est pas masquée en `display: none` mais visuellement
+ * cachée, pour rester dans l'arbre d'accessibilité.
+ */
+
+export interface Creneau {
+  /** Abrégé en capitales dans la maquette : « MAR », « JEU ». */
+  jour: string;
+  /** Ex. « 18h00 — 20h00 » (tiret cadratin, comme la maquette). */
+  horaire: string;
+  /** Ex. « Épée longue · rapière · messer · viking » ou « Pratique libre ». */
+  discipline: string;
+  /** Ex. « TOUS NIVEAUX », « SANS ENCADRANT ». */
+  niveau?: string;
+}
+
+export interface Props {
+  creneaux: Creneau[];
+  /** Sur-titre ember au-dessus du tableau. Vide = pas de sur-titre. */
+  surtitre?: string | null;
+  /** Légende lue par les lecteurs d'écran (`<caption>`). */
+  legende?: string;
+  /** Affiche la légende à l'écran plutôt que de la réserver aux lecteurs. */
+  legendeVisible?: boolean;
+  /** Libellés des colonnes, dans l'ordre. */
+  entetes?: [string, string, string, string];
+  /** Message affiché quand aucun créneau n'est renseigné. */
+  texteVide?: string;
+  class?: string;
+}
+
+const {
+  creneaux = [],
+  surtitre = 'Créneaux hebdomadaires',
+  legende = 'Créneaux hebdomadaires du club',
+  legendeVisible = false,
+  entetes = ['Jour', 'Horaire', 'Discipline', 'Niveau'],
+  texteVide = 'Les créneaux de la saison arrivent bientôt.',
+  class: classe,
+} = Astro.props;
+
+const aNiveau = creneaux.some((c) => Boolean(c.niveau));
+---
+
+<div class:list={['creneaux', classe]}>
+  {surtitre && <p class="creneaux__surtitre">{surtitre}</p>}
+
+  {
+    creneaux.length === 0 ? (
+      <p class="creneaux__vide">{texteVide}</p>
+    ) : (
+      <table class="creneaux__table" role="table">
+        <caption class:list={['creneaux__legende', !legendeVisible && 'visuellement-cache']}>
+          {legende}
+        </caption>
+
+        <colgroup>
+          <col class="creneaux__col-jour" />
+          <col class="creneaux__col-horaire" />
+          <col class="creneaux__col-discipline" />
+          {aNiveau && <col class="creneaux__col-niveau" />}
+        </colgroup>
+
+        <thead role="rowgroup">
+          <tr role="row">
+            <th role="columnheader" scope="col">
+              {entetes[0]}
+            </th>
+            <th role="columnheader" scope="col">
+              {entetes[1]}
+            </th>
+            <th role="columnheader" scope="col">
+              {entetes[2]}
+            </th>
+            {
+              aNiveau && (
+                <th role="columnheader" scope="col">
+                  {entetes[3]}
+                </th>
+              )
+            }
+          </tr>
+        </thead>
+
+        <tbody role="rowgroup">
+          {
+            creneaux.map((creneau) => (
+              <tr role="row">
+                <th role="rowheader" scope="row" class="creneaux__jour" data-libelle={entetes[0]}>
+                  {creneau.jour}
+                </th>
+                <td role="cell" class="creneaux__horaire" data-libelle={entetes[1]}>
+                  {creneau.horaire}
+                </td>
+                <td role="cell" class="creneaux__discipline" data-libelle={entetes[2]}>
+                  {creneau.discipline}
+                </td>
+                {aNiveau && (
+                  <td role="cell" class="creneaux__niveau" data-libelle={entetes[3]}>
+                    {creneau.niveau}
+                  </td>
+                )}
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    )
+  }
+</div>
+
+<style>
+  .creneaux__surtitre {
+    margin: 0 0 18px;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow);
+    font-weight: 600;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .creneaux__table {
+    width: 100%;
+    border-collapse: collapse;
+    border-top: var(--filet);
+    table-layout: fixed;
+    text-align: left;
+  }
+
+  .creneaux__legende {
+    padding-block: 12px;
+    font-size: var(--fs-body-s);
+    color: var(--parch-mute);
+    text-align: left;
+    caption-side: top;
+  }
+
+  .creneaux__col-jour {
+    width: 8%;
+  }
+  .creneaux__col-horaire {
+    width: 18%;
+  }
+  .creneaux__col-discipline {
+    width: 46%;
+  }
+  .creneaux__col-niveau {
+    width: 28%;
+  }
+
+  .creneaux__table thead th {
+    padding: 18px 24px 18px 0;
+    border-bottom: var(--filet);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 400;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  .creneaux__table tbody th,
+  .creneaux__table tbody td {
+    padding: clamp(16px, 0.6rem + 1.4vw, 26px) 24px clamp(16px, 0.6rem + 1.4vw, 26px) 0;
+    border-bottom: var(--filet);
+    vertical-align: baseline;
+  }
+
+  .creneaux__table tbody th:last-child,
+  .creneaux__table tbody td:last-child,
+  .creneaux__table thead th:last-child {
+    padding-right: 0;
+  }
+
+  .creneaux__jour {
+    font-family: var(--font-body);
+    font-size: var(--fs-body-xs);
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ember);
+    white-space: nowrap;
+  }
+
+  .creneaux__horaire {
+    font-size: var(--fs-body);
+    font-weight: 500;
+    color: var(--parch);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .creneaux__discipline {
+    font-size: var(--fs-body-s);
+    line-height: var(--lh-body-tight);
+    color: var(--parch);
+  }
+
+  .creneaux__niveau {
+    font-size: var(--fs-body-xxs);
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  .creneaux__vide {
+    margin: 0;
+    padding-block: 18px;
+    border-top: var(--filet);
+    border-bottom: var(--filet);
+    font-size: var(--fs-body-s);
+    color: var(--parch-mute);
+  }
+
+  /* ── Sous 820 px : une pile de blocs, une ligne = un créneau ───────────── */
+
+  @media (max-width: 819px) {
+    .creneaux__table,
+    .creneaux__table thead,
+    .creneaux__table tbody,
+    .creneaux__table tr,
+    .creneaux__table th,
+    .creneaux__table td {
+      display: block;
+    }
+
+    /* Masquée à l'œil, gardée dans l'arbre d'accessibilité. */
+    .creneaux__table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .creneaux__table tbody tr {
+      padding-block: 16px;
+      border-bottom: var(--filet);
+    }
+
+    .creneaux__table tbody th,
+    .creneaux__table tbody td {
+      padding: 0;
+      border-bottom: 0;
+    }
+
+    .creneaux__table tbody th + td,
+    .creneaux__table tbody td + td {
+      margin-top: 6px;
+    }
+
+    /* Le libellé de colonne redevient visible devant chaque valeur. */
+    .creneaux__horaire::before,
+    .creneaux__discipline::before,
+    .creneaux__niveau::before {
+      content: attr(data-libelle) ' · ';
+      font-family: var(--font-eyebrow);
+      font-size: var(--fs-eyebrow-s);
+      font-weight: 600;
+      letter-spacing: var(--ls-eyebrow-s);
+      text-transform: uppercase;
+      color: var(--parch-mute);
+    }
+
+    .creneaux__jour {
+      margin-bottom: 8px;
+    }
+  }
+</style>

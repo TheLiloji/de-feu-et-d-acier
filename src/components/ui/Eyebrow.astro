@@ -1,0 +1,138 @@
+---
+/**
+ * Sur-titre (« eyebrow ») — micro-label en capitales très lettrées.
+ *
+ * C'est le motif typographique le plus répandu du site : 250 nœuds texte dans
+ * la maquette (design-spec §1.3). Trois habillages seulement :
+ *
+ *   - nu          — `PRATIQUE`, `CRÉNEAUX HEBDOMADAIRES`
+ *   - `tiret`     — filet `$ember` de 22 px puis le texte : `— MÉDIÉVALE`
+ *   - `diamant`   — losange `$ember` de 6 px puis le texte : `◆ COMPÉTITEURS`
+ *
+ * Les capitales viennent de la CSS, jamais du contenu : le CMS reçoit un texte
+ * écrit normalement (« Compétiteurs »), ce qui reste lisible dans l'admin et
+ * correct pour un lecteur d'écran.
+ *
+ * Le label numéroté de section a son propre composant : `SectionLabel.astro`.
+ *
+ * Exemples :
+ *   <Eyebrow texte="Pratique" lettrage="large" />
+ *   <Eyebrow texte="Médiévale" marque="tiret" />
+ *   <Eyebrow texte="Compétiteurs" marque="diamant" ton="soft" />
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  /** Texte du sur-titre. Ignoré si un contenu est passé en slot. */
+  texte?: string;
+  /** Couleur. Défaut `ember` (le cas le plus fréquent de la maquette). */
+  ton?: 'ember' | 'parch' | 'soft' | 'mute';
+  /** Ornement placé avant le texte. Défaut : aucun. */
+  marque?: 'aucune' | 'tiret' | 'diamant';
+  /** `normale` = 10.5→12.5 px, `petite` = 9.5→10.5 px. Défaut `normale`. */
+  taille?: 'normale' | 'petite';
+  /** Interlettrage : `serre` 0.18em · `normal` 0.28em · `large` 0.35em. */
+  lettrage?: 'serre' | 'normal' | 'large';
+  /** Élément rendu. Défaut `p`. Mettre `span` dans un contexte en ligne. */
+  balise?: 'p' | 'span' | 'div' | 'h2' | 'h3' | 'h4';
+  class?: string;
+  [attribut: `data-${string}`]: string | number | boolean | undefined;
+}
+
+const {
+  texte,
+  ton = 'ember',
+  marque = 'aucune',
+  taille = 'normale',
+  lettrage = 'normal',
+  balise = 'p',
+  class: classe,
+  ...reste
+} = Astro.props;
+
+const Balise = balise;
+---
+
+<Balise class:list={['eyebrow-ui', `eyebrow-ui--${ton}`, `eyebrow-ui--${taille}`, `eyebrow-ui--ls-${lettrage}`, classe]} {...reste}>
+  {marque === 'tiret' && <span class="eyebrow-ui__tiret" aria-hidden="true"></span>}
+  {marque === 'diamant' && <span class="eyebrow-ui__diamant"><Icon name="diamond" /></span>}
+  <span class="eyebrow-ui__texte"><slot>{texte}</slot></span>
+</Balise>
+
+<style>
+  .eyebrow-ui {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+  }
+
+  .eyebrow-ui--normale {
+    font-size: var(--fs-eyebrow);
+  }
+
+  .eyebrow-ui--petite {
+    font-size: var(--fs-eyebrow-s);
+  }
+
+  .eyebrow-ui--ls-serre {
+    letter-spacing: var(--ls-eyebrow-s);
+  }
+
+  .eyebrow-ui--ls-normal {
+    letter-spacing: var(--ls-eyebrow);
+  }
+
+  .eyebrow-ui--ls-large {
+    letter-spacing: var(--ls-eyebrow-wide);
+  }
+
+  .eyebrow-ui--ember {
+    color: var(--ember);
+  }
+
+  .eyebrow-ui--parch {
+    color: var(--parch);
+  }
+
+  .eyebrow-ui--soft {
+    color: var(--parch-soft);
+  }
+
+  .eyebrow-ui--mute {
+    color: var(--parch-mute);
+  }
+
+  /* Filet court, toujours $ember quelle que soit la couleur du texte. */
+  .eyebrow-ui__tiret {
+    flex: none;
+    width: 22px;
+    height: 1px;
+    background: var(--ember);
+  }
+
+  .eyebrow-ui__diamant {
+    display: inline-flex;
+    flex: none;
+    --icone-cote: 6px;
+    color: var(--ember);
+  }
+
+  /* L'interlettrage ajoute une chasse après la dernière lettre. On la reprend,
+     sinon un sur-titre centré (hero) paraît décalé vers la gauche. */
+  .eyebrow-ui--ls-serre .eyebrow-ui__texte {
+    margin-inline-end: calc(-1 * var(--ls-eyebrow-s));
+  }
+
+  .eyebrow-ui--ls-normal .eyebrow-ui__texte {
+    margin-inline-end: calc(-1 * var(--ls-eyebrow));
+  }
+
+  .eyebrow-ui--ls-large .eyebrow-ui__texte {
+    margin-inline-end: calc(-1 * var(--ls-eyebrow-wide));
+  }
+</style>

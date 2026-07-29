@@ -1,0 +1,456 @@
+---
+/**
+ * Nav — en-tête du site.
+ *
+ * Deux visages, un seul composant (design-spec §3.1 pour le desktop, §4.1 pour
+ * la barre du haut mobile) :
+ *
+ *   - **desktop** (à partir de 1000 px) — les six liens du menu, centrés, en
+ *     `$eyebrow` 11 px très lettré `$parch-soft`, plus le bouton « Venir
+ *     essayer » à droite ;
+ *   - **mobile** (en dessous de 1000 px) — le blason à gauche, l'icône `menu` à
+ *     droite, rien d'autre : c'est le tiroir plein écran (`MenuMobile.astro`)
+ *     qui porte la navigation.
+ *
+ * ⚠️ Piège d'outillage : pas de chevron ouvrant nu dans un commentaire de
+ * frontmatter. Astro extrait le typage depuis le frontmatter transformé en TSX ;
+ * un « inférieur à » y ouvre une balise imaginaire, `Astro.props` retombe en
+ * `any` et le fichier ne perd aucun type visible — il perd juste tous ses
+ * contrôles. Écrire « en dessous de », comme ci-dessus.
+ *
+ * La bascule est à 1000 px et non aux 820 px du reste du site : c'est la
+ * largeur en dessous de laquelle la barre desktop ne tient pas (démonstration
+ * chiffrée au-dessus du `@media`).
+ *
+ * Deux états, dont un seul est maquetté :
+ *
+ *   - en haut de page, la barre est **transparente** et posée sur la photo du
+ *     hero — c'est la superposition de la maquette, obtenue par la marge
+ *     négative du hero, pas par du `position: absolute` ;
+ *   - dès qu'on descend (`data-fond="solide"`), elle prend le fond
+ *     `--veil-ink-95` de la barre d'onglets mobile et son filet bas, et le
+ *     blason apparaît à gauche — la maquette ne le montre pas dans la nav parce
+ *     que le logotype géant du hero est encore à l'écran, ce qui n'est plus vrai
+ *     une fois qu'on a défilé. État non maquetté, traité sobrement
+ *     (ARCHITECTURE §5).
+ *
+ * La barre est **collante** : `scroll-padding-top` (global.css) réserve déjà sa
+ * hauteur pour que les ancres ne se cachent pas dessous. Elle publie sa hauteur
+ * dans `--hauteur-entete`, dont `Hero.astro` et `MenuMobile.astro` se servent.
+ *
+ * ⚠️ Ce composant rend lui-même `MenuMobile` : ne pas l'ajouter une seconde
+ * fois dans la page (l'`id` serait dupliqué). `avecMenuMobile={false}` pour le
+ * placer soi-même.
+ *
+ * Exemple d'assemblage :
+ *   <Nav slot="entete" ecole={ecole} liens={menus.menuPrincipal}
+ *        cta={hero.boutonPrincipal} marque={identite.marque} />
+ */
+import { Image } from 'astro:assets';
+import Button from '../ui/Button.astro';
+import Icon from '../ui/Icon.astro';
+import Logotype from '../ui/Logotype.astro';
+import MenuMobile from './MenuMobile.astro';
+import type { Ecole } from '../../lib/ecoles';
+import { lien } from '../../lib/liens';
+import { resoudrePhoto } from '../../lib/images';
+
+/**
+ * Le blason du club n'a pas (encore) de champ dans l'admin : il est résolu par
+ * son chemin. Le jour où il en aura un, seule cette constante bouge — et la
+ * prop `logo` permet déjà de le passer explicitement.
+ */
+const CHEMIN_LOGO = '/src/assets/photos/commun/logo-de-feu-et-d-acier.png';
+
+export interface EntreeMenu {
+  libelle?: string | null;
+  lien?: string | null;
+}
+
+export interface LienCms {
+  libelle?: string | null;
+  url?: string | null;
+}
+
+export interface MarqueCms {
+  debut?: string | null;
+  feu?: string | null;
+  connecteur?: string | null;
+  acier?: string | null;
+}
+
+export interface Props {
+  /** École servie par la page — tous les liens internes passent par elle. */
+  ecole: Ecole;
+  /** Entrées du menu (`menus.menuPrincipal`). */
+  liens?: readonly EntreeMenu[] | null;
+  /** Bouton de la barre (en pratique `hero.boutonPrincipal`). */
+  cta?: LienCms | null;
+  /** Singleton « Identité du site » — pour le logotype de repli. */
+  identite?: { marque?: MarqueCms | null } | null;
+  /** Fragments du logotype, si l'identité n'est pas passée en entier. */
+  marque?: MarqueCms | null;
+  /** Blason du club. Résolu par défaut depuis `src/assets/photos/commun/`. */
+  logo?: ImageMetadata | null;
+  /**
+   * `auto` : transparente en haut de page, pleine dès qu'on descend — c'est le
+   * réglage de l'accueil, dont le hero passe derrière la barre.
+   * `solide` : fond plein en permanence, pour une page qui n'a pas de hero
+   * photographique (fiche arme, fiche prof, mentions légales).
+   */
+  fond?: 'auto' | 'solide';
+  /** `id` du menu mobile, partagé avec l'`aria-controls` du bouton. */
+  idMenu?: string;
+  /** Rendre le menu mobile avec l'en-tête. Défaut : oui. */
+  avecMenuMobile?: boolean;
+  /** Mention de bas de tiroir du menu mobile. */
+  mentionMenu?: string | null;
+  class?: string;
+}
+
+const {
+  ecole,
+  liens,
+  cta,
+  identite,
+  marque,
+  logo,
+  fond = 'auto',
+  idMenu = 'menu-mobile',
+  avecMenuMobile = true,
+  mentionMenu,
+  class: classe,
+} = Astro.props;
+
+const entrees = (liens ?? []).filter((e) => e?.libelle && e?.lien);
+const fragments = marque ?? identite?.marque ?? null;
+const blason = logo ?? resoudrePhoto(CHEMIN_LOGO);
+
+// Nom lisible de la marque : nom accessible du lien « accueil ».
+const nomMarque =
+  [fragments?.debut, fragments?.feu, fragments?.connecteur, fragments?.acier]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+(?=['’])/g, '')
+    .replace(/['’]\s+/g, '’')
+    .trim() || 'Accueil';
+
+const accueil = lien(ecole, '/');
+---
+
+<header
+  class:list={['entete', classe]}
+  data-entete
+  data-fond={fond === 'solide' ? 'solide' : undefined}
+  data-fond-fixe={fond === 'solide' ? '' : undefined}
+>
+  <div class="entete__interieur gouttiere">
+    <a class="entete__marque" href={accueil}>
+      {
+        blason ? (
+          <span class="entete__blason">
+            <Image src={blason} alt={nomMarque} width={80} densities={[1, 2]} loading="eager" />
+          </span>
+        ) : (
+          <Logotype class="entete__logotype" marque={fragments} disposition="inline" balise="span" />
+        )
+      }
+    </a>
+
+    <nav class="entete__nav" aria-label="Navigation principale">
+      <ul class="entete__liste" role="list">
+        {
+          entrees.map((entree) => (
+            <li>
+              <a class="entete__lien" href={lien(ecole, entree.lien)}>
+                {entree.libelle}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="entete__actions">
+      {
+        cta?.libelle && cta?.url && (
+          <Button
+            class="entete__cta"
+            variante="contour"
+            taille="petite"
+            libelle={cta.libelle}
+            href={lien(ecole, cta.url)}
+          />
+        )
+      }
+
+      <button
+        class="entete__bascule"
+        type="button"
+        aria-controls={idMenu}
+        aria-expanded="false"
+        data-ouvrir-menu
+      >
+        <Icon name="menu" />
+        <span class="visuellement-cache">Ouvrir le menu</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+{
+  avecMenuMobile && (
+    <MenuMobile
+      ecole={ecole}
+      id={idMenu}
+      liens={liens}
+      cta={cta}
+      marque={fragments}
+      logo={blason}
+      mention={mentionMenu}
+    />
+  )
+}
+
+<style is:global>
+  /*
+   * Hauteur de l'en-tête, publiée globalement : le hero s'en sert pour remonter
+   * sous la barre (superposition de la maquette) et le menu mobile pour aligner
+   * sa propre barre du haut. Un seul endroit où la corriger.
+   * 66 px en mobile (blason 38 + 2 × 14 de padding), 82 px en desktop.
+   */
+  :root {
+    --hauteur-entete: clamp(66px, 60.057px + 1.5238vw, 82px);
+  }
+</style>
+
+<style>
+  .entete {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: transparent;
+    border-bottom: 1px solid transparent;
+    transition:
+      background-color var(--transition),
+      border-color var(--transition);
+  }
+
+  /* État non maquetté : la barre se pose sur un fond dès qu'elle quitte le hero. */
+  .entete[data-fond='solide'] {
+    background: var(--veil-ink-95);
+    border-bottom-color: var(--parch-line);
+    backdrop-filter: blur(10px);
+  }
+
+  .entete__interieur {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(12px, 6.057px + 1.5238vw, 28px);
+    min-height: var(--hauteur-entete);
+    padding-block: 12px;
+  }
+
+  /* ── Marque ───────────────────────────────────────────────────────────── */
+  .entete__marque {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    text-decoration: none;
+  }
+
+  /* `<Image>` et `Logotype` sont des composants : leurs nœuds échappent au
+     scope, d'où :global sous un ancêtre scopé (convention MediaCard). */
+  .entete__blason {
+    display: inline-flex;
+  }
+
+  .entete__blason :global(img) {
+    width: auto;
+    height: clamp(34px, 33.257px + 0.1905vw, 36px);
+  }
+
+  .entete__marque :global(.entete__logotype) {
+    --logo-fs: 20px;
+  }
+
+  /* ── Liens (desktop) ──────────────────────────────────────────────────── */
+  .entete__nav {
+    display: none;
+  }
+
+  /* La gouttière entre les liens n'atteint ses 34 px de maquette qu'à 1440 :
+     à la bascule (1000 px) elle vaut 28 px, ce qui rend 30 px à la ligne et
+     tient la nav loin du débordement. */
+  .entete__liste {
+    display: flex;
+    align-items: center;
+    gap: clamp(20px, 14.8px + 1.3333vw, 34px);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .entete__lien {
+    position: relative;
+    display: inline-block;
+    padding-block: 6px;
+    font-family: var(--font-eyebrow);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+    color: var(--parch-soft);
+    transition: color var(--transition);
+  }
+
+  /* Survol non maquetté : un filet `$ember` sous le lien, rien de plus. */
+  .entete__lien::after {
+    content: '';
+    position: absolute;
+    right: 0.2em; /* la chasse ajoutée par l'interlettrage */
+    bottom: 0;
+    left: 0;
+    height: 1px;
+    background: var(--ember);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--transition);
+  }
+
+  .entete__lien:hover,
+  .entete__lien:focus-visible {
+    color: var(--parch);
+  }
+
+  .entete__lien:hover::after,
+  .entete__lien:focus-visible::after {
+    transform: scaleX(1);
+  }
+
+  /* ── Actions ──────────────────────────────────────────────────────────── */
+  .entete__actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Le bouton n'apparaît qu'en desktop : en mobile, il vit dans le tiroir. */
+  .entete__actions :global(.entete__cta) {
+    display: none;
+  }
+
+  .entete__bascule {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px; /* cible tactile, l'icône reste à 24 px */
+    height: 44px;
+    margin-right: -10px;
+    --icone-cote: 24px;
+    color: var(--parch);
+    transition: color var(--transition);
+  }
+
+  .entete__bascule:hover,
+  .entete__bascule:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  /* ── Bascule desktop ──────────────────────────────────────────────────── */
+  /*
+   * 1000 px, et non les 820 px du reste du site : la nav desktop est le seul
+   * bloc de la page dont la largeur ne se négocie pas — six libellés `nowrap`
+   * plus un bouton `flex: none`. À 820 px elle mesurait 1000 px et débordait de
+   * 57 px, CTA coupé, burger déjà masqué : aucune issue.
+   *
+   * Largeur minimale de la barre, à la largeur de bascule B :
+   *   2 × gouttière(B) + 2 × gap(B) + liens + 5 × gap-liste(B) + CTA + blason
+   * soit, mesuré sur le rendu (liens 456 px, CTA 178 px, blason 27 px) :
+   *   B = 1000 → 83,5 + 42,6 + 456 + 141 + 178 + 27 = 928 px  → 72 px de mou
+   *   B =  960 → 80,9 + 41,4 + 456 + 135 + 178 + 27 = 918 px  → 42 px de mou
+   * On prend 1000 : c'est la largeur de bascule des fiches (ArmeHero,
+   * ProfHero), et le mou couvre l'ajout d'une entrée courte au menu.
+   * Entre 820 et 1000, c'est le tiroir mobile qui porte la navigation.
+   *
+   * Ce chiffre est le seuil `BASCULE_NAV` de src/lib/breakpoints.ts : le tiroir
+   * (`MenuMobile`), la barre d'onglets (`TabBar`), sa réserve de défilement
+   * (global.css) et le bouton HEMA des fiches prof le suivent. Ils bougent
+   * ensemble ou pas du tout.
+   */
+  @media (min-width: 1000px) {
+    /* Trois colonnes égales de part et d'autre : les liens restent centrés sur
+       la page, que la marque soit visible ou non. En dessous de ~1100 px, la
+       colonne du CTA est plus large que celle du blason et la nav se décale
+       d'une trentaine de pixels vers la gauche — préférable à un débordement. */
+    .entete__interieur {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+    }
+
+    .entete__marque {
+      justify-self: start;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity var(--transition);
+    }
+
+    .entete[data-fond='solide'] .entete__marque {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .entete__nav {
+      display: block;
+      justify-self: center;
+    }
+
+    .entete__actions {
+      justify-self: end;
+    }
+
+    .entete__actions :global(.entete__cta) {
+      display: inline-flex;
+    }
+
+    .entete__bascule {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  // Bascule transparent ↔ fond plein. Un `requestAnimationFrame` par salve de
+  // défilement, un écouteur passif : rien qui puisse peser sur le scroll.
+  const entetes = Array.from(document.querySelectorAll<HTMLElement>('[data-entete]'));
+
+  if (entetes.length > 0) {
+    const SEUIL = 24;
+    let planifie = false;
+
+    const majEtat = () => {
+      planifie = false;
+      const solide = window.scrollY > SEUIL;
+      for (const entete of entetes) {
+        // `fond="solide"` fige la barre : une page sans hero garde son fond.
+        if (entete.hasAttribute('data-fond-fixe')) continue;
+        if (solide) entete.dataset.fond = 'solide';
+        else delete entete.dataset.fond;
+      }
+    };
+
+    const auDefilement = () => {
+      if (planifie) return;
+      planifie = true;
+      requestAnimationFrame(majEtat);
+    };
+
+    majEtat();
+    window.addEventListener('scroll', auDefilement, { passive: true });
+  }
+</script>

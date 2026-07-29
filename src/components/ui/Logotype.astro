@@ -1,0 +1,175 @@
+---
+/**
+ * Logotype « De Feu et d'Acier ».
+ *
+ * Quatre occurrences, une seule structure (design-spec §9.2). La coloration ne
+ * varie jamais : `De` en `$parch` w500, **`Feu` en `$feu`**, `et d'` en `$parch`
+ * w300 italique, **`Acier` en `$acier`**. Ce sont les deux seuls emplois de
+ * `$feu` et `$acier` de tout le site — les réutiliser ailleurs détruirait ce
+ * qui fait la signature de la marque.
+ *
+ * Deux dispositions :
+ *   - `empile` — deux lignes centrées (`De Feu` / `et d'Acier`), c'est le hero ;
+ *   - `inline` — les quatre mots sur une ligne, c'est le footer.
+ *
+ * Les mots sont séparés par des gouttières de flex, pas par des espaces : un
+ * lecteur d'écran lirait donc « DeFeu etd'Acier ». D'où le nom complet en clair
+ * dans un élément hors écran, et les mots visibles marqués `aria-hidden`. Le
+ * texte réellement annoncé est « De Feu et d'Acier », une fois.
+ *
+ * Le nom vient du CMS (singleton « Identité du site », champ `marque`), jamais
+ * d'une constante : c'est ce qui permet de le corriger sans toucher au code.
+ *
+ * Exemples :
+ *   <Logotype marque={identite.marque} taille="hero" balise="h1" />
+ *   <Logotype marque={identite.marque} taille="footer" disposition="inline" />
+ */
+import { typographieFr } from '../../lib/typographie';
+
+interface Marque {
+  debut?: string | null;
+  feu?: string | null;
+  connecteur?: string | null;
+  acier?: string | null;
+}
+
+interface Props {
+  /** Fragments du nom, tels que stockés dans `identite.marque`. */
+  marque?: Marque | null;
+  /** `hero` 62→96 px · `footer` 34→115 px. Défaut `hero`. */
+  taille?: 'hero' | 'footer';
+  /** `empile` : deux lignes (hero). `inline` : une ligne (footer). */
+  disposition?: 'empile' | 'inline';
+  /** Élément rendu. `h1` sur le hero d'accueil, `p` partout ailleurs. */
+  balise?: 'h1' | 'h2' | 'p' | 'div' | 'span';
+  class?: string;
+  [attribut: `data-${string}`]: string | number | boolean | undefined;
+}
+
+const {
+  marque,
+  taille = 'hero',
+  disposition = 'empile',
+  balise = 'p',
+  class: classe,
+  ...reste
+} = Astro.props;
+
+// La marque est le plus grand texte display du site : son apostrophe se compose
+// comme les autres (`typographieFr`, src/lib/typographie.ts). Elle n'arrive pas
+// par `resoudre()` — un nom de club n'a pas de raccourcis à résoudre.
+const debut = typographieFr(marque?.debut) || 'De';
+const feu = typographieFr(marque?.feu) || 'Feu';
+const connecteur = typographieFr(marque?.connecteur) || 'et d\u2019';
+const acier = typographieFr(marque?.acier) || 'Acier';
+
+// « et d' » se colle à « Acier » ; partout ailleurs, une espace. Même règle
+// que dans Base.astro pour le titre de l'onglet.
+const soude = /['’]$/.test(connecteur.trimEnd());
+const nomComplet = `${[debut, feu, connecteur].filter(Boolean).join(' ')}${soude ? '' : ' '}${acier}`;
+
+const Balise = balise;
+---
+
+<Balise class:list={['logotype', `logotype--${taille}`, `logotype--${disposition}`, classe]} {...reste}>
+  <span class="logotype__nom">{nomComplet}</span>
+  <span class="logotype__ligne logotype__ligne--1" aria-hidden="true"
+    ><span class="logotype__mot logotype__mot--parch">{debut}</span><span
+      class="logotype__mot logotype__mot--feu">{feu}</span
+    ></span
+  >
+  <span class="logotype__ligne logotype__ligne--2" aria-hidden="true"
+    ><span class="logotype__mot logotype__mot--connecteur">{connecteur}</span><span
+      class="logotype__mot logotype__mot--acier">{acier}</span
+    ></span
+  >
+</Balise>
+
+<style>
+  .logotype {
+    position: relative; /* ancre le nom hors écran */
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--logo-fs);
+    line-height: var(--lh-display-tight);
+    text-wrap: nowrap;
+  }
+
+  .logotype--hero {
+    --logo-fs: var(--fs-display-hero);
+  }
+
+  .logotype--footer {
+    --logo-fs: var(--fs-display-footer);
+  }
+
+  /* Deux lignes empilées : gouttière de colonne 6→8 px (design-spec §9.2). */
+  .logotype--empile {
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(6px, 5.257px + 0.1905vw, 8px);
+  }
+
+  /* Une seule ligne : gouttière 8→26 px. */
+  .logotype--inline {
+    flex-wrap: wrap;
+    gap: clamp(8px, 1.314px + 1.7143vw, 26px);
+  }
+
+  .logotype__ligne {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  /* Gouttières internes : 15→24 px sur « De Feu », 8→10 px sur « et d'Acier ». */
+  .logotype--empile .logotype__ligne--1 {
+    gap: clamp(15px, 11.657px + 0.8571vw, 24px);
+  }
+
+  .logotype--empile .logotype__ligne--2 {
+    gap: clamp(8px, 7.257px + 0.1905vw, 10px);
+  }
+
+  /* En ligne, les quatre mots partagent la gouttière du conteneur. */
+  .logotype--inline .logotype__ligne {
+    display: contents;
+  }
+
+  .logotype__mot--parch {
+    color: var(--parch);
+    font-weight: 500;
+  }
+
+  .logotype__mot--feu {
+    color: var(--feu);
+    font-weight: 500;
+  }
+
+  .logotype__mot--connecteur {
+    color: var(--parch);
+    font-weight: 300;
+    font-style: italic;
+  }
+
+  .logotype__mot--acier {
+    color: var(--acier);
+    font-weight: 500;
+  }
+
+  /* Le nom lisible : hors écran, mais bien dans l'arbre d'accessibilité. */
+  .logotype__nom {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

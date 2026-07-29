@@ -1,0 +1,512 @@
+---
+/**
+ * Hero de la fiche prof — design-spec §6.1/§6.3 (desktop) et §6.2/§6.4 (mobile).
+ *
+ * Deux compositions très différentes, **un seul balisage** : la grille place le
+ * bloc de titre à côté du portrait au-dessus de 1000 px, et par-dessus lui en
+ * dessous — la maquette mobile incruste en effet le nom sur la photo, avec
+ * voile, assise et pastille de retour. Un seul `<Picture>` est donc rendu,
+ * quelle que soit la largeur : pas de photo chargée deux fois, pas de lien
+ * dupliqué au clavier.
+ *
+ * **1000 px et non 820** : la colonne portrait de 500 px de la maquette ne
+ * laissait que 207 px au texte à 820 px — nom sur deux lignes, accroche cassée,
+ * bio à 26 signes par ligne. Même seuil que la nav (`Nav.astro`) et que la
+ * fiche arme, pour que la page ne change pas de gabarit en deux temps.
+ *
+ *   desktop                        mobile
+ *   ┌─────────┬──────────┐         ┌────────────────┐
+ *   │ portrait│  titre   │         │ photo + titre  │  ← même cellule
+ *   │  HEMA   ├──────────┤         ├────────────────┤
+ *   │         │  corps   │         │     corps      │
+ *   └─────────┴──────────┘         └────────────────┘
+ *
+ * Le bouton « PROFIL HEMA RATINGS » vit sous le portrait en desktop
+ * (design-spec §6.3) ; en mobile la maquette le déplace dans la pile de CTA du
+ * bas (§6.4), rendue par `ProfCta`. C'est le seul élément dupliqué de la page :
+ * un bouton sans image, dont la copie inutile est retirée par `display: none`
+ * — donc absente de l'arbre d'accessibilité et de la tabulation.
+ *
+ * Le bloc vidéo est masquable : sans lien ni vignette, `VideoCard` ne rend
+ * rien (ARCHITECTURE.md §1) — et la classe `--sans-video` recompose alors le
+ * hero desktop, que la maquette n'avait dessiné qu'avec sa vignette d'interview.
+ * Son `sizes` (`720px`) n'est pas la bascule du gabarit mais la largeur de
+ * fenêtre à partir de laquelle la colonne dépasse les 640 px de la vignette,
+ * en une comme en deux colonnes.
+ */
+import { Picture } from 'astro:assets';
+import Button from '../ui/Button.astro';
+import Pill from '../ui/Pill.astro';
+import VideoCard from '../ui/VideoCard.astro';
+import { largeursSrcset } from '../../lib/images';
+
+export interface LienExterneProf {
+  libelle?: string | null;
+  url?: string | null;
+}
+
+export interface VideoProf {
+  url?: string | null;
+  duree?: string | null;
+  vignette?: ImageMetadata | null;
+}
+
+export interface Props {
+  /** Nom complet — le `<h1>` de la page. */
+  nom: string;
+  /** Ligne d'armes déjà composée. Ex. « Épée longue ». */
+  armes?: string;
+  /** Accroche d'une ligne. */
+  accroche?: string;
+  /** Biographie, déjà convertie en HTML depuis Markdoc. */
+  bio?: string;
+  portrait?: ImageMetadata | null;
+  portraitAlt?: string;
+  /** `object-position` issu du cadrage CMS (`cadrageCss()`). */
+  portraitPosition?: string;
+  /** Crédit photo saisi dans le CMS. Masqué si vide. */
+  credit?: string;
+  /** Lien externe du CMS — profil HEMA Ratings, site personnel. */
+  lienExterne?: LienExterneProf | null;
+  /** Cible de la pastille de retour mobile. */
+  retour: string;
+  /** Nom accessible de la pastille de retour. */
+  libelleRetour?: string;
+  /** Pastille posée en haut à droite de la photo, en mobile. */
+  tag?: string;
+  video?: VideoProf | null;
+  /** Légende sous la vignette vidéo. */
+  legendeVideo?: string;
+  /** `id` du `<h1>`, pour l'`aria-labelledby` de la page. */
+  idTitre?: string;
+  class?: string;
+}
+
+const {
+  nom,
+  armes,
+  accroche,
+  bio,
+  portrait = null,
+  portraitAlt,
+  portraitPosition = '50% 20%',
+  credit,
+  lienExterne = null,
+  retour,
+  libelleRetour = 'Retour aux encadrants',
+  tag = 'Fiche prof',
+  video = null,
+  legendeVideo = "L'interview en vidéo",
+  idTitre = 'fiche-prof-titre',
+  class: classe,
+} = Astro.props;
+
+const alt = portraitAlt || `Portrait de ${nom}`;
+const aLienExterne = Boolean(lienExterne?.url);
+const libelleLienExterne = lienExterne?.libelle?.trim() || 'Profil HEMA Ratings';
+const aVideo = Boolean(video?.url || video?.vignette);
+---
+
+<div
+  class:list={['prof-hero', { 'prof-hero--sans-video': !aVideo }, classe]}
+  style={`--prof-hero-position:${portraitPosition}`}
+>
+  <div class="prof-hero__media">
+    <div class="prof-hero__cadre">
+      {
+        portrait ? (
+          <Picture
+            src={portrait}
+            alt={alt}
+            formats={['avif', 'webp']}
+            widths={largeursSrcset(portrait, { largeurs: [390, 500, 780, 1000] })}
+            sizes="(min-width: 1000px) 35vw, 100vw"
+            loading="eager"
+            decoding="async"
+          />
+        ) : (
+          <span class="prof-hero__vide" aria-hidden="true" />
+        )
+      }
+
+      <span class="prof-hero__voile" aria-hidden="true"></span>
+      <span class="prof-hero__assise" aria-hidden="true"></span>
+
+      <div class="prof-hero__barre">
+        <Pill variante="ronde" icone="arrow-left" cote={36} href={retour} titre={libelleRetour} />
+        <Pill variante="tag" libelle={tag} />
+      </div>
+    </div>
+
+    {
+      aLienExterne && (
+        <div class="prof-hero__hema">
+          <Button
+            variante="contour"
+            libelle={libelleLienExterne}
+            href={lienExterne!.url!}
+            externe
+          />
+        </div>
+      )
+    }
+  </div>
+
+  <div class="prof-hero__titre">
+    {armes && <p class="prof-hero__armes">{armes}</p>}
+    <h1 class="prof-hero__nom" id={idTitre}>{nom}</h1>
+    {accroche && <p class="prof-hero__accroche">{accroche}</p>}
+  </div>
+
+  <div class="prof-hero__corps">
+    <span class="prof-hero__filet" aria-hidden="true"></span>
+
+    {bio && <div class="prof-hero__bio" set:html={bio} />}
+
+    {
+      aVideo && (
+        <div class="prof-hero__video">
+          <VideoCard
+            url={video?.url}
+            image={video?.vignette ?? null}
+            alt=""
+            duree={video?.duree}
+            titre={legendeVideo}
+            taille="l"
+            ratio="16 / 9"
+            rayon={3}
+            sizes="(min-width: 720px) 640px, 92vw"
+          />
+        </div>
+      )
+    }
+
+    {credit && <p class="prof-hero__credit">{credit}</p>}
+  </div>
+</div>
+
+<style>
+  /* ── Grille ─────────────────────────────────────────────────────────────── */
+
+  .prof-hero {
+    display: grid;
+    width: 100%;
+    max-width: var(--largeur-max);
+    margin-inline: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'media'
+      'corps';
+    row-gap: clamp(24px, 1rem + 2vw, 30px);
+  }
+
+  .prof-hero__media {
+    grid-area: media;
+  }
+
+  /* Mobile : le titre est incrusté en bas de la photo (design-spec §6.4). */
+  .prof-hero__titre {
+    position: relative;
+    z-index: 1;
+    grid-area: media;
+    align-self: end;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 var(--gouttiere) clamp(28px, 6vw, 46px);
+  }
+
+  .prof-hero__corps {
+    grid-area: corps;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(14px, 0.6rem + 1.6vw, 26px);
+    padding-inline: var(--gouttiere);
+  }
+
+  /* ── La photo et ses couches ────────────────────────────────────────────── */
+
+  .prof-hero__cadre {
+    position: relative;
+    overflow: hidden;
+    /* 390 × 440 dans la maquette (112,8 vw) ; au-delà, le cadre se plafonne
+       plutôt que de devenir un portrait d'un mètre de haut sur les tablettes —
+       même parti que le hero de fiche arme, qui plafonne à 500 px. */
+    height: min(112.8vw, 560px);
+    background: var(--char);
+  }
+
+  .prof-hero__cadre :global(picture),
+  .prof-hero__cadre :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .prof-hero__cadre :global(img) {
+    object-fit: cover;
+    object-position: var(--prof-hero-position, 50% 20%);
+  }
+
+  .prof-hero__vide {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--char);
+  }
+
+  /* Voile uniforme le plus léger du site (35 %) : le nom doit se lire, le
+     visage rester net. */
+  .prof-hero__voile {
+    position: absolute;
+    inset: 0;
+    background: var(--veil-ink-35);
+  }
+
+  /* « Assise » de la maquette : un aplat de 200 px ancré en bas. On la rend en
+     dégradé, comme `MediaCard`, pour éviter l'arête franche en travers de la
+     photo (design-spec §9.8, recommandation d'intégration). */
+  .prof-hero__assise {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 58%;
+    background: linear-gradient(to top, var(--veil-ink-85), var(--veil-ink-45) 62%, transparent);
+  }
+
+  .prof-hero__barre {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+  }
+
+  /* ── Le titre ───────────────────────────────────────────────────────────── */
+
+  .prof-hero__armes {
+    font-family: var(--font-eyebrow);
+    font-size: clamp(9.5px, 8.943px + 0.1429vw, 11px);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    letter-spacing: 0.24em; /* 2.2 px en mobile, 3.2 px en desktop */
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .prof-hero__nom {
+    /* 36 px à 390, 80 px à 1440 — la fiche arme monte à 90, le prof s'arrête
+       à 80 (design-spec §6.1). */
+    font-size: clamp(36px, 19.657px + 4.1905vw, 80px);
+    font-weight: 400;
+    line-height: var(--lh-display);
+    text-wrap: balance;
+    color: var(--parch);
+  }
+
+  .prof-hero__accroche {
+    max-width: 46ch;
+    font-size: clamp(12.5px, 10.829px + 0.4286vw, 17px);
+    font-weight: 500;
+    line-height: var(--lh-body-tight);
+    color: var(--parch-soft);
+  }
+
+  /* ── Le corps ───────────────────────────────────────────────────────────── */
+
+  /* Le filet de 56 px entre l'accroche et la bio n'existe qu'en desktop : en
+     mobile la bio est déjà détachée par le changement de fond. */
+  .prof-hero__filet {
+    display: none;
+    width: 56px;
+    height: 1px;
+    background: var(--parch-line);
+  }
+
+  .prof-hero__bio {
+    max-width: 640px;
+    font-size: clamp(14.5px, 13.571px + 0.2381vw, 17px);
+    line-height: var(--lh-body);
+    color: var(--parch-soft);
+  }
+
+  .prof-hero__bio :global(p) {
+    margin: 0;
+  }
+
+  .prof-hero__bio :global(p + p),
+  .prof-hero__bio :global(ul),
+  .prof-hero__bio :global(ol) {
+    margin-block-start: 0.9em;
+  }
+
+  .prof-hero__bio :global(ul),
+  .prof-hero__bio :global(ol) {
+    padding-inline-start: 1.3em;
+  }
+
+  .prof-hero__bio :global(li + li) {
+    margin-block-start: 0.35em;
+  }
+
+  .prof-hero__bio :global(strong) {
+    font-weight: 600;
+    color: var(--parch);
+  }
+
+  .prof-hero__bio :global(a) {
+    color: var(--parch);
+    text-decoration: underline;
+    text-decoration-color: var(--ember);
+    transition: color var(--transition);
+  }
+
+  .prof-hero__bio :global(a:hover) {
+    color: var(--ember-hot);
+  }
+
+  .prof-hero__video {
+    max-width: 640px;
+    margin-block-start: clamp(10px, 0.4rem + 1vw, 22px);
+  }
+
+  .prof-hero__credit {
+    font-size: var(--fs-body-xxs);
+    line-height: var(--lh-body-tight);
+    color: var(--parch-mute);
+  }
+
+  /* ── ≥ 820 px : le fil d'Ariane prend le relais de la pastille de retour ── */
+
+  /* `ProfFilAriane` s'affiche dès 820 px : garder en plus la barre incrustée
+     (pastille « retour » + tag « FICHE PROF ») ferait deux chemins de retour
+     l'un sur l'autre. Le gabarit du hero, lui, reste mobile jusqu'à 1000 px. */
+  @media (min-width: 820px) {
+    .prof-hero__barre {
+      display: none;
+    }
+  }
+
+  /* ── Desktop : deux colonnes, plus d'incrustation ───────────────────────── */
+
+  @media (min-width: 1000px) {
+    /* La colonne portrait n'atteint les 500 px de la maquette qu'à 1440 : elle
+       part de 340 px à la bascule, sinon la colonne de texte repartait à 400 px
+       à peine. Rampe 1000 → 1440, comme la gouttière du bloc. */
+    .prof-hero {
+      grid-template-columns: minmax(0, clamp(340px, -23.636px + 36.3636vw, 500px)) minmax(0, 1fr);
+      grid-template-areas:
+        'media titre'
+        'media corps';
+      grid-template-rows: auto 1fr;
+      align-items: start;
+      column-gap: clamp(40px, -96.364px + 13.6364vw, 100px);
+      row-gap: clamp(12px, 0.4rem + 0.9vw, 16px);
+      padding-inline: var(--gouttiere);
+    }
+
+    /*
+     * État « fiche sans vidéo » (les trois fiches d'aujourd'hui) : la hauteur du
+     * hero vient du portrait 5/6, que rien ne compense à droite — la colonne de
+     * texte s'arrêtait 390 px avant le bas, et la page se lisait comme une
+     * composition inachevée. Deux rangées `1fr` de part et d'autre recentrent le
+     * couple titre + corps face au portrait. Dès qu'une vidéo d'interview est
+     * saisie, la maquette reprend ses droits : les rangées vides se referment et
+     * les deux colonnes repartent du haut.
+     */
+    .prof-hero--sans-video {
+      grid-template-rows: 1fr auto auto 1fr;
+      grid-template-areas:
+        'media .'
+        'media titre'
+        'media corps'
+        'media .';
+    }
+
+    .prof-hero__media {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .prof-hero__titre {
+      position: static;
+      grid-area: titre;
+      align-self: start;
+      gap: 0;
+      padding: 0;
+    }
+
+    .prof-hero__corps {
+      padding-inline: 0;
+      gap: clamp(18px, 0.6rem + 1.2vw, 26px);
+    }
+
+    .prof-hero__cadre {
+      height: auto;
+      aspect-ratio: 5 / 6; /* 500 × 600 */
+      border-radius: var(--radius-2);
+    }
+
+    /* Ni voile, ni assise : le desktop n'incruste rien (la barre du haut est
+       déjà retirée à 820 px, avec l'arrivée du fil d'Ariane). */
+    .prof-hero__voile,
+    .prof-hero__assise {
+      display: none;
+    }
+
+    .prof-hero__armes {
+      margin-block-end: 14px;
+    }
+
+    /* design-spec §6.3 : l'accroche est en `$parch` plein, la bio en
+       `$parch-soft` — c'est ce contraste qui fait ressortir la ligne de punch
+       du reste du texte. En mobile (§6.4), les deux restent en `$parch-soft`. */
+    .prof-hero__accroche {
+      color: var(--parch);
+    }
+
+    .prof-hero__nom {
+      margin-block-end: 16px;
+    }
+
+    .prof-hero__filet {
+      display: block;
+      margin-block-start: 10px;
+    }
+  }
+
+  /*
+   * Le bouton du lien externe vit sous le portrait en desktop ; en mobile
+   * `ProfCta` le rend en pleine largeur avec le bouton d'essai. Les deux copies
+   * se relaient au seuil de bascule — jamais visibles ensemble, jamais absentes
+   * toutes les deux.
+   *
+   * Le relais suppose que `ProfCta` masque **sa** copie au même seuil : les deux
+   * `@media (min-width: 1000px)` doivent rester égaux (`BASCULE_NAV`,
+   * src/lib/breakpoints.ts). Poser ici une troisième présentation pour la bande
+   * 820–1000 casserait l'incrustation du titre, qui se cale sur le bas de la
+   * colonne média : c'est bien le seuil de `ProfCta` qui devait bouger.
+   */
+  .prof-hero__hema {
+    display: none;
+  }
+
+  @media (min-width: 1000px) {
+    .prof-hero__hema {
+      display: block;
+    }
+
+    /* design-spec §6.3 : « Btn Profil HEMA Ratings hug×48 » — hug, c'est-à-dire
+       à la chasse du texte plus 22 px de part et d'autre. Le bouton reste donc
+       `inline-flex` et se cale au bord gauche du portrait ; il n'est étiré sur
+       toute la largeur qu'en mobile, dans `ProfCta` (§6.2, bloc 5). */
+    .prof-hero__hema > :global(.bouton) {
+      height: 48px;
+    }
+  }
+</style>

@@ -1,0 +1,340 @@
+---
+/**
+ * Mentions légales — `/mentions-legales/`.
+ *
+ * Page non maquettée (design-spec §10.2 : « aucune page annexe »). Elle est
+ * donc écrite dans le langage visuel établi : fond `$ink`, sur-titre lettré,
+ * titre Cormorant à ligne accentuée, rubriques en lignes à filets (`FactRow`,
+ * le motif du bloc PRATIQUE de l'accueil). Rien de neuf, rien de décoratif.
+ *
+ * Point capital : **le siège, les horaires et le contact ne sont pas saisis
+ * ici**. Le CMS écrit « {lieu} — {adresse} », « {creneaux} », « {email} ·
+ * {telephone} » ; les raccourcis sont résolus au build depuis la fiche école
+ * (content-model.md §5.10). C'est ce qui garantit que les mentions légales ne
+ * mentent jamais sur le contact — l'ancien site en affichait deux différents.
+ *
+ * Le titre de la page et le lien vers la page voisine viennent de la liste
+ * « Liens légaux » du singleton « Menus & pied de page » : le libellé est saisi
+ * une seule fois, le pied de page et cette page le lisent au même endroit.
+ */
+import Base from '../layouts/Base.astro';
+import Footer from '../components/sections/Footer.astro';
+import Nav from '../components/sections/Nav.astro';
+import Eyebrow from '../components/ui/Eyebrow.astro';
+import SectionTitle from '../components/ui/SectionTitle.astro';
+import FactRow from '../components/ui/FactRow.astro';
+import TabBar from '../components/ui/TabBar.astro';
+import TextLink from '../components/ui/TextLink.astro';
+import Icon from '../components/ui/Icon.astro';
+import { estNomIcone } from '../components/ui/icones';
+import { getEcolePrincipale } from '../lib/ecoles';
+import {
+  lireHero,
+  lireIdentite,
+  lireLegal,
+  lireMenus,
+  lireDisciplines,
+  profsDe,
+} from '../lib/contenu';
+import { contexteDe, lienTelephone, resoudre } from '../lib/raccourcis';
+import { typographieFr } from '../lib/typographie';
+import { lien } from '../lib/liens';
+
+/** Adresse de cette page, telle qu'elle est saisie dans « Liens légaux ». */
+const CHEMIN = '/mentions-legales/';
+/** Libellé de repli si l'entrée a été retirée de l'admin. */
+const TITRE_DEFAUT = 'Mentions légales';
+
+const ecole = await getEcolePrincipale();
+const [identite, hero, legal, menus, disciplines, profs] = await Promise.all([
+  lireIdentite(),
+  lireHero(),
+  lireLegal(),
+  lireMenus(),
+  lireDisciplines(),
+  profsDe(ecole),
+]);
+
+// Même comptage que l'accueil : les raccourcis {nb_armes} / {nb_profs} portent
+// sur ce qui est réellement affiché (ARCHITECTURE.md §4).
+const ctx = contexteDe(ecole.fiche, {
+  nbArmes: disciplines.filter((d) => d.entry.affichee).length,
+  nbProfs: profs.filter((p) => p.entry.visible).length,
+});
+
+const SOURCE = 'src/content/commun/legal.yaml';
+
+const mentions = legal.mentions;
+const intro = resoudre(mentions?.intro, ctx, `${SOURCE} → introduction`);
+// La note ne contient aucun raccourci : elle ne passe donc pas par
+// `resoudre()`, et c'est là qu'on lui applique la normalisation typographique
+// (« L'IMAGINARIUM » → « L’IMAGINARIUM », « Crédits : » insécable).
+const note = typographieFr(mentions?.note?.trim());
+
+// ── Rubriques ──────────────────────────────────────────────────────────────
+//
+// Le courriel et le numéro sont cliquables ici comme ils le sont dans le pied
+// de page et dans « Nous rejoindre » : c'est justement sur cette page qu'un
+// visiteur vient chercher les coordonnées officielles, et sur mobile il
+// s'attend à composer le numéro d'un doigt. La rubrique n'est pas réécrite
+// pour autant : on découpe le texte **résolu** autour des deux valeurs de la
+// fiche école, et seul ce qui est vraiment un contact devient un lien. Une
+// rubrique qui n'en contient aucun reste une valeur simple.
+
+interface Segment {
+  texte: string;
+  href?: string;
+}
+
+const contactsCliquables = [
+  { valeur: ctx.email, href: ctx.email ? `mailto:${ctx.email}` : '' },
+  { valeur: ctx.telephone, href: lienTelephone(ctx.telephone) },
+].filter((contact) => !!contact.valeur && !!contact.href);
+
+function segmenterContacts(texte: string): Segment[] {
+  let segments: Segment[] = texte ? [{ texte }] : [];
+
+  for (const contact of contactsCliquables) {
+    segments = segments.flatMap((segment) => {
+      if (segment.href || !segment.texte.includes(contact.valeur)) return [segment];
+
+      const eclate: Segment[] = [];
+      segment.texte.split(contact.valeur).forEach((morceau, index) => {
+        if (index > 0) eclate.push({ texte: contact.valeur, href: contact.href });
+        if (morceau) eclate.push({ texte: morceau });
+      });
+      return eclate;
+    });
+  }
+
+  return segments;
+}
+
+const rubriques = (mentions?.entrees ?? [])
+  .filter((entree) => !!entree.titre)
+  .map((entree) => {
+    const texte = resoudre(entree.texte, ctx, `${SOURCE} → rubrique « ${entree.titre} »`);
+    // Le texte passe par `resoudre()`, qui compose la typographie ; le libellé
+    // de la rubrique, lui, est un champ nu — on le compose ici.
+    return { titre: typographieFr(entree.titre), texte, segments: segmenterContacts(texte) };
+  });
+
+// Siège administratif distinct du lieu d'entraînement : champ facultatif de la
+// fiche école, affiché seulement s'il est renseigné.
+const siege = typographieFr(ecole.fiche.legal?.siege?.trim());
+
+const hebergeur = legal.hebergeur;
+
+// ── Titre et navigation entre les deux pages légales ───────────────────────
+//
+// Les pages légales appartiennent à l'association et non à une implantation :
+// leur adresse n'est jamais préfixée par l'école (cf. content-model.md §3,
+// « /mentions-legales/ — partagé »).
+const normaliser = (url: string) => url.replace(/[?#].*$/, '').replace(/\/+$/, '') || '/';
+
+const liensLegaux = (menus.liensLegaux ?? []).filter((l) => !!l.libelle && !!l.url);
+const titrePage =
+  liensLegaux.find((l) => normaliser(l.url) === normaliser(CHEMIN))?.libelle?.trim() ||
+  TITRE_DEFAUT;
+const pageVoisine = liensLegaux.find((l) => normaliser(l.url) !== normaliser(CHEMIN));
+
+// « Mentions légales » → « Mentions » puis « légales. » en ember italique,
+// le motif de titre de tout le site (design-spec §9.3).
+const mots = titrePage.split(/\s+/).filter(Boolean);
+const lignesTitre =
+  mots.length > 1
+    ? [{ texte: mots.slice(0, -1).join(' ') }, { texte: `${mots[mots.length - 1]}.`, accent: true }]
+    : [{ texte: `${titrePage}.` }];
+
+const description = intro.replace(/\s+/g, ' ').trim().slice(0, 200);
+
+// La barre d'onglets est du chrome mobile global : elle est rendue sur toutes
+// les pages, pages légales comprises (ARCHITECTURE.md §5, parité du chrome).
+// Aucun onglet n'est actif — une page légale ne correspond à aucune des cinq
+// destinations.
+const onglets = (menus.barreMobile ?? []).map((onglet) => ({
+  libelle: onglet.libelle,
+  href: lien(ecole, onglet.lien),
+  icone: estNomIcone(onglet.icone) ? onglet.icone : 'house',
+  exergue: onglet.icone === 'swords',
+}));
+---
+
+<Base ecole={ecole} identite={identite} titre={titrePage} description={description}>
+  {/* La colonne de lecture est un enfant de la gouttière, pas la gouttière
+      elle-même : `max-width` sur `.gouttiere` (qui porte `margin-inline: auto`)
+      centrait toute la page, à 386 px du bord, pendant que la barre de
+      navigation et le pied de page restaient calés à 56 px. */}
+  <article class="legal">
+    <div class="gouttiere">
+      <div class="legal__interieur">
+        <a class="legal__retour" href={lien(ecole, '/')}>
+          <Icon name="arrow-left" />
+          <span>Retour à l’accueil</span>
+        </a>
+
+        <header class="legal__entete">
+          <Eyebrow texte="Informations légales" />
+          <SectionTitle lignes={lignesTitre} taille="xl" balise="h1" class="legal__titre" />
+        </header>
+
+        {intro && <p class="legal__intro lede">{intro}</p>}
+
+        <div class="legal__rubriques">
+          {
+            rubriques.map((rubrique) =>
+              rubrique.segments.some((segment) => !!segment.href) ? (
+                <FactRow libelle={rubrique.titre}>
+                  {/* Une seule ligne par fragment : Astro n'est pas JSX, les
+                      retours à la ligne d'un gabarit deviennent de vraies
+                      espaces — et souligneraient le blanc du lien. */}
+                  <span class="legal__valeur">{rubrique.segments.map((segment) => segment.href ? <a class="legal__valeur-lien" href={segment.href}>{segment.texte}</a> : <span>{segment.texte}</span>)}</span>
+                </FactRow>
+              ) : (
+                <FactRow libelle={rubrique.titre} valeur={rubrique.texte} />
+              ),
+            )
+          }
+          {siege && <FactRow libelle="Siège social" valeur={siege} />}
+          {
+            hebergeur?.nom && (
+              <FactRow
+                libelle="Hébergement"
+                valeur={hebergeur.nom}
+                secondaire={hebergeur.adresse ?? undefined}
+              />
+            )
+          }
+        </div>
+
+        {note && <p class="legal__note">{note}</p>}
+
+        {
+          pageVoisine && (
+            <div class="legal__suite">
+              <TextLink libelle={pageVoisine.libelle} href={pageVoisine.url} ton="mute" />
+            </div>
+          )
+        }
+      </div>
+    </div>
+  </article>
+
+  {/* Page sans hero photographique : la barre garde son fond plein dès le
+      chargement (`fond="solide"`, cf. notes du chantier « chrome »). */}
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+    fond="solide"
+  />
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient après le pied de
+        page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide du site" />
+  </Fragment>
+</Base>
+
+<style>
+  /*
+   * Gabarit sobre : une seule colonne, largeur de lecture bornée en `ch` pour
+   * que le texte reste lisible sur un 1440 (design-spec §10.2 demande de
+   * convertir les largeurs bloquées de la maquette en `max-width`/`ch`).
+   */
+  .legal {
+    background: var(--ink);
+    padding-block: clamp(40px, 25.143px + 3.8095vw, 80px) var(--esp-section-y-bas);
+  }
+
+  /* Colonne de lecture bornée, **calée à gauche sur la gouttière** : le bloc
+     légal démarre au même x que le logo de la barre de navigation et que le
+     pied de page, comme toutes les autres pages du site. */
+  .legal__interieur {
+    display: flex;
+    flex-direction: column;
+    max-width: 78ch;
+  }
+
+  /* Lien de retour : la flèche précède le libellé, c'est ce qui le distingue
+     d'un lien fléché ordinaire (`TextLink`, toujours orienté vers l'avant). */
+  .legal__retour {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 10px;
+    color: var(--parch-mute);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    text-decoration: none;
+    --icone-cote: 11px;
+    transition: color var(--transition);
+  }
+
+  .legal__retour:hover,
+  .legal__retour:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  .legal__entete {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(14px, 11.771px + 0.5714vw, 20px);
+    margin-block-start: var(--esp-bloc);
+    padding-block-end: clamp(22px, 18.286px + 0.9524vw, 32px);
+    border-bottom: var(--filet);
+  }
+
+  .legal__intro {
+    max-width: 66ch;
+    margin-block-start: clamp(24px, 18.429px + 1.4286vw, 34px);
+  }
+
+  .legal__rubriques {
+    margin-block-start: var(--esp-bloc);
+  }
+
+  /* La rubrique « Contact » passe par le slot de `FactRow` : sa valeur
+     n'hérite donc pas de `.fait__valeur`, qui appartient au style scopé du
+     composant. On en reprend ici les mesures exactes, à l'identique. */
+  .legal__valeur {
+    color: var(--parch);
+    font-size: clamp(14.5px, 14.129px + 0.0952vw, 15.5px);
+    font-weight: 500;
+    line-height: var(--lh-body-tight);
+    overflow-wrap: anywhere;
+  }
+
+  .legal__valeur-lien {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    transition: color var(--transition);
+  }
+
+  .legal__valeur-lien:hover,
+  .legal__valeur-lien:focus-visible {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  .legal__note {
+    max-width: 66ch;
+    margin-block-start: clamp(24px, 18.429px + 1.4286vw, 34px);
+    color: var(--parch-mute);
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+  }
+
+  .legal__suite {
+    margin-block-start: var(--esp-bloc);
+    padding-block-start: clamp(22px, 18.286px + 0.9524vw, 32px);
+    border-top: var(--filet);
+  }
+</style>

@@ -1,0 +1,91 @@
+---
+/**
+ * Reveal — apparition au défilement.
+ *
+ * Enveloppe son contenu dans un élément qui monte de 14 px en s'opacifiant dès
+ * qu'il entre dans le champ. Les classes `.reveal` / `.est-visible` et leur
+ * transition vivent dans `src/styles/global.css` : ce composant ne fait que les
+ * poser, y ajouter un retard facultatif, et garantir l'observateur même sur une
+ * page qui n'utiliserait pas le gabarit `Base.astro`.
+ *
+ * `prefers-reduced-motion: reduce` court-circuite tout : la règle globale rend
+ * l'élément visible sans transition, et le script marque tout de suite les
+ * cibles. Rien n'est jamais masqué durablement — si le JavaScript ne s'exécute
+ * pas, un `<noscript>` neutralise l'état initial.
+ *
+ * **Les attributs non déclarés sont étalés sur l'élément rendu** (`{...reste}`),
+ * comme dans `SectionTitle`, `Button` ou `FactRow`. Ce n'est pas un confort :
+ * c'est ce qui transmet le `data-astro-cid-…` de l'appelant. Sans lui, une
+ * classe passée en prop (`<Reveal class="pilier">`) atterrit bien sur le nœud
+ * mais aucune règle scopée de l'appelant ne la vise — le sélecteur compilé
+ * s'écrit `.pilier[data-astro-cid-…]` et l'attribut manque. Tout le style de
+ * l'élément est alors mort silencieusement.
+ */
+
+export interface Props {
+  /**
+   * Balise rendue. `div` par défaut ; `li` dans une liste, `section`, etc.
+   *
+   * Le nom de la propriété est entre guillemets **volontairement** : écrit
+   * `as?:`, le compilateur Astro (2.13) le lit comme l'opérateur d'assertion
+   * et perd la trace de l'interface `Props` — le composant est alors typé
+   * `Record<string, any>` et ses props ne sont plus vérifiées à l'appel.
+   */
+  'as'?: keyof HTMLElementTagNameMap;
+  /** Retard en millisecondes, pour décaler les éléments d'une même rangée. */
+  delai?: number;
+  class?: string;
+  /** Ancres, crochets de style et attributs de scope passés par l'appelant. */
+  id?: string;
+  [attribut: `data-${string}`]: string | number | boolean | undefined;
+}
+
+const { as: Balise = 'div', delai = 0, class: classe, ...reste } = Astro.props;
+---
+
+<Balise
+  class:list={['reveal', classe]}
+  data-reveal
+  style={delai ? `transition-delay:${delai}ms` : undefined}
+  {...reste}
+>
+  <slot />
+</Balise>
+
+{/* `is:inline` est indispensable : sans lui, Astro extrairait cette règle du
+    <noscript> et la hisserait dans la feuille de la page — l'apparition ne se
+    jouerait jamais. */}
+<noscript>
+  <style is:inline>
+    .reveal {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  </style>
+</noscript>
+
+<script>
+  // Observateur autonome : `Base.astro` en pose déjà un sur `.reveal`, et les
+  // deux cohabitent sans dommage (ajouter deux fois la même classe ne fait
+  // rien). Ce doublon est le prix d'un composant qui fonctionne aussi hors du
+  // gabarit — pages d'aperçu, gabarits futurs.
+  const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cibles = document.querySelectorAll<HTMLElement>('[data-reveal]');
+
+  if (reduit || !('IntersectionObserver' in window)) {
+    cibles.forEach((el) => el.classList.add('est-visible'));
+  } else {
+    const observateur = new IntersectionObserver(
+      (entrees) => {
+        for (const entree of entrees) {
+          if (!entree.isIntersecting) continue;
+          entree.target.classList.add('est-visible');
+          observateur.unobserve(entree.target);
+        }
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -80px 0px' },
+    );
+
+    cibles.forEach((el) => observateur.observe(el));
+  }
+</script>

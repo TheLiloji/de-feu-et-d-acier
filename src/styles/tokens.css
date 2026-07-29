@@ -1,0 +1,142 @@
+/*
+ * Design tokens — « De Feu et d'Acier »
+ * Source : docs/refonte/design-spec.md §1 (frames « V2 — … » de Maquette.pen).
+ *
+ * Trois strates :
+ *   1. les 14 variables formellement déclarées dans la maquette ;
+ *   2. la tokenisation des 30 couleurs littérales relevées (voiles, surfaces,
+ *      teintes ember) — sans elle, ces valeurs se recopient à la main dans les
+ *      composants et divergent ;
+ *   3. l'échelle typographique et les espacements, fluides entre 390 et 1440 px.
+ *
+ * Aucun breakpoint tablette n'est maquetté : tout ce qui varie en taille passe
+ * par clamp(), les bascules de layout se font vers 820 px (ARCHITECTURE.md §5).
+ */
+
+:root {
+  /* ── 1. Les 14 variables de la maquette ───────────────────────────────── */
+
+  /* Fonds */
+  --ink: #0a0908; /* fond principal */
+  --coal: #15120f; /* fond de section alterné (une sur deux) */
+  --char: #1f1b16; /* fond de carte / cadre interne */
+
+  /* Texte parchemin */
+  --parch: #ece8de; /* texte principal */
+  --parch-soft: #ece8dec7; /* 78 % — texte secondaire, chapô, liens de nav */
+  --parch-mute: #ece8de85; /* 52 % — texte tertiaire, labels, mentions */
+  --parch-line: #ece8de1f; /* 12 % — filets, séparateurs, bordures */
+
+  /* Accent */
+  --ember: #e0552c; /* accent principal : eyebrows, titres italiques, boutons */
+  --ember-hot: #f06b3a; /* déclaré mais jamais employé dans la maquette :
+                           réservé aux états :hover / :focus-visible */
+  --feu: #ec6a32; /* uniquement le mot « Feu » du logotype */
+  --acier: #b8c3cc; /* uniquement le mot « Acier » du logotype */
+
+  /* Familles typographiques ($body et $eyebrow pointent tous deux vers Inter :
+     deux noms sémantiques, une seule police chargée) */
+  --font-display: 'Cormorant Garamond Variable', 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-eyebrow: var(--font-body);
+
+  /* ── 2. Couleurs littérales tokenisées ────────────────────────────────── */
+
+  /* Famille A — voiles sur photo, base #08070a (quasi-ink) */
+  --veil-20: #08070a33;
+  --veil-32: #08070a52; /* voile léger, carte discipline mobile */
+  --veil-35: #08070a59; /* carte « Combat viking » desktop */
+  --veil-40: #08070a66; /* vignette vidéo */
+  --veil-50: #08070a80; /* bandeau bas des tuiles de galerie */
+  --veil-65: #08070aa6; /* cartes discipline desktop */
+  --veil-77: #08070ac4; /* « assise » bas de carte discipline desktop */
+  --veil-79: #08070ac9; /* « assise » de carte discipline mobile */
+  --veil-88: #08070ae0; /* assise de la photo « Tournois » */
+
+  /* Famille B — voiles sur photo, base #0a0908 (= --ink exact) */
+  --veil-ink-35: #0a090859;
+  --veil-ink-45: #0a090873;
+  --veil-ink-50: #0a090880;
+  --veil-ink-65: #0a0908a6;
+  --veil-ink-67: #0a0908ab; /* voile du hero desktop V2 */
+  --veil-ink-72: #0a0908b8; /* voile du hero mobile */
+  --veil-ink-80: #0a0908cc;
+  --veil-ink-85: #0a0908d9; /* assise de hero de fiche, voile Manifesto */
+  --veil-ink-95: #0a0908f2; /* fond de la tab-bar mobile */
+  --veil-ink-96: #0a0908f5; /* fond du menu mobile ouvert */
+
+  /* Famille C — surfaces et bordures parchemin */
+  --surface-1: #ece8de06; /* 2 %  — carte prof neutre, carte « source » */
+  --surface-1-hi: #ece8de08; /* 3 %  — tuile statistique */
+  --surface-2: #ece8de14; /* 8 %  — barres de placeholder d'interview */
+  --line-strong: #ece8de38; /* 22 % — bordure de pastille, filets de la FAQ */
+  --btn-border: #ece8de47; /* 28 % — bordure de tous les boutons secondaires */
+  --line-logo: #ece8de52; /* 32 % — filet décoratif sous le logotype du hero */
+
+  /* Teintes ember */
+  --ember-tint-3: #e0552c08; /* fond de l'item FAQ ouvert */
+  --ember-tint-5: #e0552c0d; /* fond de la carte prof mise en avant */
+  --ember-tint-8: #e0552c14; /* pastilles d'icône rondes */
+  --ember-border: #e0552c52; /* bordure de la carte prof mise en avant */
+
+  /* ── 3. Typographie ───────────────────────────────────────────────────── */
+  /* Interpolation linéaire entre 390 px (mobile maquetté) et 1440 px (desktop
+     maquetté). Ratios mesurés : ×0.62 sur le display, ×0.88 sur le corps. */
+
+  --fs-display-hero: clamp(62px, 49.371px + 3.2381vw, 96px);
+  --fs-display-footer: clamp(34px, 3.914px + 7.7143vw, 115px);
+  --fs-display-fiche: clamp(36px, 15.943px + 5.1429vw, 90px);
+  /* La fiche arme et la fiche prof partagent le palier desktop (90 px) mais pas
+     le palier mobile : design-spec §5.2 donne 42 px au H1 d'arme, §6.2 en donne
+     36 au H1 de prof. Une seule rampe calibrée sur le prof rapetissait donc le
+     nom de l'arme de 6 px en mobile. */
+  --fs-display-fiche-arme: clamp(42px, 24.171px + 4.5714vw, 90px);
+  --fs-display-xl: clamp(27px, 8.8px + 4.6667vw, 76px); /* titre de section haut */
+  --fs-display-l: clamp(25px, 8.286px + 4.2857vw, 70px); /* titre de section standard */
+  --fs-display-m: clamp(27px, 21.429px + 1.4286vw, 42px); /* nom d'arme sur carte */
+  --fs-display-s: clamp(18px, 12.057px + 1.5238vw, 34px); /* nom de prof */
+  --fs-display-quote: clamp(20px, 17.029px + 0.7619vw, 28px); /* question d'interview */
+
+  --fs-body-lede: clamp(15px, 13.514px + 0.381vw, 19px);
+  --fs-body: clamp(14px, 13.257px + 0.1905vw, 16px);
+  --fs-body-s: clamp(13.2px, 12.531px + 0.1714vw, 15px);
+  --fs-body-xs: clamp(12.8px, 12.169px + 0.1619vw, 14.5px);
+  --fs-body-xxs: clamp(11.5px, 10.943px + 0.1429vw, 13px);
+  --fs-button: 11.5px; /* identique desktop et mobile */
+
+  --fs-eyebrow: clamp(10.5px, 9.757px + 0.1905vw, 12.5px);
+  --fs-eyebrow-s: clamp(9.5px, 9.129px + 0.0952vw, 10.5px);
+
+  --lh-display: 1;
+  --lh-display-tight: 0.9; /* logotypes */
+  --lh-body: 1.7;
+  --lh-body-tight: 1.4;
+
+  --ls-eyebrow: 0.28em; /* ≈ 3.5 px à 12.5 px */
+  --ls-eyebrow-s: 0.18em;
+  --ls-eyebrow-wide: 0.35em; /* sur-titre du hero */
+
+  /* ── 4. Formes, filets, espacements ───────────────────────────────────── */
+
+  --radius-1: 2px; /* boutons, cartes desktop */
+  --radius-2: 3px; /* cartes et photos mobile, vignettes vidéo */
+  --radius-3: 5px; /* barres de placeholder */
+  --radius-pill: 99px; /* pastilles rondes */
+
+  --filet: 1px solid var(--parch-line);
+  --filet-fort: 1px solid var(--line-strong);
+
+  /* Gouttière latérale : 56 px desktop, 22 px mobile (design-spec §1.6) */
+  --gouttiere: clamp(22px, 9.371px + 3.2381vw, 56px);
+  --largeur-max: 1440px;
+
+  --esp-section-y: clamp(56px, 32.229px + 6.0952vw, 120px);
+  --esp-section-y-bas: clamp(60px, 34px + 6.6667vw, 130px);
+  --esp-bloc: clamp(34px, 19.886px + 3.619vw, 72px);
+  --esp-item: clamp(16px, 13.029px + 0.7619vw, 24px);
+
+  /* Bascule de layout (aucun breakpoint tablette n'est maquetté) */
+  --bp-large: 820px;
+
+  --transition: 180ms ease;
+}
