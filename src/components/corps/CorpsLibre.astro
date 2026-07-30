@@ -251,10 +251,13 @@ for (const bloc of blocs) {
         return [
           {
             source: image,
-            // L'`alt` reste brut, comme tous les `alt` du site ; la légende de
-            // la visionneuse, elle, est composée.
+            // L'`alt` est la description d'accessibilité : elle reste dans
+            // l'attribut, JAMAIS à l'écran — l'afficher en légende dans la
+            // visionneuse doublait la photo d'un texte descriptif que personne
+            // ne demandait (retour client du 30/07/2026). Seul le crédit
+            // s'affiche.
             alt: photo.description,
-            legende: typographieFr(photo.description),
+            legende: '',
             credit: creditAffiche(photo.credit),
             objectPosition: cadrageCss(photo.cadrage),
           },
