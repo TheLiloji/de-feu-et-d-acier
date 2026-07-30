@@ -275,7 +275,11 @@ const idTitre = `${id}-titre`;
     flex-direction: column;
     gap: clamp(14px, 11.029px + 0.7619vw, 22px);
     min-width: 0;
-    max-width: 46ch;
+    /* Pas de mesure en ch du texte courant ici : les retours de ligne du titre
+       sont explicites (CMS), et 46ch (~460 px) forçait des retours parasites
+       dans le display 56 px — « un mot par ligne » (bug vu le 30/07/2026).
+       Seul le chapô garde sa mesure propre ci-dessous. */
+    max-width: 100%;
   }
 
   .actualites__lede {

@@ -134,24 +134,16 @@ const traditionTableau = tradition && tradition !== traditionCourte ? tradition 
     flex-direction: column;
     align-items: flex-start;
     gap: clamp(12px, 9.029px + 0.7619vw, 20px);
-    max-width: 26ch;
     padding-block: clamp(40px, 20.686px + 4.9524vw, 92px)
       clamp(26px, 16.343px + 2.4762vw, 52px);
   }
 
-  /* Un titre de traité est long : la mesure du H1 s'ouvre à partir de 820 px,
-     où la colonne le permet. En dessous, 26ch tiennent le display sur trois ou
-     quatre lignes plutôt que de le laisser courir sur toute la largeur. */
-  @media (min-width: 820px) {
-    .entete-traite__bloc {
-      max-width: 22ch;
-    }
-  }
-
-  @media (min-width: 1100px) {
-    .entete-traite__bloc {
-      max-width: 26ch;
-    }
+  /* La mesure du titre se pose sur le H1 lui-même : en `ch` de SA police
+     display, elle suit la taille de fonte à tous les écrans. La poser sur le
+     bloc parent (en ch du texte courant, ~12 px) enfermait « Traicté contenant
+     les secrets… » dans 260 px — un mot par ligne (bug vu le 30/07/2026). */
+  .entete-traite__bloc > :global(.titre-section) {
+    max-width: 24ch;
   }
 
   /* Ligne « era » — tiret ember + année + · + tradition (design-spec §5.3).
