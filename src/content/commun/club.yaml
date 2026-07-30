@@ -3,10 +3,10 @@ titreLigne1: Une bande
 titreLigne2: d'escrimeurs,
 titreLigne3: une école.
 texte: >-
-  Section AMHE de l'USAM Clermont-Ferrand, affiliée à la FFAMHE, le club
-  accueille débutants et pratiquants confirmés, en loisir comme en compétition.
-  Encadrement assuré par Gabriel Tardio. La salle est ouverte à toutes et tous,
-  et l'on prend le temps de bien faire les choses.
+  Le club est la section AMHE de l'USAM Clermont-Ferrand, affiliée à la
+  FFAMHE, encadrée par Gabriel Tardio. On accueille débutants et pratiquants
+  confirmés, en loisir comme en compétition. La salle est ouverte à toutes et
+  tous, et on prend le temps de bien faire les choses.
 photo:
   fichier: /src/assets/photos/commun/club-demo-montferrand.jpg
   alt: >-
@@ -19,13 +19,13 @@ chiffres: []
 piliers:
   - titre: Source.
     texte: >-
-      Étude des textes et traités historiques. Lecture, mise en pratique,
-      reconstitution martiale des gestes anciens.
+      Étude des textes et traités historiques. On les lit, on remet les
+      gestes anciens en pratique.
   - titre: Geste.
     texte: >-
-      Technique structurée par le drill, le sentiment du fer, et la mise en
-      pratique en assaut libre.
+      On travaille la technique au drill et au sentiment du fer, puis on la
+      teste en assaut libre.
   - titre: Salle.
     texte: >-
-      Un esprit d'école d'armes : exigence sportive, respect du partenaire, et
-      progression à son rythme.
+      Un esprit d'école d'armes : on est exigeant, on respecte le partenaire,
+      et chacun progresse à son rythme.

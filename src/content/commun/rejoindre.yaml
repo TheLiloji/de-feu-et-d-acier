@@ -9,13 +9,13 @@ blocEssai:
   paragraphes:
     - >-
       Peu importe que tu n'aies jamais fait de sport, que tu sortes d'un autre
-      art martial ou que tu n'aies rien touché depuis des années — on
+      art martial ou que tu n'aies rien touché depuis des années : on
       t'accueille. Tu n'as besoin de rien apporter : on te prête le masque, et
       l'arme que tu veux tester (épée longue, sabre, dague, rapière…).
     - >-
-      Aucun engagement, aucun frais. Viens sur une séance encadrée — pas sur la
-      pratique libre, où il n'y a personne pour t'accueillir. Ça nous fait
-      plaisir.
+      Aucun engagement, aucun frais. Viens sur une séance encadrée, c'est là
+      qu'on t'accueille. Sur la pratique libre, il n'y a personne pour ça. Ça
+      nous fait plaisir.
   bouton:
     libelle: ''
     url: ''
@@ -24,12 +24,12 @@ blocAdhesion:
   titre: '{tarif} par an, un masque, des gants coqués. *C''est tout.*'
   paragraphes:
     - >-
-      Si tu décides de rester pour l'année, l'adhésion c'est {tarif} — soit
+      Si tu décides de rester pour l'année, l'adhésion c'est {tarif}, soit
       littéralement moins qu'un Netflix. À ça, tu ajoutes les deux seules pièces
       à te procurer pour les séances régulières : un masque d'escrime standard
       et des gants coqués.
     - >-
-      Le reste — vestes, protections, armes — on en parle au fil du temps,
+      Le reste (vestes, protections, armes), on en parle au fil du temps,
       souvent à prix d'ami chez nos partenaires.
   bouton:
     libelle: ''
