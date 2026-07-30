@@ -4,7 +4,7 @@ mentions:
     Clermont-Ferrand, association loi 1901 affiliée à la FFAMHE.
   entrees:
     - titre: Siège & lieu d'entraînement
-      texte: '{lieu} — {adresse}'
+      texte: '{lieu}, {adresse}'
     - titre: Horaires hebdomadaires
       texte: '{creneaux}'
     - titre: Directrice de publication
@@ -14,18 +14,18 @@ mentions:
     - titre: Affiliation
       texte: Section AMHE de l'USAM Clermont-Ferrand · fédération FFAMHE
   note: >-
-    Les photographies du club sont la propriété de leurs auteurs — © Alexandre
-    Vergne (L'IMAGINARIUM) et Enzo Cirillo — et ne peuvent être reproduites sans
+    Les photographies du club appartiennent à leurs auteurs, © Alexandre Vergne
+    (L'IMAGINARIUM) et Enzo Cirillo, et ne peuvent pas être reproduites sans
     leur autorisation. Les 34 reproductions de traités publiées dans la rubrique
     « Les sources » n'appartiennent pas au club : elles proviennent de la
     Bayerische Staatsbibliothek de Munich (Public Domain Mark 1.0 pour Talhoffer,
     Lecküchner et Kal ; « No Copyright – Non-Commercial Use Only » pour Marozzo),
     de la Bibliothèque nationale de France (œuvres du domaine public,
     réutilisation non commerciale libre selon les conditions de Gallica) et du
-    Royal Armouries de Leeds (CC BY 4.0). Chacune porte sa ligne de crédit et le
-    lien vers ses conditions d'utilisation sur la fiche de son traité, dans « Les
-    sources » : ce sont ces conditions-là qui s'appliquent, à l'exclusion de
-    toute restriction ajoutée par le présent site.
+    Royal Armouries de Leeds (CC BY 4.0). Chaque planche porte sa ligne de
+    crédit et un lien vers ses conditions d'utilisation, sur la fiche du traité
+    dans « Les sources ». Ce sont ces conditions qui s'appliquent : le site
+    n'en ajoute aucune.
 hebergeur:
   nom: Cloudflare, Inc.
   adresse: 101 Townsend St, San Francisco, CA 94107, USA

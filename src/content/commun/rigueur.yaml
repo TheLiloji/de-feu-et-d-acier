@@ -3,13 +3,12 @@ titreLigne1: Le geste juste,
 titreLigne2: avant le costume.
 lede: >-
   On étudie les arts martiaux européens à partir des traités et sources
-  historiques, dans une pratique moderne, sportive et sécurisée. On y vient pour
-  le geste, pas pour le costume.
+  historiques, dans une pratique moderne, sportive et sécurisée.
 texte: >-
-  Ici on s'entraîne en tenue de sport, masque d'escrime et protections modernes,
-  avec des armes d'entraînement adaptées à chaque discipline. Les sources sont à
-  la base de notre travail, et nous poussons leur application jusqu'en assaut,
-  avec différents niveaux d'engagement.
+  Ici, on s'entraîne en tenue de sport, masque d'escrime et protections
+  modernes, avec des armes d'entraînement adaptées à chaque discipline. Les
+  sources sont à la base de notre travail : on pousse leur application
+  jusqu'en assaut, à différents niveaux d'engagement.
 planche:
   fichier: /src/assets/photos/commun/sources/noble-science-1538-f01r.jpg
   alt: >-
@@ -23,7 +22,7 @@ planche:
 legendePlanche: >-
   Page de titre de « La noble science des joueurs d'espée », imprimée à Anvers en
   1538 : la plus ancienne description en français des gestes que l'on travaille
-  ici. Gardes, distances, temps — ce que l'on cherche d'abord à comprendre, puis
+  ici. Gardes, distances, temps : ce que l'on cherche d'abord à comprendre, puis
   à éprouver en salle.
 manifesteMobile:
   citation: « Le geste juste, avant le costume. »

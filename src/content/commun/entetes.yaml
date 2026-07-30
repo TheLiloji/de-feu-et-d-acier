@@ -8,16 +8,15 @@ disciplines:
   titreLigne1: '{nb_armes} armes,'
   titreLigne2: '{nb_armes} grammaires.'
   lede: >-
-    On peut tout pratiquer, on peut se spécialiser. Chaque arme ouvre une école
-    de pensée et un répertoire technique distincts, étalés sur plusieurs siècles.
+    On peut tout essayer, ou se spécialiser sur une arme. Chaque arme a sa
+    logique et ses techniques, parfois vieilles de plusieurs siècles.
 profs:
   eyebrow: Les profs
   titreLigne1: '{nb_profs} encadrants,'
   titreLigne2: '{nb_profs} écoles.'
   lede: >-
-    Chaque arme a son référent. Tous transmettent à leur rythme, avec une
-    pédagogie qui leur est propre et qui est issue d'une longue expérience de
-    pratiquant, ainsi que de nombreuses heures de lecture des sources.
+    Chaque arme a son référent. Sa pédagogie vient de son expérience de
+    pratiquant et de ses heures de lecture des sources.
 galerie:
   eyebrow: Galerie
   titreLigne1: Quelques
@@ -28,27 +27,23 @@ faq:
   titreLigne1: Tout ce qu'on
   titreLigne2: nous demande.
   lede: >-
-    Les questions qu'on entend le plus souvent au premier contact. Si la vôtre
-    n'y est pas, écrivez-nous à {email} — on répond.
+    Les questions qu'on entend le plus souvent au premier contact. Si la
+    tienne n'y est pas, écris-nous à {email}. On répond.
 sources:
   eyebrow: Les sources
   titreLigne1: La bibliothèque
   titreLigne2: du club.
   lede: >-
-    Les AMHE ne se transmettent pas de maître en maître : elles se lisent.
-    L'essentiel de ce qui se travaille en salle vient de traités écrits entre le
-    XIVᵉ et le XVIIᵉ siècle, que l'on étudie, met en mouvement, puis éprouve en
-    assaut. Voici ceux sur lesquels le club travaille — le haut Moyen Âge, lui,
-    n'a laissé aucun manuel d'escrime, et le combat viking se reconstruit
+    On travaille sur des traités écrits entre le XIIIᵉ et le XVIIᵉ siècle. On
+    les étudie, puis on les met à l'épreuve en salle. Le haut Moyen Âge n'a
+    laissé aucun manuel d'escrime, et le combat viking se reconstruit
     autrement.
 partenaires:
   eyebrow: Partenaires
   titreLigne1: Sans eux,
   titreLigne2: rien de tout ça.
   lede: >-
-    Un club n'existe pas tout seul. Il existe parce qu'une fédération porte la
-    discipline au niveau national, parce que des artisans fabriquent du matériel
-    pensé pour cette pratique, et parce que ces gens-là partagent la même
-    exigence que nous. Les trois ci-dessous, on ne se contente pas de les
-    mentionner — on les recommande, on travaille avec eux, et on t'invite à
-    aller voir.
+    Une fédération porte la discipline au niveau national, des artisans
+    fabriquent du matériel pensé pour cette pratique. Le club ne s'en sort pas
+    sans eux. Les trois ci-dessous, on les recommande vraiment, on travaille
+    avec eux : va voir.
