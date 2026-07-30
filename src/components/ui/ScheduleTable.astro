@@ -122,12 +122,16 @@ const aNiveau = creneaux.some((c) => Boolean(c.niveau));
 </div>
 
 <style>
+  /* `CRÉNEAUX HEBDOMADAIRES` : sur-titre secondaire — 10,5 px / w600 / ls 3,4 /
+     `$ember` (design-spec §3.6). `--fs-eyebrow-s` plafonne à 10,5 ; `--fs-eyebrow`
+     monterait à 12,5, la rampe réservée au label numéroté de section.
+     3,4 / 10,5 = 0.324em. */
   .creneaux__surtitre {
     margin: 0 0 18px;
     font-family: var(--font-eyebrow);
-    font-size: var(--fs-eyebrow);
+    font-size: var(--fs-eyebrow-s);
     font-weight: 600;
-    letter-spacing: 0.34em;
+    letter-spacing: 0.324em;
     text-transform: uppercase;
     color: var(--ember);
   }
@@ -161,11 +165,18 @@ const aNiveau = creneaux.some((c) => Boolean(c.niveau));
     width: 28%;
   }
 
+  /* En-têtes de colonnes `JOUR` / `HORAIRE` / `DISCIPLINE` / `NIVEAU` : le plus
+     petit palier de la rampe secondaire — 10 px / **w400** / ls 3,2 /
+     `$parch-mute` (design-spec §3.6). C'est le seul nœud du site à 10 px : ni
+     `--fs-eyebrow-s` (10,5) ni un autre jeton ne l'atteint, d'où la rampe
+     dédiée `--fs-eyebrow-xs` (tokens.css, interpolée 390 → 1440 : 9,5 → 10). La
+     ligne d'en-tête est de toute façon masquée à l'œil sous 820 px, seul le
+     palier desktop se voit. 3,2 / 10 = 0.32em. */
   .creneaux__table thead th {
     padding: 18px 24px 18px 0;
     border-bottom: var(--filet);
     font-family: var(--font-eyebrow);
-    font-size: var(--fs-eyebrow-s);
+    font-size: var(--fs-eyebrow-xs);
     font-weight: 400;
     letter-spacing: 0.32em;
     text-transform: uppercase;

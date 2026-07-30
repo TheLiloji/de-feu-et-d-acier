@@ -1,0 +1,384 @@
+---
+/**
+ * `/sources/<slug>/` — la fiche d'un traité. Gabarit NON maquetté, calqué sur la
+ * fiche arme (design-spec §5), qui l'est :
+ *
+ *   1. fil d'Ariane à filet bas — « Retour » vers la bibliothèque ;
+ *   2. en-tête : ligne « era », H1 Cormorant, tableau à filets (auteur, année,
+ *      tradition, conservation, armes concernées) ;
+ *   3. présentation — le corps riche saisi dans l'admin, mesure bornée ;
+ *   4. galerie des planches, **crédit visible sous chacune**, agrandissement
+ *      dans la visionneuse du site ;
+ *   5. le court extrait dans sa langue d'origine, quand il y en a un ;
+ *   6. l'encadré « Consulter la numérisation complète » et les droits ;
+ *   7. pied à filet : retour à la bibliothèque et traités voisins ;
+ *   8. barre d'onglets mobile — chrome global, rendue sur toutes les pages.
+ *
+ * Toute la page est en `$ink` : sur une page de détail, le rythme vient des
+ * filets et de l'espacement, pas de l'alternance de fonds (design-spec §5.1).
+ *
+ * Une route par entrée de la collection : c'est le CMS qui décide de la section,
+ * pas ce fichier. L'ordre de `traitesTries()` sert aussi aux voisins de bas de
+ * page — la fiche suivante est donc la carte suivante dans la grille.
+ *
+ * ⚠️ Cet ordre est **éditorial, pas chronologique** : le champ « Ordre
+ * d'affichage » groupe aujourd'hui les traités par arme (épée longue, messer,
+ * rapière, épée-bocle), si bien que le manuscrit I.33 — le plus ancien du corpus,
+ * vers 1320 — arrive en septième position. Les voisins sont donc annoncés
+ * « précédent » et « suivant », jamais « plus ancien » et « plus récent » : ce
+ * serait faux, et un visiteur qui apprend les dates ici mérite qu'on ne lui
+ * mente pas sur elles.
+ */
+import Base from '../../layouts/Base.astro';
+import EncadreNumerisation from '../../components/sources/EncadreNumerisation.astro';
+import EnteteTraite from '../../components/sources/EnteteTraite.astro';
+import ExtraitTraite from '../../components/sources/ExtraitTraite.astro';
+import FilArianeSources from '../../components/sources/FilArianeSources.astro';
+import GaleriePlanches from '../../components/sources/GaleriePlanches.astro';
+import Footer from '../../components/sections/Footer.astro';
+import Nav from '../../components/sections/Nav.astro';
+import Button from '../../components/ui/Button.astro';
+import TabBar from '../../components/ui/TabBar.astro';
+import { estNomIcone } from '../../components/ui/icones';
+import {
+  lireDisciplines,
+  lireHero,
+  lireIdentite,
+  lireMenus,
+  profsDe,
+  traitesTries,
+} from '../../lib/contenu';
+import { getEcolePrincipale } from '../../lib/ecoles';
+import { lien, lienArme } from '../../lib/liens';
+import { corpsEnTexte, rendreCorps } from '../../lib/markdoc';
+import { contexteDe, resoudre } from '../../lib/raccourcis';
+import { typographieFr } from '../../lib/typographie';
+import {
+  anneeCourte,
+  armesLiees,
+  resoudrePlanches,
+  traditionCourte,
+} from '../../components/sources/traites';
+
+export async function getStaticPaths() {
+  const traites = await traitesTries();
+  return traites.map((traite) => ({ params: { slug: traite.slug } }));
+}
+
+const { slug } = Astro.params;
+
+const ecole = await getEcolePrincipale();
+const [identite, hero, menus, disciplines, profs, traites] = await Promise.all([
+  lireIdentite(),
+  lireHero(),
+  lireMenus(),
+  lireDisciplines(),
+  profsDe(ecole),
+  traitesTries(),
+]);
+
+const rang = traites.findIndex((t) => t.slug === slug);
+if (rang === -1) {
+  throw new Error(
+    `Traité introuvable pour « /sources/${slug}/ ».\n` +
+      'Les fiches vivent dans src/content/commun/traites/ ; l’adresse est le champ ' +
+      '« Adresse de la fiche » de l’admin.',
+  );
+}
+
+const traite = traites[rang]!;
+const entree = traite.entry;
+
+const precedent = rang > 0 ? traites[rang - 1] : null;
+const suivant = rang < traites.length - 1 ? traites[rang + 1] : null;
+
+/**
+ * Contexte des raccourcis pour la présentation : c'est un champ de texte riche
+ * comme la bio d'un prof ou une réponse de FAQ, et « {email} » doit s'y résoudre
+ * pareil. Mêmes compteurs que l'accueil (ARCHITECTURE.md §4) ; `{arme}` et
+ * `{prof}` n'existent pas ici, et les employer fait échouer le build avec le nom
+ * du fichier — c'est le comportement voulu (§7), pas un accident.
+ */
+const ctx = contexteDe(ecole.fiche, {
+  nbArmes: disciplines.filter((d) => d.entry.affichee).length,
+  nbProfs: profs.filter((p) => p.entry.visible).length,
+});
+
+// Les champs d'un traité ne transitent pas par `resoudre()` : la composition
+// typographique (apostrophe courbe, fine insécable dans les « ») se pose ici.
+// Exception assumée : la ligne de crédit de chaque planche, rendue verbatim —
+// cf. `creditPlanche()` dans src/components/sources/traites.ts.
+const titre = typographieFr(entree.titre);
+const auteur = typographieFr(entree.auteur ?? '');
+const annee = typographieFr(entree.annee ?? '');
+const tradition = typographieFr(entree.tradition ?? '');
+const traditionBreve = typographieFr(traditionCourte(entree.tradition));
+const anneeBreve = typographieFr(anneeCourte(entree.annee));
+
+const armes = armesLiees(entree.armes, disciplines);
+const planches = resoudrePlanches(entree.planches);
+
+const presentation = resoudre(
+  rendreCorps(await entree.presentation()),
+  ctx,
+  `src/content/commun/traites/${slug}.mdoc — présentation`,
+);
+
+// Meta description : les premières lignes de la présentation, à défaut le champ
+// « Tradition ». Sans ce repli, `Base` publierait la description du site sur les
+// huit fiches à la fois.
+const description = corpsEnTexte(presentation) || tradition || undefined;
+
+// Barre d'onglets mobile : chrome global. Aucun onglet actif — la barre n'a pas
+// d'entrée « Sources » —, et l'exergue reste l'onglet des épées croisées.
+const onglets = (menus.barreMobile ?? []).map((onglet) => ({
+  libelle: onglet.libelle,
+  href: lien(ecole, onglet.lien),
+  icone: estNomIcone(onglet.icone) ? onglet.icone : 'house',
+  exergue: onglet.icone === 'swords',
+}));
+
+const bibliotheque = lien(ecole, '/sources/');
+const hrefTraite = (cible: string) => lien(ecole, `/sources/${cible}/`);
+
+const idTitre = 'traite-titre';
+---
+
+<Base ecole={ecole} identite={identite} titre={titre} description={description}>
+
+  {/* Page sans hero photographique : la barre garde son fond plein dès le
+      chargement. */}
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+    fond="solide"
+  />
+
+  <FilArianeSources
+    retourHref={bibliotheque}
+    chemin={[
+      { libelle: 'Accueil', href: lien(ecole, '/') },
+      { libelle: 'Les sources', href: bibliotheque },
+      { libelle: titre },
+    ]}
+  />
+
+  <article class="traite" aria-labelledby={idTitre}>
+    <EnteteTraite
+      titre={titre}
+      idTitre={idTitre}
+      annee={annee}
+      anneeCourte={anneeBreve}
+      tradition={tradition}
+      traditionCourte={traditionBreve}
+      auteur={auteur}
+      bibliotheque={typographieFr(entree.bibliotheque ?? '')}
+      cote={typographieFr(entree.cote ?? '')}
+      armes={armes}
+      hrefArme={(cible) => lienArme(ecole, cible)}
+    />
+
+    {
+      presentation && (
+        <section class="presentation" aria-label="Présentation du traité">
+          <div class="gouttiere">
+            <div class="presentation__prose" set:html={presentation} />
+          </div>
+        </section>
+      )
+    }
+
+    <GaleriePlanches
+      planches={planches}
+      titreTraite={titre}
+      idVisionneuse="visionneuse-planches"
+    />
+
+    <ExtraitTraite
+      extrait={entree.extraitCitation}
+      credit={entree.extraitCredit}
+      url={entree.extraitUrl}
+    />
+
+    <EncadreNumerisation
+      urlNumerisation={entree.urlNumerisation}
+      bibliotheque={entree.bibliotheque}
+      cote={entree.cote}
+      licenceResume={entree.licence?.resume}
+      licenceUrl={entree.licence?.url}
+    />
+
+    <footer class="pied">
+      <div class="gouttiere pied__rangee">
+        <Button variante="contour" libelle="Toutes les sources" href={bibliotheque} />
+
+        {
+          (precedent || suivant) && (
+            <nav class="voisins" aria-label="Autres traités">
+              {precedent && (
+                <a class="voisin" href={hrefTraite(precedent.slug)}>
+                  <span class="voisin__label">Traité précédent</span>
+                  <span class="voisin__titre">{typographieFr(precedent.entry.titre)}</span>
+                </a>
+              )}
+              {suivant && (
+                /* Aligné à droite seulement s'il a un vis-à-vis : seul dans sa
+                   grille, un bloc justifié à droite paraît égaré. */
+                <a
+                  class:list={['voisin', { 'voisin--suivant': Boolean(precedent) }]}
+                  href={hrefTraite(suivant.slug)}
+                >
+                  <span class="voisin__label">Traité suivant</span>
+                  <span class="voisin__titre">{typographieFr(suivant.entry.titre)}</span>
+                </a>
+              )}
+            </nav>
+          )
+        }
+      </div>
+    </footer>
+  </article>
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient après le pied de
+        page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide du site" />
+  </Fragment>
+</Base>
+
+<style>
+  /* ── Présentation ────────────────────────────────────────────────────────── */
+
+  .presentation {
+    padding-block-end: clamp(36px, 22.5px + 3.46vw, 72px);
+  }
+
+  /* Le contenu est injecté par `set:html` : il échappe au scope, d'où les
+     sélecteurs `:global()` sous une racine, elle, scopée. */
+  .presentation__prose {
+    max-width: 68ch;
+    font-size: clamp(14.5px, 13.571px + 0.2381vw, 17px);
+    line-height: 1.7;
+    color: var(--parch-soft);
+  }
+
+  .presentation__prose :global(p) {
+    margin: 0;
+  }
+
+  .presentation__prose :global(* + p),
+  .presentation__prose :global(* + ul),
+  .presentation__prose :global(* + ol) {
+    margin-top: 1.1em;
+  }
+
+  .presentation__prose :global(strong) {
+    font-weight: 600;
+    color: var(--parch);
+  }
+
+  .presentation__prose :global(em) {
+    font-style: italic;
+  }
+
+  .presentation__prose :global(a) {
+    color: var(--parch);
+    text-decoration: underline;
+    text-decoration-color: var(--ember);
+    text-underline-offset: 0.25em;
+    transition: color var(--transition);
+  }
+
+  .presentation__prose :global(a:hover),
+  .presentation__prose :global(a:focus-visible) {
+    color: var(--ember-hot);
+  }
+
+  .presentation__prose :global(ul),
+  .presentation__prose :global(ol) {
+    margin: 0;
+    padding-left: 1.2em;
+  }
+
+  .presentation__prose :global(li + li) {
+    margin-top: 0.35em;
+  }
+
+  .presentation__prose :global(li::marker) {
+    color: var(--ember);
+  }
+
+  /* ── Pied de fiche ───────────────────────────────────────────────────────── */
+
+  .pied {
+    border-top: var(--filet);
+  }
+
+  .pied__rangee {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(20px, 12.571px + 1.9048vw, 40px);
+    padding-block: clamp(30px, 20.343px + 2.4762vw, 56px)
+      clamp(60px, 34px + 6.6667vw, 130px);
+  }
+
+  .voisins {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(14px, 11.029px + 0.7619vw, 22px);
+    min-width: 0;
+  }
+
+  .voisin {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 6px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .voisin__label {
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: 1.2;
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .voisin__titre {
+    font-family: var(--font-display);
+    font-size: clamp(17px, 15.5px + 0.38vw, 21px);
+    line-height: 1.2;
+    color: var(--parch);
+    transition: color var(--transition);
+  }
+
+  .voisin:hover .voisin__titre,
+  .voisin:focus-visible .voisin__titre {
+    color: var(--ember-hot);
+  }
+
+  @media (min-width: 820px) {
+    .voisins {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(24px, 16.571px + 1.9048vw, 44px);
+      max-width: 620px;
+    }
+
+    /* Le traité suivant est à droite : on aligne son texte sur ce bord, comme
+       dans un feuilletage de livre. */
+    .voisin--suivant {
+      align-items: flex-end;
+      text-align: right;
+    }
+  }
+</style>

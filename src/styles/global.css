@@ -193,11 +193,33 @@ p {
 
 /* ── Utilitaires typographiques ──────────────────────────────────────────── */
 
+/*
+ * Les sur-titres en capitales suivent **deux rampes distinctes** dans la
+ * maquette (design-spec §1.4 et §1.5), et les confondre est l'erreur la plus
+ * visible du passage de la maquette au code — 2 px d'écart en desktop :
+ *
+ *   1. « label de section » — 12,5 px / ls 3,5 en desktop, 10,5 px / ls 2,6 en
+ *      mobile. **18 + 8 occurrences, et rien d'autre** : le trio numéro ◆
+ *      libellé qui ouvre chaque section. `--fs-eyebrow` + `--ls-eyebrow-label`.
+ *
+ *   2. « sur-titre secondaire » — 10,5 px en desktop (9 à 10 px en mobile), avec
+ *      un interlettrage propre à chaque nœud, de 1,6 à 3,4 px : `PRATIQUE` 3,4,
+ *      `CRÉNEAUX HEBDOMADAIRES` 3,4, catégorie de partenaire 2,9, époque de
+ *      fiche 2,9, étiquette de pilier 2,9, `LIEU` / `CONTACT` 2,7, fil d'Ariane
+ *      2,2, pastille d'époque mobile 1,6. `--fs-eyebrow-s`, et un
+ *      `letter-spacing` en `em` posé sur le nœud (le rapport se conserve alors
+ *      quand la rampe descend vers le mobile).
+ *
+ * `.eyebrow` est la rampe 1. Un sur-titre secondaire ne doit pas l'employer.
+ * Les deux jetons de la rampe 1 (`--fs-eyebrow`, `--ls-eyebrow-label`) sont
+ * déclarés dans `tokens.css`, section 3.
+ */
 .eyebrow {
   font-family: var(--font-eyebrow);
   font-size: var(--fs-eyebrow);
   font-weight: 600;
-  letter-spacing: var(--ls-eyebrow);
+  line-height: var(--lh-body-tight);
+  letter-spacing: var(--ls-eyebrow-label);
   text-transform: uppercase;
   color: var(--ember);
 }

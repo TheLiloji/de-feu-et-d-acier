@@ -1,0 +1,231 @@
+---
+/**
+ * En-tête d'une fiche de traité — gabarit NON maquetté, composé dans le langage
+ * des pages de détail du site (fiche arme §5.3, page d'article) :
+ *
+ *   1. la ligne « era » — tiret `$ember`, année, puis la tradition abrégée ;
+ *   2. le H1 en Cormorant `--fs-display-fiche` ;
+ *   3. le tableau à filets de `FactRow` — auteur, tradition complète,
+ *      bibliothèque, cote, armes concernées.
+ *
+ * Les deux affichages de la tradition ne sont pas un doublon : la ligne « era »
+ * porte l'étiquette courte (« Tradition bolonaise »), le tableau porte le champ
+ * entier, qui explique de quoi il retourne. C'est la même mécanique que l'époque
+ * d'une carte d'arme, reprise en clair dans le corps de la fiche.
+ *
+ * Les armes sont des liens quand elles ont une fiche publique, du texte simple
+ * sinon : l'épée-bocle est sélectionnable dans le CMS sans avoir de page
+ * (ARCHITECTURE.md §4), et un lien vers une page absente est un défaut.
+ */
+import FactRow from '../ui/FactRow.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import type { ArmeLiee } from './traites';
+
+export interface Props {
+  /** Titre du traité, déjà composé typographiquement. */
+  titre: string;
+  /** `id` du H1 — cible de l'`aria-labelledby` de la page. */
+  idTitre: string;
+  /** Année, telle qu'elle est saisie (« vers 1300-1330 »). */
+  annee?: string;
+  /** Année abrégée, pour la ligne « era ». */
+  anneeCourte?: string;
+  /** Tradition abrégée, pour la ligne « era ». */
+  traditionCourte?: string;
+  /** Champ « Tradition / école » complet. */
+  tradition?: string;
+  auteur?: string;
+  bibliotheque?: string;
+  cote?: string;
+  /** Armes travaillées, avec leur fiche quand elle existe. */
+  armes?: readonly ArmeLiee[];
+  /** Fabrique l'adresse d'une fiche arme. */
+  hrefArme?: (slug: string) => string;
+  class?: string;
+}
+
+const {
+  titre,
+  idTitre,
+  annee = '',
+  anneeCourte = '',
+  traditionCourte = '',
+  tradition = '',
+  auteur = '',
+  bibliotheque = '',
+  cote = '',
+  armes = [],
+  hrefArme,
+  class: classe,
+} = Astro.props;
+
+const era = anneeCourte || annee;
+
+// Ni l'année ni la tradition ne sont répétées dans le tableau quand elles sont
+// identiques, mot pour mot, à ce que la ligne « era » affiche déjà. Le tableau
+// n'existe que pour donner ce que l'abréviation a laissé de côté : « vers 1540
+// (édition originale : Modène, 1536) » quand l'en-tête dit « vers 1540 ».
+const anneeTableau = annee && annee !== era ? annee : '';
+const traditionTableau = tradition && tradition !== traditionCourte ? tradition : '';
+---
+
+<header class:list={['entete-traite', classe]}>
+  <div class="gouttiere">
+    <div class="entete-traite__bloc">
+      {
+        (era || traditionCourte) && (
+          <p class="era">
+            <span class="era__tiret" aria-hidden="true" />
+            {era && <span class="era__annee">{era}</span>}
+            {era && traditionCourte && (
+              <span class="era__point" aria-hidden="true">
+                ·
+              </span>
+            )}
+            {traditionCourte && <span class="era__tradition">{traditionCourte}</span>}
+          </p>
+        )
+      }
+
+      <SectionTitle balise="h1" taille="fiche" lignes={[{ texte: titre }]} id={idTitre} />
+    </div>
+
+    <div class="entete-traite__faits">
+      {auteur && <FactRow libelle="Auteur" valeur={auteur} />}
+      {anneeTableau && <FactRow libelle="Année" valeur={anneeTableau} />}
+      {traditionTableau && <FactRow libelle="Tradition" valeur={traditionTableau} />}
+      {
+        bibliotheque && (
+          <FactRow libelle="Conservation" valeur={bibliotheque} secondaire={cote || undefined} />
+        )
+      }
+      {
+        armes.length > 0 && (
+          <FactRow libelle="Armes concernées">
+            <ul class="entete-traite__armes" role="list">
+              {armes.map((arme) => (
+                <li>
+                  {arme.fiche && hrefArme ? (
+                    <a class="entete-traite__arme" href={hrefArme(arme.slug)}>
+                      {arme.nom}
+                    </a>
+                  ) : (
+                    <span class="entete-traite__arme entete-traite__arme--sans-fiche">
+                      {arme.nom}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </FactRow>
+        )
+      }
+    </div>
+  </div>
+</header>
+
+<style>
+  /* Enfant de `.gouttiere`, jamais la gouttière elle-même : celle-ci est centrée
+     par `margin-inline: auto` (global.css), et lui poser un `max-width` de
+     mesure recentrerait tout le bloc au lieu de le laisser sur la grille de
+     gauche (même piège que la page d'article). */
+  .entete-traite__bloc {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(12px, 9.029px + 0.7619vw, 20px);
+    max-width: 26ch;
+    padding-block: clamp(40px, 20.686px + 4.9524vw, 92px)
+      clamp(26px, 16.343px + 2.4762vw, 52px);
+  }
+
+  /* Un titre de traité est long : la mesure du H1 s'ouvre à partir de 820 px,
+     où la colonne le permet. En dessous, 26ch tiennent le display sur trois ou
+     quatre lignes plutôt que de le laisser courir sur toute la largeur. */
+  @media (min-width: 820px) {
+    .entete-traite__bloc {
+      max-width: 22ch;
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .entete-traite__bloc {
+      max-width: 26ch;
+    }
+  }
+
+  /* Ligne « era » — tiret ember + année + · + tradition (design-spec §5.3).
+     Même grille que la ligne era de la fiche arme (`ArmeHero`) et de la fiche
+     actualité : rampe « sur-titre secondaire », 10,5 px et ls 2,9 —
+     2,9 / 10,5 = 0.276em, et non les 2,94 de `--ls-eyebrow`. */
+  .era {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: 0.276em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .era__tiret {
+    width: 22px;
+    height: 1px;
+    flex: none;
+    background: var(--ember);
+  }
+
+  .era__annee {
+    color: var(--ember);
+  }
+
+  .era__point,
+  .era__tradition {
+    color: var(--parch-mute);
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+  }
+
+  /* ── Tableau à filets ───────────────────────────────────────────────────── */
+
+  .entete-traite__faits {
+    max-width: 900px;
+    padding-bottom: clamp(30px, 18.9px + 2.85vw, 60px);
+  }
+
+  .entete-traite__armes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .entete-traite__arme {
+    color: var(--parch);
+    font-size: clamp(14.5px, 14.129px + 0.0952vw, 15.5px);
+    font-weight: 500;
+    line-height: var(--lh-body-tight);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    text-underline-offset: 0.25em;
+    transition: color var(--transition);
+  }
+
+  a.entete-traite__arme:hover,
+  a.entete-traite__arme:focus-visible {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  /* Une arme sans fiche publique n'est pas un lien : rien ne doit le suggérer. */
+  .entete-traite__arme--sans-fiche {
+    color: var(--parch-soft);
+    text-decoration: none;
+  }
+</style>

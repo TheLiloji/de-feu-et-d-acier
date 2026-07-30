@@ -1,0 +1,389 @@
+---
+/**
+ * Carte d'un traité — la tuile de la grille de « La bibliothèque ».
+ *
+ * ⚠️ **Écart assumé à la lettre de la mission : ce n'est pas un `MediaCard`.**
+ * Le patron `MediaCard` incruste son texte *sur* la photo, ce qui suppose un
+ * `object-fit: cover` — donc un recadrage. Or les 34 planches du corpus sont
+ * pour un tiers en paysage (Talhoffer 2400×1741, Noble Science 2400×1642,
+ * I.33 2400×1763) et pour deux tiers en portrait (Lecküchner 1648×2400,
+ * Sainct-Didier, Fabris, Marozzo). Aucune proportion de carte ne peut les
+ * accueillir en `cover` sans dégât :
+ *
+ *   - à 4/5, une planche en paysage ne montre plus que 55 % de sa largeur — les
+ *     deux escrimeurs de Talhoffer sont coupés en deux, et le bandeau
+ *     xylographié rouge de la page de titre de la Noble Science perd ses deux
+ *     extrémités ;
+ *   - à 3/2, symétriquement, une planche en portrait perd la moitié de sa
+ *     hauteur.
+ *
+ * Ces images ne sont pas des photos d'illustration : ce sont des reproductions
+ * publiées sous les conditions écrites d'une bibliothèque, et leur contenu
+ * *est* le sujet de la page. La carte les montre donc **entières**
+ * (`object-fit: contain`), dans un champ carré `$char` bordé d'un filet — le
+ * « cadre traité » que `Rigueur.astro` emploie déjà sur l'accueil —, et le texte
+ * passe dessous. Le carré est le compromis exact du corpus : une planche en
+ * paysage occupe 72 % de la hauteur du champ, une planche en portrait 69 % de
+ * sa largeur.
+ *
+ * Le reste du langage visuel est celui de `MediaCard` : carte entièrement
+ * cliquable, sur-titre à tiret `$ember`, titre en Cormorant, filet de 36 px
+ * au-dessus du lien fléché, survol qui échelonne l'image et allonge le filet.
+ *
+ * La **bibliothèque de conservation** est affichée sur la carte, telle que
+ * l'admin la porte : c'est l'institution qui a numérisé la planche montrée, et
+ * une reproduction ne se présente pas anonymement. La ligne de crédit complète,
+ * elle, appartient à la fiche du traité, sous la planche qu'elle crédite.
+ */
+import { Picture } from 'astro:assets';
+import Icon from '../ui/Icon.astro';
+import Pill from '../ui/Pill.astro';
+import { largeursSrcset } from '../../lib/images';
+
+export interface Props {
+  /** Adresse de la fiche du traité. La carte entière est ce lien. */
+  href: string;
+  /** Titre du traité, déjà composé typographiquement. */
+  titre: string;
+  /** Niveau du titre. `h2` par défaut : la grille est une liste de traités. */
+  titreNiveau?: 'h2' | 'h3';
+  /** Auteur abrégé (`auteurCourt`). */
+  auteur?: string;
+  /** Année abrégée (`anneeCourte`). */
+  annee?: string;
+  /** Tradition abrégée (`traditionCourte`) — le sur-titre à tiret. */
+  tradition?: string;
+  /** Noms des armes travaillées, en pastilles. */
+  armes?: readonly string[];
+  /** Bibliothèque de conservation, telle qu'elle est saisie. */
+  bibliotheque?: string;
+  /** Planche mise en avant. */
+  planche?: ImageMetadata | null;
+  /** Description de la planche, saisie au CMS. */
+  alt?: string;
+  /** « 6 planches » — le volume de la fiche. */
+  compte?: string;
+  /** `eager` sur les premières cartes de la grille. */
+  charge?: 'lazy' | 'eager';
+  class?: string;
+}
+
+const {
+  href,
+  titre,
+  titreNiveau = 'h2',
+  auteur = '',
+  annee = '',
+  tradition = '',
+  armes = [],
+  bibliotheque = '',
+  planche = null,
+  alt = '',
+  compte = '',
+  charge = 'lazy',
+  class: classe,
+} = Astro.props;
+
+const Titre = titreNiveau;
+
+// « Hans Talhoffer · 1467 » — les deux champs sont facultatifs, la puce ne
+// s'affiche que s'ils sont tous les deux là.
+const signature = [auteur, annee].filter(Boolean).join(' · ');
+
+/**
+ * Largeurs du `srcset` : la carte fait au plus 420 px de côté (grille à quatre
+ * colonnes dans 1328 px de gouttière), et son champ est carré. En `contain`, la
+ * planche n'occupe jamais plus que ce côté — 840 px en densité 2. Politique de
+ * largeurs commune, cf. src/lib/images.ts.
+ */
+const largeurs = largeursSrcset(planche, { largeurs: [280, 420, 560, 840] });
+---
+
+<a class:list={['carte-traite', classe]} href={href}>
+  <div class="carte-traite__champ">
+    {
+      planche && (
+        <Picture
+          src={planche}
+          alt={alt}
+          formats={['avif', 'webp']}
+          widths={largeurs}
+          sizes="(min-width: 1280px) 320px, (min-width: 1000px) 30vw, (min-width: 620px) 45vw, 92vw"
+          loading={charge}
+          decoding="async"
+        />
+      )
+    }
+  </div>
+
+  <div class="carte-traite__corps">
+    {
+      tradition && (
+        <p class="carte-traite__tradition">
+          <span class="carte-traite__tiret" aria-hidden="true" />
+          {tradition}
+        </p>
+      )
+    }
+
+    <Titre class="carte-traite__titre">{titre}</Titre>
+
+    {signature && <p class="carte-traite__signature">{signature}</p>}
+
+    {
+      armes.length > 0 && (
+        <ul class="carte-traite__armes" role="list">
+          {armes.map((nom) => (
+            <li>
+              <Pill variante="tag" libelle={nom} />
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    <div class="carte-traite__pied">
+      {bibliotheque && <p class="carte-traite__source">{bibliotheque}</p>}
+
+      <span class="carte-traite__filet" aria-hidden="true"></span>
+
+      <p class="carte-traite__action">
+        <span class="carte-traite__lien">
+          Étudier la source
+          <Icon name="arrow-right" />
+        </span>
+        {compte && <span class="carte-traite__compte">{compte}</span>}
+      </p>
+    </div>
+  </div>
+</a>
+
+<style>
+  .carte-traite {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    background: var(--surface-1);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color var(--transition);
+  }
+
+  /* ── Le champ de la planche ─────────────────────────────────────────────── */
+  /*
+   * Carré, fond `$char`, planche entière : voir la note d'en-tête. Le filet bas
+   * sépare la reproduction de l'appareil éditorial qui la commente — c'est la
+   * même articulation que le cadre traité de « La rigueur ».
+   */
+  .carte-traite__champ {
+    position: relative;
+    display: block;
+    flex: none;
+    aspect-ratio: 1 / 1;
+    padding: clamp(10px, 0.4rem + 0.9vw, 18px);
+    overflow: hidden;
+    border-bottom: var(--filet);
+    background: var(--char);
+  }
+
+  /*
+   * `<Picture>` est un composant : ses nœuds échappent au scope, d'où :global.
+   *
+   * Le `picture` occupe **toute** la boîte de contenu du champ, et c'est lui qui
+   * centre la planche. Le détour est nécessaire : un `max-height: 100 %` posé sur
+   * l'image se résout contre la hauteur de son parent, et si ce parent se
+   * dimensionne sur son contenu, la contrainte est circulaire — le plafond ne
+   * s'applique jamais. Le champ, lui, a une hauteur définie (`aspect-ratio` sur
+   * une largeur connue), donc `height: 100 %` sur le `picture` l'est aussi.
+   */
+  .carte-traite__champ :global(picture) {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .carte-traite__champ :global(img) {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* ── Le corps ───────────────────────────────────────────────────────────── */
+
+  .carte-traite__corps {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(8px, 0.35rem + 0.5vw, 12px);
+    padding: clamp(16px, 0.75rem + 1.1vw, 26px);
+  }
+
+  .carte-traite__tradition {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: clamp(9px, 8.4px + 0.15vw, 10.5px);
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    line-height: 1.35;
+    text-transform: uppercase;
+    color: var(--parch-soft);
+  }
+
+  /* L'accent chromatique reste porté par le tiret, décoratif : `--ember` sur du
+     texte de 9 px passerait sous le seuil de contraste (même arbitrage que
+     `MediaCard`). */
+  .carte-traite__tiret {
+    display: block;
+    width: 22px;
+    height: 1px;
+    flex: none;
+    /* Aligne le filet sur l'œil de la première ligne de capitales. */
+    transform: translateY(-0.35em);
+    background: var(--ember);
+  }
+
+  .carte-traite__titre {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(20px, 16.4px + 0.92vw, 29px);
+    font-weight: 400;
+    line-height: 1.12;
+    color: var(--parch);
+    text-wrap: pretty;
+  }
+
+  .carte-traite__signature {
+    margin: 0;
+    font-size: var(--fs-body-xs);
+    line-height: var(--lh-body-tight);
+    color: var(--parch-soft);
+  }
+
+  .carte-traite__armes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Le pied est poussé en bas : dans une grille, les liens des cartes d'une
+     même rangée s'alignent quelle que soit la longueur des titres. */
+  .carte-traite__pied {
+    display: flex;
+    width: 100%;
+    margin-top: auto;
+    padding-top: clamp(12px, 0.5rem + 0.7vw, 18px);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .carte-traite__source {
+    margin: 0;
+    font-size: var(--fs-body-xxs);
+    line-height: 1.45;
+    color: var(--parch-mute);
+  }
+
+  .carte-traite__filet {
+    display: block;
+    width: 36px;
+    height: 1px;
+    background: var(--ember);
+    transition: width var(--transition);
+  }
+
+  .carte-traite__action {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    margin: 0;
+  }
+
+  .carte-traite__lien {
+    /* `Icon.astro` lit `--icone-cote` : seule façon fiable de le dimensionner
+       depuis l'extérieur, son style scopé l'emportant sur un `:global(svg)`. */
+    --icone-cote: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-eyebrow);
+    font-size: clamp(9px, 8.4px + 0.15vw, 10.5px);
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--parch);
+  }
+
+  .carte-traite__lien :global(svg) {
+    transition: transform var(--transition);
+  }
+
+  .carte-traite__compte {
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  /* ── États ──────────────────────────────────────────────────────────────── */
+
+  .carte-traite:hover,
+  .carte-traite:focus-visible {
+    border-color: var(--line-strong);
+  }
+
+  .carte-traite:hover .carte-traite__champ :global(img),
+  .carte-traite:focus-visible .carte-traite__champ :global(img) {
+    transform: scale(1.03);
+  }
+
+  .carte-traite:hover .carte-traite__lien,
+  .carte-traite:focus-visible .carte-traite__lien {
+    color: var(--ember-hot);
+  }
+
+  .carte-traite:hover .carte-traite__lien :global(svg) {
+    transform: translateX(3px);
+  }
+
+  .carte-traite:hover .carte-traite__filet,
+  .carte-traite:focus-visible .carte-traite__filet {
+    width: 52px;
+  }
+
+  .carte-traite:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .carte-traite__champ :global(img),
+    .carte-traite__lien :global(svg),
+    .carte-traite__filet {
+      transition: none;
+    }
+
+    .carte-traite:hover .carte-traite__champ :global(img),
+    .carte-traite:focus-visible .carte-traite__champ :global(img) {
+      transform: none;
+    }
+  }
+</style>

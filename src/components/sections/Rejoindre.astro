@@ -372,14 +372,19 @@ const noteHtml = note ? rendreCliquable(note) : '';
     border-bottom: var(--filet);
   }
 
+  /* `01 · VIENS ESSAYER` : sur-titre secondaire — 10,5 px / **w500** / ls 2,9 /
+     `$parch-mute` (design-spec §3.6, `Pilier 01` / `Pilier 02`). `--fs-eyebrow-s`
+     plafonne à 10,5 ; `--fs-eyebrow` monterait à 12,5, la rampe du seul label
+     numéroté de section — qui ouvre déjà cette section juste au-dessus.
+     2,9 / 10,5 = 0.276em. */
   .pilier__etiquette {
     margin: 0;
     color: var(--parch-mute);
     font-family: var(--font-eyebrow);
-    font-size: var(--fs-eyebrow);
+    font-size: var(--fs-eyebrow-s);
     font-weight: 500;
     line-height: var(--lh-body-tight);
-    letter-spacing: var(--ls-eyebrow);
+    letter-spacing: 0.276em;
     text-transform: uppercase;
   }
 

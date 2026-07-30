@@ -38,7 +38,8 @@ import SectionLabel from '../ui/SectionLabel.astro';
 import SectionTitle from '../ui/SectionTitle.astro';
 import Filet from '../ui/Filet.astro';
 import Reveal from '../ui/Reveal.astro';
-import { cadrageCss, creditAffiche, largeursSrcset, resoudrePhoto } from '../../lib/images';
+import { cadrageCss, largeursSrcset, resoudrePhoto } from '../../lib/images';
+import { creditPlancheHtml } from '../sources/traites';
 import { resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
 import type { lireRigueur } from '../../lib/contenu';
 
@@ -108,7 +109,33 @@ const sousTitre = resoudre(donnees.manifesteMobile?.sousTitre, ctx, `${SOURCE} �
 const planche = resoudrePhoto(donnees.planche?.fichier);
 const altPlanche = donnees.planche?.alt ?? '';
 const cadragePlanche = cadrageCss(donnees.planche?.cadrage);
-const creditPlanche = creditAffiche(donnees.planche?.credit);
+
+/**
+ * ⚠️ Le crédit de la planche est rendu **verbatim** — `creditPlancheHtml()` de
+ * la section « Les sources », qui ne fait qu'un `.trim()` et rend les adresses
+ * cliquables sans changer un caractère visible.
+ *
+ * Surtout : **pas** `creditAffiche()`, qui préfixerait un « © ». La planche de
+ * cette section est une numérisation de bibliothèque (BnF / Gallica pour la
+ * page de titre de 1538), et la notice de l'imprimé porte « domaine public » :
+ * revendiquer un copyright dessus serait faux, et modifierait une mention de
+ * source exigée mot pour mot. `creditAffiche()` reste la bonne fonction pour
+ * les photographies du club (cf. `Club.astro`, `Galerie.astro`).
+ */
+const creditHtml = creditPlancheHtml(donnees.planche?.credit);
+
+/**
+ * Proportions réelles du fichier, posées en ligne : le cadre prend le ratio de
+ * la planche, qui s'y affiche donc **entière** (`object-fit: contain`, sans
+ * bandes puisque le cadre a exactement ses proportions).
+ *
+ * Avant, le cadre était figé à 488 / 517 — la proportion que la maquette avait
+ * dessinée pour une gravure d'illustration. Recadrée en `cover`, la page de
+ * titre de la Noble Science (2400 × 1642) y perdait ~35 % de sa largeur : les
+ * deux extrémités du bandeau xylographié rouge et les bords du cadre gravé.
+ * Une planche de traité se montre en entier, c'est tout l'objet de la section.
+ */
+const ratioPlanche = planche && planche.height > 0 ? planche.width / planche.height : null;
 
 const fondManifeste = resoudrePhoto(donnees.manifesteMobile?.photo?.fichier);
 const cadrageManifeste = cadrageCss(donnees.manifesteMobile?.photo?.cadrage);
@@ -192,7 +219,15 @@ const idTitre = `${id}-titre`;
         </div>
 
         <figure class="rigueur__cadre">
-          <div class="rigueur__gravure" style={`--rigueur-cadrage:${cadragePlanche}`}>
+          <div
+            class="rigueur__gravure"
+            style={[
+              `--rigueur-cadrage:${cadragePlanche}`,
+              ratioPlanche ? `--rigueur-planche-ratio:${ratioPlanche.toFixed(4)}` : '',
+            ]
+              .filter(Boolean)
+              .join(';')}
+          >
             {
               planche ? (
                 <Picture
@@ -209,12 +244,12 @@ const idTitre = `${id}-titre`;
           </div>
 
           {
-            (legende || creditPlanche) && (
+            (legende || creditHtml) && (
               <figcaption class="rigueur__legende">
                 <Filet largeur={22} ton="ember" marge="0.62em 0 0" />
                 <span class="rigueur__legende-texte">
                   {legende}
-                  {creditPlanche && <span class="rigueur__credit">{creditPlanche}</span>}
+                  {creditHtml && <span class="rigueur__credit" set:html={creditHtml} />}
                 </span>
               </figcaption>
             )
@@ -341,10 +376,24 @@ const idTitre = `${id}-titre`;
     border: var(--filet);
   }
 
+  /*
+   * Le cadre prend les proportions de la planche (`--rigueur-planche-ratio`,
+   * posé en ligne depuis le fichier) : la planche s'y affiche entière, et le
+   * `contain` ne laisse aucune bande puisque cadre et image ont le même ratio.
+   * Le repli 488 / 517 est celui de la maquette, pour le cas où le fichier
+   * manquerait.
+   *
+   * Le plafond de hauteur borne le seul cas gênant : un in-folio en portrait
+   * (Lecküchner, 1648 × 2400) ferait sans lui un cadre de plus de 700 px de
+   * haut à côté d'une colonne de texte deux fois plus courte. Il ne joue jamais
+   * sur une planche en paysage — la page de titre de 1538 tient en 334 px de
+   * haut dans la colonne de 488 px.
+   */
   .rigueur__gravure {
     position: relative;
     overflow: hidden;
-    aspect-ratio: 488 / 517;
+    aspect-ratio: var(--rigueur-planche-ratio, 488 / 517);
+    max-height: 720px;
     background: var(--char);
   }
 
@@ -356,7 +405,7 @@ const idTitre = `${id}-titre`;
   .rigueur__gravure :global(img) {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     object-position: var(--rigueur-cadrage, 50% 50%);
   }
 
@@ -375,15 +424,36 @@ const idTitre = `${id}-titre`;
     min-width: 0;
   }
 
+  /*
+   * ⚠️ Ni capitales ni interlettrage sur la ligne de crédit : elle est exigée
+   * mot pour mot par la bibliothèque, et `text-transform: uppercase` changerait
+   * les caractères rendus — « Source gallica.bnf.fr » deviendrait
+   * « SOURCE GALLICA.BNF.FR », un nom de domaine déformé. Même dessin que le
+   * crédit de `GaleriePlanches.astro` : corps réduit, détaché par un filet.
+   */
   .rigueur__credit {
     display: block;
-    margin-block-start: 8px;
-    font-family: var(--font-eyebrow);
-    font-size: var(--fs-eyebrow-s);
-    font-weight: 500;
-    letter-spacing: var(--ls-eyebrow-s);
-    line-height: var(--lh-body-tight);
-    text-transform: uppercase;
+    margin-block-start: 10px;
+    padding-block-start: 10px;
+    border-top: var(--filet);
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+  }
+
+  /* Une adresse dans le crédit est rendue cliquable par `creditPlancheHtml()` :
+     ses nœuds viennent de `set:html`, donc hors scope. */
+  .rigueur__credit :global(a) {
+    color: var(--parch-soft);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    text-underline-offset: 0.2em;
+    transition: color var(--transition);
+  }
+
+  .rigueur__credit :global(a:hover),
+  .rigueur__credit :global(a:focus-visible) {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
   }
 
   /* ── Bascule desktop ────────────────────────────────────────────────────── */

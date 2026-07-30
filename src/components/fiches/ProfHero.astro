@@ -49,6 +49,10 @@ export interface VideoProf {
   url?: string | null;
   duree?: string | null;
   vignette?: ImageMetadata | null;
+  /** Piste `.vtt` française, servie à côté de la vidéo (WCAG 1.2.2). */
+  sousTitres?: string | null;
+  /** Image d'attente du lecteur, si ce n'est pas la vignette. */
+  affiche?: string | null;
 }
 
 export interface Props {
@@ -170,6 +174,8 @@ const aVideo = Boolean(video?.url || video?.vignette);
             url={video?.url}
             image={video?.vignette ?? null}
             alt=""
+            sousTitres={video?.sousTitres}
+            affiche={video?.affiche}
             duree={video?.duree}
             titre={legendeVideo}
             taille="l"

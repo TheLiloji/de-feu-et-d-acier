@@ -23,6 +23,10 @@ export interface Lecon {
   duree?: string | null;
   video?: string | null;
   vignette?: string | null;
+  /** Piste `.vtt` française, servie à côté de la vidéo (WCAG 1.2.2). */
+  sousTitres?: string | null;
+  /** Image d'attente du lecteur, si ce n'est pas la vignette. */
+  affiche?: string | null;
 }
 
 export interface Props {
@@ -50,6 +54,8 @@ const cartes = (lecons ?? [])
     duree: l.duree ?? '',
     video: l.video ?? '',
     image: resoudrePhoto(l.vignette),
+    sousTitres: l.sousTitres ?? '',
+    affiche: l.affiche ?? '',
   }));
 
 const idTitre = `${id}-titre`;
@@ -74,6 +80,8 @@ const idTitre = `${id}-titre`;
                 url={carte.video}
                 image={carte.image}
                 alt={carte.titre}
+                sousTitres={carte.sousTitres}
+                affiche={carte.affiche}
                 duree={carte.duree}
                 titre={carte.titre}
                 sousTitre={carte.sousTitre}

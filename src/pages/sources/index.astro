@@ -1,0 +1,374 @@
+---
+/**
+ * `/sources/` — « La bibliothèque », la porte d'entrée de la section des
+ * traités. Gabarit NON maquetté (design-spec §10.2 : la maquette ne couvre
+ * ni liste ni page annexe), composé dans le langage des deux autres pages de
+ * liste du site (`/actualites/`) :
+ *
+ *   - page entièrement en `$ink`, le rythme vient des filets et de l'espacement ;
+ *   - fil d'Ariane à filet bas, « Retour » à gauche, chemin à droite ;
+ *   - tête de page : sur-titre à tiret, H1 Cormorant à ligne accentuée, chapô,
+ *     puis le compte réel (traités et planches) ;
+ *   - la grille des traités, une carte par fiche, dans l'ordre du CMS ;
+ *   - barre d'onglets mobile en pied : chrome global, rendu sur toutes les pages
+ *     du site (ARCHITECTURE.md §5).
+ *
+ * Les textes de tête viennent du CMS, rubrique « Les sources » du singleton
+ * « Accueil · Titres des sections » (`entetes.yaml`) : le club les édite comme
+ * ceux de n'importe quelle autre section. Les quatre constantes ci-dessous ne
+ * sont plus que des replis, pour qu'une rubrique vidée dans l'admin ne laisse
+ * pas une page sans titre.
+ *
+ * Le compte de planches est **calculé** sur les planches réellement résolues :
+ * il ne peut donc pas annoncer 34 images là où un fichier manque.
+ */
+import Base from '../../layouts/Base.astro';
+import CarteTraite from '../../components/sources/CarteTraite.astro';
+import FilArianeSources from '../../components/sources/FilArianeSources.astro';
+import Footer from '../../components/sections/Footer.astro';
+import Nav from '../../components/sections/Nav.astro';
+import Eyebrow from '../../components/ui/Eyebrow.astro';
+import Reveal from '../../components/ui/Reveal.astro';
+import SectionTitle from '../../components/ui/SectionTitle.astro';
+import TabBar from '../../components/ui/TabBar.astro';
+import { estNomIcone } from '../../components/ui/icones';
+import {
+  lireDisciplines,
+  lireEntetes,
+  lireHero,
+  lireIdentite,
+  lireMenus,
+  profsDe,
+  traitesTries,
+} from '../../lib/contenu';
+import { getEcolePrincipale } from '../../lib/ecoles';
+import { lien } from '../../lib/liens';
+import { contexteDe, resoudre } from '../../lib/raccourcis';
+import { typographieFr } from '../../lib/typographie';
+import {
+  anneeCourte,
+  armesLiees,
+  comptePlanches,
+  plancheVedette,
+  resoudrePlanche,
+  resoudrePlanches,
+  traditionCourte,
+  auteurCourt,
+} from '../../components/sources/traites';
+
+/** Replis des textes de tête, si la rubrique du CMS est vidée — cf. l'en-tête. */
+const LIBELLE = 'Les sources';
+const TITRE_LIGNE_1 = 'La bibliothèque';
+const TITRE_LIGNE_2 = 'du club.';
+const LEDE =
+  'Les AMHE ne se transmettent pas de maître en maître : elles se lisent. ' +
+  'L’essentiel de ce qui se travaille en salle vient de traités écrits entre le ' +
+  'XIVᵉ et le XVIIᵉ siècle, que l’on étudie, met en mouvement, puis éprouve en ' +
+  'assaut. Voici ceux sur lesquels le club travaille — le haut Moyen Âge, lui, ' +
+  'n’a laissé aucun manuel d’escrime, et le combat viking se reconstruit ' +
+  'autrement.';
+
+/**
+ * Mention de droits de la page de liste.
+ *
+ * Les vignettes de cette grille sont des reproductions appartenant à des
+ * bibliothèques. Chacune porte, sur la fiche du traité, la ligne de crédit
+ * exigée par l'institution qui l'a numérisée, et le lien vers ses conditions —
+ * c'est la façon de créditer que la licence CC BY 4.0 prévoit explicitement pour
+ * une vignette (renvoyer vers une ressource qui porte l'attribution), et la
+ * carte nomme déjà l'institution de conservation. Cette phrase le dit au
+ * visiteur au lieu de le laisser supposer.
+ */
+const MENTION_DROITS =
+  'Chaque planche reproduite ici porte, sur la fiche de son traité, la ligne de ' +
+  'crédit exigée par la bibliothèque qui l’a numérisée et le lien vers ses ' +
+  'conditions d’utilisation.';
+
+const ecole = await getEcolePrincipale();
+const [identite, hero, menus, entetes, disciplines, profs, traites] = await Promise.all([
+  lireIdentite(),
+  lireHero(),
+  lireMenus(),
+  lireEntetes(),
+  lireDisciplines(),
+  profsDe(ecole),
+  traitesTries(),
+]);
+
+// Même base de comptes que l'accueil et que les fiches arme (ARCHITECTURE.md
+// §4) : les raccourcis du chapô comptent ce qui est réellement affiché.
+const ctx = contexteDe(ecole.fiche, {
+  nbArmes: disciplines.filter((d) => d.entry.affichee).length,
+  nbProfs: profs.filter((p) => p.entry.visible).length,
+});
+
+/**
+ * Textes de tête : le CMS d'abord, les constantes en repli.
+ *
+ * Le chapô passe par `resoudre()`, comme celui de toutes les autres rubriques de
+ * ce singleton — l'admin y annonce les raccourcis, ils doivent donc y marcher.
+ */
+const SOURCE_ENTETE = 'src/content/commun/entetes.yaml › Les sources';
+const entete = entetes.sources;
+const libelle = entete?.eyebrow?.trim() || LIBELLE;
+const titreLigne1 = entete?.titreLigne1?.trim() || TITRE_LIGNE_1;
+const titreLigne2 = entete?.titreLigne2?.trim() || TITRE_LIGNE_2;
+const lede = resoudre(entete?.lede?.trim() || LEDE, ctx, `${SOURCE_ENTETE} › chapô`);
+
+// Barre d'onglets mobile : chrome global. Aucun onglet n'est actif — la barre
+// n'a pas d'entrée « Sources » —, et l'onglet mis en exergue reste celui des
+// épées croisées, repéré par son icône et non par sa position.
+const onglets = (menus.barreMobile ?? []).map((onglet) => ({
+  libelle: onglet.libelle,
+  href: lien(ecole, onglet.lien),
+  icone: estNomIcone(onglet.icone) ? onglet.icone : 'house',
+  exergue: onglet.icone === 'swords',
+}));
+
+const cartes = traites.map((traite) => {
+  const entree = traite.entry;
+  const vedette = resoudrePlanche(plancheVedette(entree.planches));
+  // Les planches **résolues**, pas les lignes saisies : une planche dont le
+  // fichier n'a pas encore été déposé ne se compte pas.
+  const nbPlanches = resoudrePlanches(entree.planches).length;
+
+  return {
+    slug: traite.slug,
+    href: lien(ecole, `/sources/${traite.slug}/`),
+    // Les champs d'un traité ne transitent pas par `resoudre()` (aucun raccourci
+    // n'y est autorisé) : la composition typographique se pose donc ici.
+    titre: typographieFr(entree.titre),
+    auteur: typographieFr(auteurCourt(entree.auteur)),
+    annee: typographieFr(anneeCourte(entree.annee)),
+    tradition: typographieFr(traditionCourte(entree.tradition)),
+    bibliotheque: typographieFr(entree.bibliotheque ?? ''),
+    armes: armesLiees(entree.armes, disciplines).map((arme) => arme.nom),
+    planche: vedette?.source ?? null,
+    alt: vedette?.alt ?? '',
+    nbPlanches,
+    compte: comptePlanches(nbPlanches),
+  };
+});
+
+const totalPlanches = cartes.reduce((total, carte) => total + carte.nbPlanches, 0);
+
+const compteTraites =
+  cartes.length === 0 ? '' : cartes.length === 1 ? '1 traité' : `${cartes.length} traités`;
+const compte = [compteTraites, comptePlanches(totalPlanches)].filter(Boolean).join(' · ');
+
+// Meta description propre à la page : sans elle, `Base` retomberait sur la
+// description du site et /sources/ publierait celle de l'accueil.
+const description =
+  'Les traités d’escrime historique étudiés au club, de l’I.33 (vers 1320) à ' +
+  'Fabris (1606) : planches, contexte et liens vers les numérisations des ' +
+  'bibliothèques qui les conservent.';
+
+const idTitre = 'sources-titre';
+---
+
+<Base ecole={ecole} identite={identite} titre="La bibliothèque" description={description}>
+
+  {/* Page sans hero photographique : la barre garde son fond plein dès le
+      chargement. */}
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+    fond="solide"
+  />
+
+  <FilArianeSources
+    retourHref={lien(ecole, '/')}
+    chemin={[{ libelle: 'Accueil', href: lien(ecole, '/') }, { libelle: libelle }]}
+  />
+
+  <header class="tete">
+    <div class="gouttiere">
+      <div class="tete__bloc">
+        <Eyebrow texte={libelle} marque="tiret" />
+        <SectionTitle
+          balise="h1"
+          taille="fiche"
+          id={idTitre}
+          lignes={[{ texte: titreLigne1 }, { texte: titreLigne2, accent: true }]}
+        />
+        {/* `resoudre()` compose déjà la typographie française : pas de second
+            passage par `typographieFr`. */}
+        <p class="tete__lede">{lede}</p>
+        {compte && <p class="tete__compte">{compte}</p>}
+      </div>
+    </div>
+  </header>
+
+  <section class="grille-section" aria-label="Les traités étudiés au club">
+    <div class="gouttiere">
+      {
+        cartes.length > 0 ? (
+          <ul class="grille" role="list">
+            {cartes.map((carte, i) => (
+              <li class="grille__item">
+                {/* Le retard est plafonné à quatre crans : sans plafond, une
+                    cascade de 70 ms par tuile ferait attendre une demi-seconde
+                    de plus la dernière carte de la seconde rangée. */}
+                <Reveal delai={Math.min(i, 3) * 70}>
+                  <CarteTraite
+                    href={carte.href}
+                    titre={carte.titre}
+                    auteur={carte.auteur}
+                    annee={carte.annee}
+                    tradition={carte.tradition}
+                    armes={carte.armes}
+                    bibliotheque={carte.bibliotheque}
+                    planche={carte.planche}
+                    alt={carte.alt}
+                    compte={carte.compte}
+                    charge={i < 2 ? 'eager' : 'lazy'}
+                  />
+                </Reveal>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div class="vide">
+            <p class="vide__titre">Aucune source publiée pour l’instant.</p>
+            <p class="vide__texte">
+              Les traités travaillés en salle paraîtront ici, planche par planche.
+            </p>
+          </div>
+        )
+      }
+
+      {cartes.length > 0 && <p class="droits">{typographieFr(MENTION_DROITS)}</p>}
+    </div>
+  </section>
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient après le pied de
+        page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide du site" />
+  </Fragment>
+</Base>
+
+<style>
+  /* ── Tête de page ────────────────────────────────────────────────────────── */
+
+  /* Enfant de `.gouttiere`, jamais la gouttière elle-même : celle-ci est centrée
+     par `margin-inline: auto` (global.css), et lui poser une mesure recentrerait
+     tout le bloc au lieu de le laisser sur la grille de gauche. */
+  .tete__bloc {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(14px, 11.029px + 0.7619vw, 22px);
+    padding-block: clamp(40px, 20.686px + 4.9524vw, 92px)
+      clamp(34px, 19.886px + 3.619vw, 72px);
+  }
+
+  .tete__lede {
+    max-width: 62ch;
+    font-size: var(--fs-body-lede);
+    line-height: 1.6;
+    color: var(--parch-soft);
+  }
+
+  .tete__compte {
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  /* ── La grille ───────────────────────────────────────────────────────────── */
+
+  .grille-section {
+    padding-block-end: clamp(60px, 34px + 6.6667vw, 130px);
+  }
+
+  .grille {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(20px, 12.571px + 1.9048vw, 40px);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /*
+   * Deux `display: grid` imbriqués plutôt qu'un `height: 100%` : entre l'élément
+   * de liste et la carte, il y a le `div` de `Reveal`, sur lequel une feuille
+   * scopée n'a pas prise. Un élément de grille s'étire par défaut sur ses deux
+   * axes — la carte remplit donc sa rangée sans que personne n'ait à mesurer,
+   * et les liens « Étudier la source » d'une même rangée s'alignent.
+   */
+  .grille__item {
+    display: grid;
+  }
+
+  .grille__item > :global(*) {
+    display: grid;
+  }
+
+  @media (min-width: 620px) {
+    .grille {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1000px) {
+    .grille {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  /* Quatre colonnes : les huit fiches tiennent alors en deux rangées pleines. */
+  @media (min-width: 1280px) {
+    .grille {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  /* ── Mention de droits ───────────────────────────────────────────────────── */
+
+  .droits {
+    max-width: 72ch;
+    margin-top: clamp(28px, 20.5px + 1.92vw, 48px);
+    padding-top: clamp(16px, 13.029px + 0.7619vw, 24px);
+    border-top: var(--filet);
+    font-size: var(--fs-body-xxs);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+
+  /* ── État vide (aucun état vide n'est maquetté, design-spec §10.2) ───────── */
+
+  .vide {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(12px, 9.771px + 0.5714vw, 18px);
+    padding-block: clamp(40px, 25.886px + 3.619vw, 78px);
+    border-top: var(--filet);
+    border-bottom: var(--filet);
+  }
+
+  .vide__titre {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-display-s);
+    line-height: 1.1;
+    color: var(--parch);
+  }
+
+  .vide__texte {
+    max-width: 52ch;
+    margin: 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+</style>

@@ -11,24 +11,26 @@ texte: >-
   la base de notre travail, et nous poussons leur application jusqu'en assaut,
   avec différents niveaux d'engagement.
 planche:
-  fichier: /src/assets/photos/commun/rigueur-traite.jpg
+  fichier: /src/assets/photos/commun/sources/noble-science-1538-f01r.jpg
   alt: >-
-    Planche d'un traité d'escrime historique : deux escrimeurs à l'épée longue
-    en garde, dessinés à la plume et rehaussés de lavis, avec des annotations
-    manuscrites.
+    Page de titre imprimée : un bandeau xylographié tiré en rouge surmonte une
+    gravure de deux joueurs d'épée à deux mains, lames croisées au centre de la
+    planche.
   cadrage: centre
-  credit: ''
+  credit: Andre Paurñfeyndt, La noble science des joueurs d'espée, Anvers, Willem
+    Vorsterman, 1538. BnF, département des Manuscrits, Rothschild 291, f. 1r.
+    Source gallica.bnf.fr / Bibliothèque nationale de France.
 legendePlanche: >-
-  Planche extraite d'un traité d'escrime historique. Étude des gardes, des
-  distances, du timing — des gestes que l'on cherche à comprendre, puis à
-  éprouver dans la salle.
+  Page de titre de « La noble science des joueurs d'espée », imprimée à Anvers en
+  1538 : la plus ancienne description en français des gestes que l'on travaille
+  ici. Gardes, distances, temps — ce que l'on cherche d'abord à comprendre, puis
+  à éprouver en salle.
 manifesteMobile:
   citation: « Le geste juste, avant le costume. »
   sousTitre: Traités historiques · pratique moderne & sécurisée
   photo:
-    fichier: /src/assets/photos/commun/rigueur-traite.jpg
+    fichier: /src/assets/photos/commun/sources/noble-science-1538-f01r.jpg
     alt: >-
-      Planche d'un traité d'escrime historique, deux escrimeurs à l'épée longue
-      en garde.
+      Page de titre de « La noble science des joueurs d'espée », Anvers, 1538 :
+      deux joueurs d'épée à deux mains sous un bandeau xylographié rouge.
     cadrage: centre
-    credit: ''

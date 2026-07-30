@@ -1,0 +1,397 @@
+---
+/**
+ * Galerie des planches d'un traité — le cœur de la fiche.
+ *
+ * Une planche par rangée, montrée **entière** dans un cadre `$char` à filet
+ * (le « cadre traité » de `Rigueur.astro`), puis son appareil : folio, légende,
+ * et la ligne de crédit de la bibliothèque. Un clic sur la planche l'ouvre dans
+ * la `Visionneuse` du site, à son rang dans la série.
+ *
+ * ⚠️ **Le crédit n'est pas une option de présentation, c'est la contrepartie du
+ * droit de publier.** La BnF exige « Source gallica.bnf.fr / Bibliothèque
+ * nationale de France » sur chaque image ; le Münchener DigitalisierungsZentrum
+ * exige bibliothèque + cote + folio + URN, plus « digitalisiert von Google » sur
+ * les numérisations issues de ce partenariat ; le Royal Armouries exige le
+ * crédit, le lien vers la licence CC BY 4.0 **et** la mention des modifications.
+ * D'où trois règles tenues ici :
+ *
+ *   1. le crédit est rendu **verbatim** — ni « © » ajouté (la plupart de ces
+ *      planches sont sous *Public Domain Mark*, donc sans droit d'auteur : un
+ *      « © » y serait un contresens), ni composition typographique. Cf.
+ *      `creditPlanche()` dans `./traites.ts` ;
+ *   2. il est affiché **sous chaque planche**, jamais regroupé en bas de page :
+ *      c'est l'image qu'il crédite, pas la fiche ;
+ *   3. il est repris **dans la visionneuse**, qui est un autre affichage de la
+ *      même image — une reproduction en plein écran sans sa mention de source
+ *      ne serait pas en règle.
+ *
+ * Les adresses contenues dans un crédit — celle de la licence CC BY 4.0 dans le
+ * crédit du Royal Armouries — sont rendues cliquables sans qu'un seul caractère
+ * visible change (`creditPlancheHtml()` dans `./traites.ts`) : CC BY 4.0 demande
+ * « a URI or hyperlink » vers la licence, et un lien vaut mieux qu'une adresse à
+ * recopier à la main. Les URN du MDZ, qui ne sont pas des adresses http, restent
+ * du texte — ce sont des identifiants.
+ *
+ * Le garde-fou n° 6 du build (`src/lib/validation.ts`) refuse une planche sans
+ * description ni crédit : ce composant n'a donc pas à gérer le cas, il se
+ * contente de ne rien afficher d'orphelin si un champ est vide en dev.
+ */
+import { Picture } from 'astro:assets';
+import Icon from '../ui/Icon.astro';
+import Visionneuse from '../ui/Visionneuse.astro';
+import { largeursSrcset } from '../../lib/images';
+import { comptePlanches, creditPlancheHtml, type PlancheResolue } from './traites';
+
+export interface Props {
+  planches: readonly PlancheResolue[];
+  /** Titre du traité — nom accessible de la visionneuse, et légende dedans. */
+  titreTraite: string;
+  /** `id` du dialogue de la visionneuse. Unique dans la page. */
+  idVisionneuse?: string;
+  /** Sur-titre du bloc. */
+  libelle?: string;
+  /** `id` du sur-titre, pour l'`aria-labelledby` de la section. */
+  idLibelle?: string;
+  class?: string;
+}
+
+const {
+  planches,
+  titreTraite,
+  idVisionneuse = 'visionneuse-planches',
+  libelle = 'Les planches',
+  idLibelle = 'planches-libelle',
+  class: classe,
+} = Astro.props;
+
+/**
+ * Largeurs du `srcset`. La planche est plafonnée à 1040 px de large **et** à
+ * 78 % de la hauteur de la fenêtre : au-delà de 2080 px (le plafond en densité
+ * 2), aucun dérivé ne sert. Politique de largeurs commune, cf. src/lib/images.ts
+ * — les candidats plus grands que le master sont écartés, mais le master reste
+ * servi si l'un l'a été.
+ */
+const LARGEURS = [480, 800, 1240, 2080];
+
+/**
+ * `sizes` d'une planche : la plus petite des trois contraintes réelles — la
+ * colonne, la largeur de la fenêtre moins ses gouttières, et la hauteur
+ * disponible convertie en largeur par les proportions du fichier.
+ *
+ * Sans le troisième terme, une planche en portrait (Lecküchner, 1648 × 2400)
+ * bridée par la hauteur téléchargeait le dérivé de 2080 px pour un rendu de
+ * 480 px : c'est exactement le calcul que fait déjà `Visionneuse.astro`, pour
+ * la même raison.
+ */
+const tailles = (ratio: number) => {
+  const parHauteur = `calc(78vh * ${ratio.toFixed(3)})`;
+  return [
+    `(min-width: 1152px) min(1040px, ${parHauteur})`,
+    `(min-width: 820px) min(calc(100vw - 72px), ${parHauteur})`,
+    `min(calc(100vw - 44px), ${parHauteur})`,
+  ].join(', ');
+};
+
+// La visionneuse reprend le crédit intégral, mais une légende courte : celle de
+// la page fait jusqu'à sept lignes, illisible centrée sous une image en plein
+// écran. Le folio et le titre du traité suffisent à savoir ce qu'on regarde.
+const vues = planches.map((planche) => ({
+  source: planche.source,
+  alt: planche.alt,
+  legende: [titreTraite, planche.folio].filter(Boolean).join(' · '),
+  credit: planche.credit,
+}));
+
+const compte = comptePlanches(planches.length);
+---
+
+{
+  planches.length > 0 && (
+    <section class:list={['planches', classe]} aria-labelledby={idLibelle}>
+      <div class="gouttiere">
+        <div class="planches__tete">
+          <span class="planches__label" id={idLibelle}>
+            {libelle}
+          </span>
+          <Icon name="diamond" size={6} />
+          {compte && <span class="planches__precision">{compte}</span>}
+        </div>
+
+        <ol class="planches__liste" role="list">
+          {planches.map((planche, i) => (
+            <li class="planches__item">
+              <figure class="planche">
+                <button
+                  type="button"
+                  class="planche__cadre"
+                  style={`--planche-ratio:${planche.ratio.toFixed(4)}`}
+                  data-ouvrir-visionneuse
+                  aria-controls={idVisionneuse}
+                  aria-haspopup="dialog"
+                  data-visionneuse-index={String(i)}
+                >
+                  <Picture
+                    src={planche.source}
+                    alt={planche.alt}
+                    formats={['avif', 'webp']}
+                    widths={largeursSrcset(planche.source, { largeurs: LARGEURS })}
+                    sizes={tailles(planche.ratio)}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
+                  />
+                  <span class="planche__loupe" aria-hidden="true">
+                    <Icon name="plus" size={14} />
+                    <span>Agrandir</span>
+                  </span>
+                  <span class="visuellement-cache"> — agrandir la planche</span>
+                </button>
+
+                {(planche.folio || planche.legende || planche.credit) && (
+                  <figcaption class="planche__legende">
+                    {planche.folio && <p class="planche__folio">{planche.folio}</p>}
+                    {planche.legende && <p class="planche__texte">{planche.legende}</p>}
+                    {planche.credit && (
+                      <p class="planche__credit" set:html={creditPlancheHtml(planche.credit)} />
+                    )}
+                  </figcaption>
+                )}
+              </figure>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <Visionneuse id={idVisionneuse} titre={`Planches — ${titreTraite}`} photos={vues} />
+    </section>
+  )
+}
+
+<style>
+  .planches {
+    padding-block-end: clamp(40px, 25.886px + 3.619vw, 78px);
+  }
+
+  /* ── Tête du bloc (même dessin que « Mini-cours » et « Photos ») ─────────── */
+
+  /* Rampe « sur-titre secondaire » — 10,5 px, comme la tête de bloc de
+     « Mini-cours » (`ArmeMiniCours`) et celle d'une fiche actualité, dont c'est
+     le même dessin. `--fs-eyebrow` monterait à 12,5 : c'est la rampe du label de
+     section (« 01 ◆ LES DISCIPLINES »), 2 px trop haut pour une tête de bloc
+     interne (cf. l'avertissement en tête des utilitaires de global.css). */
+  .planches__tete {
+    display: flex;
+    align-items: center;
+    gap: clamp(10px, 7.771px + 0.5714vw, 16px);
+    padding-bottom: clamp(18px, 16.514px + 0.381vw, 22px);
+    border-bottom: var(--filet);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow);
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+  }
+
+  .planches__label {
+    color: var(--ember);
+  }
+
+  .planches__precision {
+    color: var(--parch-mute);
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+  }
+
+  .planches__tete :global(svg) {
+    flex: none;
+    color: var(--ember);
+  }
+
+  /* ── Les planches ───────────────────────────────────────────────────────── */
+
+  .planches__liste {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .planches__item + .planches__item {
+    margin-top: clamp(36px, 20.5px + 3.98vw, 78px);
+    padding-top: clamp(36px, 20.5px + 3.98vw, 78px);
+    border-top: var(--filet);
+  }
+
+  .planche {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(16px, 13.029px + 0.7619vw, 24px);
+    margin: 0;
+    padding-top: clamp(28px, 20.5px + 1.92vw, 48px);
+  }
+
+  /*
+   * Le cadre épouse la planche (`width: fit-content`) plutôt que la colonne :
+   * une planche n'est donc jamais encadrée de deux bandes de `$char` vides. Le
+   * plafond de hauteur évite qu'un in-folio de 1650 × 2400 fasse trois écrans de
+   * haut ; les proportions du fichier sont connues au build, donc aucun saut de
+   * mise en page au chargement.
+   *
+   * ⚠️ Les deux plafonds doivent s'accorder. Borner la seule hauteur de l'image
+   * ne suffit pas : le cadre, lui, se serait déjà dimensionné sur la largeur
+   * *naturelle* de la planche, et une planche en portrait ramenée à 482 px par le
+   * plafond de hauteur flottait alors au milieu d'un cadre de 1040 px. D'où
+   * `--planche-ratio`, posé en ligne depuis les proportions du fichier : le cadre
+   * ne dépasse jamais la largeur que le plafond de hauteur autorise.
+   *
+   * La déclaration en `vh` précède celle en `svh` : sur un navigateur qui ignore
+   * les unités de fenêtre « petite », la première tient et rien ne déborde.
+   */
+  .planche__cadre {
+    position: relative;
+    display: block;
+    width: fit-content;
+    max-width: min(100%, 1040px, calc(78vh * var(--planche-ratio, 1)));
+    max-width: min(100%, 1040px, calc(78svh * var(--planche-ratio, 1)));
+    padding: 0;
+    overflow: hidden;
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    background: var(--char);
+    cursor: zoom-in;
+    transition: border-color var(--transition);
+  }
+
+  /* `<Picture>` est un composant : ses nœuds échappent au scope, d'où :global. */
+  .planche__cadre :global(picture) {
+    display: block;
+  }
+
+  .planche__cadre :global(img) {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 78vh;
+    max-height: 78svh;
+    transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* Affordance d'agrandissement : discrète au repos, elle vient au survol et au
+     focus clavier. Sur un écran tactile il n'y a pas de survol — d'où une
+     opacité de repos non nulle, et non un affichage conditionnel. */
+  .planche__loupe {
+    --icone-cote: 14px;
+    position: absolute;
+    right: clamp(10px, 0.5rem + 0.5vw, 16px);
+    bottom: clamp(10px, 0.5rem + 0.5vw, 16px);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-pill);
+    background: var(--veil-ink-80);
+    color: var(--parch);
+    font-family: var(--font-eyebrow);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: 1;
+    text-transform: uppercase;
+    opacity: 0.72;
+    transition:
+      opacity var(--transition),
+      border-color var(--transition);
+  }
+
+  .planche__cadre:hover .planche__loupe,
+  .planche__cadre:focus-visible .planche__loupe {
+    opacity: 1;
+    border-color: var(--ember-hot);
+  }
+
+  .planche__cadre:hover {
+    border-color: var(--line-strong);
+  }
+
+  .planche__cadre:hover :global(img) {
+    transform: scale(1.02);
+  }
+
+  .planche__cadre:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 4px;
+  }
+
+  /* ── Légende, folio, crédit ─────────────────────────────────────────────── */
+
+  .planche__legende {
+    display: flex;
+    width: 100%;
+    max-width: 76ch;
+    flex-direction: column;
+    gap: clamp(8px, 6.514px + 0.381vw, 12px);
+  }
+
+  .planche__folio {
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .planche__texte {
+    margin: 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.65;
+    color: var(--parch-soft);
+  }
+
+  /*
+   * La ligne de crédit. Détachée par un filet, en corps réduit : elle n'est pas
+   * de la prose éditoriale mais une mention obligatoire, et se lit comme telle.
+   * `overflow-wrap: anywhere` parce qu'un crédit MDZ contient une URN et un
+   * crédit du Royal Armouries une URL de licence — deux chaînes sans espace qui
+   * débordaient la colonne en mobile.
+   */
+  .planche__credit {
+    margin: 0;
+    padding-top: clamp(8px, 6.514px + 0.381vw, 12px);
+    border-top: var(--filet);
+    font-size: var(--fs-body-xxs);
+    line-height: 1.55;
+    color: var(--parch-mute);
+    overflow-wrap: anywhere;
+  }
+
+  /* Le crédit est injecté par `set:html` : les adresses qu'il contient échappent
+     au scope, d'où `:global`. */
+  .planche__credit :global(a) {
+    color: var(--parch-soft);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    text-underline-offset: 0.2em;
+    transition: color var(--transition);
+  }
+
+  .planche__credit :global(a:hover),
+  .planche__credit :global(a:focus-visible) {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .planche__cadre :global(img),
+    .planche__loupe {
+      transition: none;
+    }
+
+    .planche__cadre:hover :global(img) {
+      transform: none;
+    }
+  }
+</style>

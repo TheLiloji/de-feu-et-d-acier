@@ -1,7 +1,7 @@
 /**
  * Garde-fous du build — ARCHITECTURE.md §7.
  *
- * Six vérifications, six échecs de build avec un message qui dit **quoi
+ * Sept vérifications, sept échecs de build avec un message qui dit **quoi
  * corriger et où** :
  *
  *   1. un raccourci inconnu dans un texte du CMS (`{tarrif}`, `{Email}`) ;
@@ -10,7 +10,9 @@
  *   4. deux annonces épinglées en bandeau en même temps ;
  *   5. une image déposée dans un format que le build ne sait pas traiter ;
  *   6. un traité dont les droits ne sont pas en règle (planche sans description
- *      ou sans crédit, licence sans adresse, extrait cité sans sa source).
+ *      ou sans crédit, licence sans adresse, extrait cité sans sa source) ;
+ *   7. la planche de « La rigueur », sur l'accueil, publiée sans sa ligne de
+ *      crédit — même exigence que le n° 6, hors de la collection des traités.
  *
  * Pourquoi ici et pas dans un script `prebuild`
  * ---------------------------------------------
@@ -370,12 +372,40 @@ async function verifierTraites(racineProjet: string): Promise<string[]> {
   return problemes;
 }
 
+/**
+ * 7. La planche de « La rigueur » — mêmes droits, hors collection.
+ *
+ * La section « La rigueur » de l'accueil affiche une planche de traité (la page
+ * de titre de la Noble Science, numérisée par la BnF) qui ne vit **pas** dans la
+ * collection `traites` : elle est saisie dans le singleton `rigueur`, avec sa
+ * propre ligne de crédit. Le contrôle n° 6 ne la voit donc pas, et c'est
+ * pourtant la planche la plus visible du site — celle de la page d'accueil.
+ *
+ * La règle est la même que pour une planche de fiche : si un fichier est déposé,
+ * la ligne de crédit exigée par la bibliothèque doit l'accompagner. Le champ alt
+ * est déjà couvert par le contrôle n° 3, qui reconnaît le couple `fichier`/`alt`.
+ */
+async function verifierPlancheRigueur(): Promise<string[]> {
+  const rigueur = await reader.singletons.rigueur.read();
+  const planche = rigueur?.planche;
+  if (!planche?.fichier?.trim()) return [];
+  if (planche.credit?.trim()) return [];
+
+  return [
+    'Planche sans crédit — Accueil · La rigueur\n' +
+      `    Fichier : ${planche.fichier}\n` +
+      '    Remplir « Planche de traité › Ligne de crédit de la bibliothèque ». Cette planche est\n' +
+      '    une numérisation de bibliothèque : sans sa mention de source, sa publication sur la page\n' +
+      '    d’accueil n’est pas en règle.',
+  ];
+}
+
 // ── Point d'entrée ─────────────────────────────────────────────────────────
 
 let enCours: Promise<void> | null = null;
 
 /**
- * Lance les six contrôles. Lève une erreur unique listant tout ce qui cloche.
+ * Lance les sept contrôles. Lève une erreur unique listant tout ce qui cloche.
  *
  * @param aujourdhui Date de référence (`AAAA-MM-JJ`), pour les tests.
  */
@@ -389,6 +419,7 @@ export function validerContenu(aujourdhui = new Date().toISOString().slice(0, 10
       ...(await verifierImages(racineProjet)),
       ...(await verifierAnnonces(aujourdhui)),
       ...(await verifierTraites(racineProjet)),
+      ...(await verifierPlancheRigueur()),
     ];
 
     if (problemes.length === 0) return;

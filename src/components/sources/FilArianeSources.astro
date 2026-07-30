@@ -1,0 +1,176 @@
+---
+/**
+ * Fil d'Ariane de la section « Les sources » — design-spec §5.3.
+ *
+ * Même dessin que celui des fiches arme et des actualités : bande à filet bas,
+ * « Retour » fléché à gauche, chemin à droite, l'entrée courante en `$parch`
+ * avec `aria-current="page"`. Ici il est écrit une seule fois pour les deux
+ * gabarits de la section (la bibliothèque et la fiche d'un traité) au lieu
+ * d'être recopié dans chacun — c'est le même bloc, il n'a pas à diverger.
+ *
+ * Le titre d'un traité est long (« Traicté contenant les secrets du premier
+ * livre sur l'espée seule ») : l'entrée courante se tronque plutôt que de
+ * pousser le fil sur deux lignes, et sous 620 px les maillons intermédiaires
+ * s'effacent — le lien « Retour » couvre déjà ce besoin sur un petit écran.
+ *
+ * Usage : `retourHref` est la cible de la flèche « Retour », `chemin` la suite
+ * des maillons du plus général au plus précis — le dernier est la page courante
+ * et n'a pas de `href`. Sur une fiche de traité : Accueil, Les sources, titre.
+ *
+ * ⚠️ Aucun chevron ouvrant dans ce commentaire : Astro extrait le typage du
+ * frontmatter en le transformant en TSX, et un « inférieur à » qui n'est pas
+ * refermé y ouvre une balise imaginaire — `Astro.props` retombe alors en `any`
+ * et le composant perd tous ses contrôles sans qu'aucune erreur n'apparaisse
+ * (même piège que dans `Nav.astro`).
+ */
+import Icon from '../ui/Icon.astro';
+
+export interface MaillonFil {
+  libelle: string;
+  /** Absent sur le dernier maillon : c'est la page courante. */
+  href?: string;
+}
+
+export interface Props {
+  /** Cible du lien « Retour ». */
+  retourHref: string;
+  /** Libellé du lien « Retour ». Défaut : « Retour ». */
+  retourLibelle?: string;
+  /** Maillons, du plus général au plus précis. Le dernier est la page. */
+  chemin: readonly MaillonFil[];
+  class?: string;
+}
+
+const { retourHref, retourLibelle = 'Retour', chemin, class: classe } = Astro.props;
+
+const maillons = chemin.filter((m) => Boolean(m?.libelle));
+const dernier = maillons.length - 1;
+---
+
+<nav class:list={['fil', classe]} aria-label="Fil d’Ariane">
+  <div class="gouttiere fil__rangee">
+    <a class="fil__retour" href={retourHref}>
+      <Icon name="arrow-left" size={16} />
+      <span>{retourLibelle}</span>
+    </a>
+
+    <ol class="fil__chemin" role="list">
+      {
+        maillons.map((maillon, i) => (
+          <li class="fil__maillon">
+            {/* L'oblique appartient au maillon qu'elle précède : masquer un
+                maillon en mobile emporte donc son séparateur, sans laisser une
+                barre orpheline en tête de ligne. */}
+            {i > 0 && (
+              <span class="fil__oblique" aria-hidden="true">
+                /
+              </span>
+            )}
+            {i === dernier || !maillon.href ? (
+              <span class="fil__courant" aria-current={i === dernier ? 'page' : undefined}>
+                {maillon.libelle}
+              </span>
+            ) : (
+              <a class="fil__lien" href={maillon.href}>
+                {maillon.libelle}
+              </a>
+            )}
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</nav>
+
+<style>
+  .fil {
+    border-bottom: var(--filet);
+  }
+
+  .fil__rangee {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esp-item);
+    padding-block: clamp(16px, 13.771px + 0.5714vw, 22px);
+  }
+
+  .fil__retour,
+  .fil__chemin {
+    display: flex;
+    align-items: center;
+    gap: clamp(8px, 6.514px + 0.381vw, 12px);
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: 0.21em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    list-style: none;
+  }
+
+  .fil__retour {
+    --icone-cote: 16px;
+    flex: none;
+    color: var(--parch);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .fil__retour:hover,
+  .fil__retour:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  .fil__chemin {
+    min-width: 0;
+  }
+
+  .fil__maillon {
+    display: flex;
+    align-items: center;
+    gap: clamp(8px, 6.514px + 0.381vw, 12px);
+    min-width: 0;
+  }
+
+  .fil__lien,
+  .fil__oblique {
+    color: var(--parch-mute);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .fil__lien:hover,
+  .fil__lien:focus-visible {
+    color: var(--parch);
+  }
+
+  .fil__oblique {
+    flex: none;
+    font-family: var(--font-body);
+    letter-spacing: 0;
+  }
+
+  /* Un titre de traité dépasse les cinquante signes : il se tronque plutôt que
+     de faire passer le fil sur deux lignes (même règle que la page d'article). */
+  .fil__courant {
+    display: block;
+    max-width: min(46ch, 42vw);
+    overflow: hidden;
+    color: var(--parch);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 619.98px) {
+    .fil__chemin li:not(:last-child) {
+      display: none;
+    }
+
+    .fil__courant {
+      max-width: 52vw;
+    }
+  }
+</style>

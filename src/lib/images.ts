@@ -152,6 +152,17 @@ export function cadrageCss(cadrage?: string | null): string {
  * Un « © » — ou un « (c) » — quand même saisi dans l'admin est absorbé plutôt
  * que doublé : le champ tolère les deux saisies, l'affichage n'en connaît qu'une.
  * Un champ vide reste vide, on ne rend pas un « © » orphelin.
+ *
+ * ⚠️ **Réservé aux photographies** — celles du club et de ses photographes, dont
+ * le nom est bien titulaire d'un droit d'auteur. À ne **jamais** appliquer à une
+ * ligne de crédit de bibliothèque : les planches de traité publiées par le site
+ * sont sous *Public Domain Mark 1.0* (Talhoffer, Lecküchner, Paulus Kal) ou
+ * portent « domaine public » sur leur notice Gallica, c'est-à-dire explicitement
+ * sans droit d'auteur — un « © » y serait un contresens juridique, et il
+ * modifierait au passage une mention exigée mot pour mot. Ces lignes-là passent
+ * par `creditPlanche()` / `creditPlancheHtml()` de
+ * `src/components/sources/traites.ts`, qui les rendent verbatim. Appelants :
+ * `GaleriePlanches`, `ArmeSource`, `Visionneuse` et `Rigueur.astro`.
  */
 export function creditAffiche(brut?: string | null): string {
   const nom = typographieFr(brut)

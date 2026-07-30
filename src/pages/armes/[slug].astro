@@ -29,12 +29,19 @@ import Nav from '../../components/sections/Nav.astro';
 import TabBar from '../../components/ui/TabBar.astro';
 import { estNomIcone } from '../../components/ui/icones';
 import {
+  anneeCourte,
+  auteurCourt,
+  plancheVedette,
+  resoudrePlanche,
+} from '../../components/sources/traites';
+import {
   lireDisciplines,
   lireFiches,
   lireHero,
   lireIdentite,
   lireMenus,
   profsDe,
+  traitesDeLArme,
 } from '../../lib/contenu';
 import { getEcolePrincipale } from '../../lib/ecoles';
 import { cadrageCss, creditAffiche, resoudrePhoto } from '../../lib/images';
@@ -72,13 +79,15 @@ function avecArticle(nom: string): string {
 const { slug } = Astro.params;
 
 const ecole = await getEcolePrincipale();
-const [identite, hero, fiches, menus, disciplines, profs] = await Promise.all([
+const [identite, hero, fiches, menus, disciplines, profs, traitesArme] = await Promise.all([
   lireIdentite(),
   lireHero(),
   lireFiches(),
   lireMenus(),
   lireDisciplines(),
   profsDe(ecole),
+  // Les traités dont « Armes concernées » cite cette arme, dans l'ordre du CMS.
+  traitesDeLArme(slug),
 ]);
 
 const affichees = disciplines.filter((d) => d.entry.affichee);
@@ -126,6 +135,35 @@ const lecons = arme.miniCours ?? [];
 const aMiniCours = lecons.some((l) => Boolean(l?.video || l?.vignette));
 
 const retourHref = lien(ecole, '#disciplines');
+
+/**
+ * L'encadré « La source » — branché sur la collection « Les sources ».
+ *
+ * On montre le **premier** traité rattaché à l'arme (l'ordre est celui du CMS,
+ * donc chronologique : Talhoffer avant la Noble Science pour l'épée longue,
+ * Sainct-Didier avant Fabris pour la rapière), avec sa planche mise en avant et
+ * la ligne de crédit de cette planche — les deux ne se séparent pas.
+ *
+ * `traitesArme` est vide pour le combat viking, à qui le haut Moyen Âge n'a
+ * laissé aucun manuel : `ArmeSource` garde alors le texte que le club a écrit
+ * pour ce cas (« Sans traité, mais pas sans méthode. ») et masque ce qui
+ * n'existe pas — vignette, crédit, et le lien « Étudier la source », qui pointait
+ * jusqu'ici vers le vide sur les cinq fiches.
+ */
+const premierTraite = traitesArme[0] ?? null;
+const plancheTraite = resoudrePlanche(plancheVedette(premierTraite?.entry.planches));
+
+const traiteSource = premierTraite
+  ? {
+      titre: typographieFr(premierTraite.entry.titre),
+      auteur: typographieFr(auteurCourt(premierTraite.entry.auteur)),
+      annee: typographieFr(anneeCourte(premierTraite.entry.annee)),
+      href: lien(ecole, `/sources/${premierTraite.slug}/`),
+      planche: plancheTraite?.source ?? null,
+      alt: plancheTraite?.alt ?? '',
+      credit: plancheTraite?.credit ?? '',
+    }
+  : null;
 
 const onglets = (menus.barreMobile ?? []).map((onglet) => ({
   libelle: onglet.libelle,
@@ -177,14 +215,16 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
 
   <ArmeMiniCours lecons={lecons} id={ANCRE_MINI_COURS} />
 
-  {/* Pas d'alt fabriqué depuis le nom de l'arme : les quatre fiches servent
-      aujourd'hui la même planche germanique d'épée longue, si bien que
-      « Planche du traité — Rapière » affirmait à l'aveugle ce que l'image ne
-      montre pas. Le champ « Description de la planche » du groupe `source`
-      (keystatic.config.ts) est là pour ça : saisi par le rédacteur en même temps
-      que sa planche, jamais recomposé ici. Tant qu'il est vide, `ArmeSource`
-      retombe sur une description neutre, vraie pour les quatre fiches. */}
-  <ArmeSource source={arme.source} />
+  {/* La planche, sa description et son crédit viennent tous les trois de la
+      fiche du traité : plus de planche générique, et plus de description
+      fabriquée depuis le nom de l'arme. Le groupe `source` de la fiche arme ne
+      fournit plus que la voix du club — accroche et paragraphe. */}
+  <ArmeSource
+    traite={traiteSource}
+    source={arme.source}
+    autres={Math.max(traitesArme.length - 1, 0)}
+    hrefBibliotheque={lien(ecole, '/sources/')}
+  />
 
   <ArmeBandeCta
     titre={bandeau.titre}

@@ -155,7 +155,8 @@ de l'école affichée. Ils sont rappelés dans la `description` de chaque champ 
 | `{ville}` | Ville | Clermont-Ferrand |
 | `{tarif}` | Montant de l'adhésion | 85 € |
 | `{saison}` | Saison en cours | 2025-2026 |
-| `{creneaux}` | Créneaux en une phrase | Mardi 18h-20h et jeudi 18h-22h |
+| `{creneaux}` | Créneaux en une phrase | mardi de 18h à 20h et jeudi de 20h à 22h, plus la pratique libre le jeudi de 18h à 20h |
+| `{creneaux_court}` | Jours de cours, et l'horaire s'il est le même partout | Mar · Jeu |
 | `{essai}` | Nombre de séances d'essai offertes, en lettres | deux |
 | `{nb_armes}` | Nombre d'armes affichées, en lettres | quatre |
 | `{nb_profs}` | Nombre d'encadrants affichés, en lettres | trois |
@@ -771,8 +772,8 @@ vers l'efficacité en assaut.
 | `resume` | Chapô de la fiche arme | `text` multiline | 300 car. Accroche du hero de fiche **et** `<meta name="description">`. Ne doit pas reprendre l'ouverture de `description` : les deux blocs se suivent à deux blocs d'intervalle. La carte d'accueil, elle, affiche `sousTitre`. |
 | `description` | Description longue | `markdoc` (contentField) | haut de la fiche arme |
 | `referent` | Prof référent | `relationship` → `profs` | |
-| `miniCours` | Mini-cours | `array(object)` | titre, sousTitre, duree, video, vignette |
-| `source` | La source | `object` | titre, texte, lien, image du traité |
+| `miniCours` | Mini-cours | `array(object)` | titre, sousTitre, duree, video, vignette, sousTitres (.vtt), affiche |
+| `source` | La source | `object` | titre, texte, lien **seulement**. Plus d'image : la planche, sa description et son crédit viennent de la fiche du traité (`traites`), parce qu'ils sont inséparables — cf. ARCHITECTURE.md §4 |
 | `ecolesConcernees` | Écoles concernées | `multiRelationship` | vide = toutes |
 | `ordre` | Ordre | `integer` | |
 
@@ -805,16 +806,17 @@ disciplines: collection({
         titre: fields.text({ label: 'Titre de la leçon', description: 'Ex. « Leçon 01 — Les gardes »' }),
         sousTitre: fields.text({ label: 'Sous-titre', description: 'Ex. « Bases · posture & distances »' }),
         duree: fields.text({ label: 'Durée', description: 'Ex. 04:12' }),
-        video: fields.url({ label: 'Lien de la vidéo' }),
+        video: champsVideo.url,        // adresse du .mp4 sur notre R2
         vignette: image('Vignette', 'disciplines'),
+        sousTitres: champsVideo.sousTitres, // piste .vtt française (WCAG 1.2.2)
+        affiche: champsVideo.affiche,
       }),
       { label: 'Mini-cours (vidéos)', itemLabel: (p) => p.fields.titre.value || 'Leçon' },
     ),
     source: fields.object({
       titre: fields.text({ label: 'Titre', defaultValue: 'Des traités aux assauts.' }),
       texte: fields.text({ label: 'Texte', multiline: true }),
-      lien: lien('Bouton « Étudier la source »'),
-      image: image('Planche du traité', 'disciplines'),
+      lien: lien('Bouton « Étudier la source »'), // vide ⇒ fiche du traité de l'arme
     }, { label: 'Encadré « La source »' }),
     ecolesConcernees,
     ordre,
@@ -842,16 +844,16 @@ miniCours:
   - titre: Leçon 01 — Les gardes
     sousTitre: Bases · posture & distances
     duree: 04:12
-    video: https://…
+    video: https://media.…/lecon-01.mp4
     vignette: lecon-01.jpg
+    sousTitres: https://media.…/lecon-01.fr.vtt
 source:
   titre: Des traités aux assauts.
   texte: Chaque leçon s'appuie sur les sources historiques étudiées en salle, puis
     éprouvées en assaut.
   lien:
-    libelle: Étudier la source
-    url: https://…
-  image: traite-liechtenauer.jpg
+    libelle: ''
+    url: ''
 ecolesConcernees: []
 ordre: 20
 ---
@@ -1072,6 +1074,43 @@ photos:
 ecole: clermont-ferrand
 ```
 
+### 4.9 `traites` — Les sources (traités historiques)
+
+**Rôle.** Une entrée = un **traité**, avec ses planches. Collection **commune** (les
+traités ne sont pas propres à une salle) : `src/content/commun/traites/*`. Alimente
+`/sources/` (la grille), `/sources/<slug>/` (la fiche) et l'encadré « La source » des
+fiches arme, qui n'a plus d'image propre.
+
+| Champ | Label | Type | Notes |
+| --- | --- | --- | --- |
+| `titre` | Titre du traité | `slug` | le titre tel qu'il figure sur l'ouvrage |
+| `auteur` | Auteur | `text` multiline | chaîne éditoriale complète ; la carte l'abrège (`auteurCourt`) |
+| `annee` | Année | `text` | libre, pour rester prudent : « vers 1300-1330 » |
+| `tradition` | Tradition / école | `text` multiline | abrégée sur la carte (`traditionCourte`) |
+| `bibliotheque` | Bibliothèque de conservation | `text` | **recopié tel quel** sur la carte : une ligne exigée par une institution se relit, elle ne se devine pas |
+| `cote` | Cote | `text` | |
+| `urlNumerisation` | Lien vers la numérisation | `text` | **garde-fou** : la fiche doit pouvoir renvoyer au document |
+| `licence` | Droits d'utilisation | `object(resume, url)` | `url` **obligatoire** — garde-fou n° 6 |
+| `armes` | Armes concernées | `multiRelationship` → `disciplines` | l'ordre d'affichage vient du catalogue, pas de la saisie |
+| `presentation` | Présentation | `markdoc` (contentField) | la voix du club sur le traité |
+| `extraitCitation` | Extrait cité | `text` multiline | **courte citation seulement** |
+| `extraitCredit` | Crédit de l'extrait | `text` | obligatoire dès qu'il y a un extrait |
+| `extraitUrl` | Lien vers la page de l'extrait | `text` | obligatoire dès qu'il y a un extrait |
+| `planches` | Planches | `array(object)` | cf. ci-dessous |
+| `ordre` | Ordre d'affichage | `integer` | **éditorial, pas chronologique** : groupé par arme |
+
+**Une planche** : `image`, `alt` (description, obligatoire), `legende`, `folio`,
+`credit`, `majestueuse` (la planche mise en avant sur la carte et dans « La rigueur » ;
+à défaut, la première).
+
+⚠️ **`credit` est la seule chaîne du site rendue verbatim** — ni « © », ni composition
+typographique, ni capitales. C'est la contrepartie du droit de publier l'image, et elle
+se saisit **par planche** : les corpus MDZ portent le folio dans leur ligne de crédit,
+un gabarit commun serait faux. Détail des règles dans ARCHITECTURE.md §6.
+
+Le garde-fou n° 6 du build refuse : une planche sans description, une planche sans
+crédit, un traité sans adresse de licence, un extrait sans crédit ou sans lien.
+
 ---
 
 ## 5. Singletons
@@ -1137,7 +1176,7 @@ reglages: singleton({
 | Champ | Label | Type | Notes |
 | --- | --- | --- | --- |
 | `photo` | Photo de fond | `photo` | surchargeable par école |
-| `accroche` | Bandeau d'accroche | `text` | « Mar · Jeu 18h–22h — essai offert » ; accepte `{creneaux}` |
+| `accroche` | Bandeau d'accroche | `text` | « {creneaux_court} — essai offert », qui rend « Mar · Jeu — essai offert » : l'horaire ne s'affiche que si les jours de cours ont les mêmes heures, ce qui n'est pas le cas à Clermont |
 | `lieuTexte` | Ligne de lieu | `text` | vide = « à {ville} » automatique |
 | `boutonPrincipal` / `boutonSecondaire` | Boutons | `object(libelle,url)` | |
 | `inviteDefilement` | Invite de défilement | `text` | « Découvrir le club » |
@@ -1150,8 +1189,13 @@ Un objet par section, chacun : `eyebrow` (`text`), `titreLigne1` (`text`),
 `titreLigne2` (`text`), `lede` (`markdoc.inline`).
 
 Sections concernées : `actualites`, `disciplines`, `profs`, `galerie`, `faq`,
-`partenaires`. Les autres sections (club, rigueur, rejoindre, tournois) ont leur en-tête
-dans leur propre singleton, au-dessus de leur contenu.
+`partenaires`, et `sources`. Les autres sections (club, rigueur, rejoindre, tournois) ont
+leur en-tête dans leur propre singleton, au-dessus de leur contenu.
+
+`sources` est la seule rubrique qui ne titre pas une section de l'accueil mais une page
+entière, « La bibliothèque » (`/sources/`) : elle est ici parce que c'est là que le club
+vient chercher les titres du site, et qu'un singleton pour quatre chaînes ferait une case
+de plus dans le menu de l'admin.
 
 **Correction de l'incohérence « Cinq armes / 4 disciplines »** : les titres des sections
 Disciplines et Profs utilisent les raccourcis `{nb_armes}` et `{nb_profs}`.
@@ -1181,7 +1225,11 @@ figé écrit simplement « Quatre armes, ».
 ### 5.5 `rigueur`
 
 `eyebrow`, `titreLigne1/2`, `lede` (`markdoc.inline`), `texte` (`text` multiline),
-`planche` (`photo`), `legendePlanche` (`text` multiline),
+`planche` (**`planchePatrimoniale`** et non `photo` : même forme — fichier, description,
+cadrage, crédit — mais la ligne de crédit y est rendue **verbatim**, sans « © » ajouté,
+parce que c'est une numérisation de bibliothèque ; le libellé du champ le dit au prof),
+`legendePlanche` (`text` multiline, la voix du club — le crédit, lui, se saisit avec
+l'image),
 `manifesteMobile` (`object { citation, soustitre, photo }` — l'écran « Manifesto » de la
 maquette mobile).
 
@@ -1295,16 +1343,28 @@ et « Réglages » sont en bas parce qu'on y touche deux fois par an.
 
 ## 7. Garde-fous à implémenter au build
 
-Le schéma seul ne suffit pas ; cinq vérifications valent d'être ajoutées au build (échec
-ou avertissement) :
+Le schéma seul ne suffit pas. **Sept contrôles** sont implémentés dans
+`src/lib/validation.ts`, appelés une fois par `src/layouts/Base.astro`. Aucun n'est un
+avertissement : chacun **fait échouer le build**, avec un message qui nomme le fichier et
+le champ. Un avertissement dans un journal de build se perd, et le contenu fautif partirait
+en production.
 
-1. **Raccourci inconnu** dans un texte (`{tarrif}`) → avertissement nommant le fichier.
-2. **Aucune école active** ou `ecolePrincipale` non renseignée → échec du build.
-3. **Contenu orphelin** : un prof/annonce dont `ecole` pointe vers une école archivée →
-   avertissement.
-4. **Image sans description alternative** → avertissement (accessibilité).
-5. **Deux albums cochés « sur l'accueil »**, ou deux annonces `bandeau` actives → le site
-   choisit la plus récente et l'écrit dans le journal.
+1. **Raccourci inconnu ou sans valeur** dans un texte (`{tarrif}`, ou `{tarif}` alors que
+   la fiche école ne porte pas de montant).
+2. **Aucune école principale**, ou plusieurs.
+3. **Image de contenu sans description alternative** (accessibilité).
+4. **Deux annonces épinglées en bandeau** en même temps.
+5. **Image déposée dans un format que le build ne sait pas traiter** (un HEIC
+   disparaîtrait sans bruit).
+6. **Droits d'un traité** : planche sans description, planche sans crédit, traité sans
+   adresse de licence, extrait cité sans crédit ou sans lien vers sa source.
+7. **La planche de « La rigueur »** publiée sans sa ligne de crédit. Elle est saisie
+   dans le singleton `rigueur` et échappe donc au contrôle n° 6, alors que c'est la
+   planche la plus visible du site.
+
+Le contrôle du **contenu orphelin** (un prof ou une annonce dont `ecole` pointe vers une
+école archivée) reste à écrire : il ne peut pas se produire aujourd'hui, le site n'ayant
+qu'une école.
 
 ---
 
@@ -1378,7 +1438,7 @@ ou avertissement) :
 | Tournois · faits | épée de **coté** | épée de **côté** |
 | FAQ · lede | lien vers `c.sillac@protonmail.com` | `{email}` |
 | FAQ · adhésion | « 85 € pour la saison 2025-2026 » | « {tarif} pour la saison {saison} » |
-| FAQ · créneaux | « Mardi 18h-20h et jeudi 18h-22h au Gymnase Robert Pras… » | « {creneaux} au {lieu}, {adresse}. » + détail par créneau |
+| FAQ · créneaux | « Mardi 18h-20h et jeudi 18h-22h au Gymnase Robert Pras… » | « {creneaux}, au {lieu}, {adresse}. » + détail par créneau. `{creneaux}` distingue désormais les cours de la pratique libre : « jeudi 18h-22h » promettait quatre heures de cours là où les deux premières sont une salle ouverte sans encadrant |
 | Mentions légales | Hébergement : Cloudflare **Workers** | Hébergement : Cloudflare **Pages** |
 
 Les corrections portent sur l'orthographe et les données obsolètes, jamais sur le ton :

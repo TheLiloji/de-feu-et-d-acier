@@ -628,7 +628,9 @@ const nbPhotos =
       clamp(26px, 16.343px + 2.4762vw, 52px);
   }
 
-  /* Ligne « era » — tiret ember + catégorie + · + date (design-spec §5.3). */
+  /* Ligne « era » — tiret ember + catégorie + · + date (design-spec §5.3).
+     ls 2,9 à 10,5 px, comme la ligne era de la fiche arme (`ArmeHero`) :
+     2,9 / 10,5 = 0.276em, et non les 2,94 de `--ls-eyebrow`. */
   .era {
     display: flex;
     flex-wrap: wrap;
@@ -638,7 +640,7 @@ const nbPhotos =
     font-family: var(--font-eyebrow);
     font-size: var(--fs-eyebrow-s);
     font-weight: 600;
-    letter-spacing: var(--ls-eyebrow);
+    letter-spacing: 0.276em;
     line-height: 1.2;
     text-transform: uppercase;
   }

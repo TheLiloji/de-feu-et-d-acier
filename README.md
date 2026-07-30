@@ -6,11 +6,30 @@ de l'USAM Clermont-Ferrand.
 Site statique pré-rendu au build, administré par un CMS dont le contenu vit dans
 ce dépôt. Aucune base de données, aucun appel serveur pour un visiteur.
 
+## Documentation
+
+**Vous venez modifier le contenu du site** (annonce, article, photo, créneaux,
+tarif) et non le code ? Un seul document, écrit pour les encadrants du club, sans
+prérequis technique : **[`GUIDE-ADMIN.md`](GUIDE-ADMIN.md)**. Le reste de ce
+README ne vous sera pas utile.
+
+Décisions d'architecture et documents d'analyse : **[`docs/refonte/`](docs/refonte/)**.
+
+| Document | Contenu |
+| --- | --- |
+| [`ARCHITECTURE.md`](docs/refonte/ARCHITECTURE.md) | **Fait foi** — les décisions actées, arbitrages inclus |
+| [`design-spec.md`](docs/refonte/design-spec.md) | Design : tokens, seuils, gabarits |
+| [`content-model.md`](docs/refonte/content-model.md) | Modèle de contenu : champs, types, libellés |
+| [`multi-ecoles.md`](docs/refonte/multi-ecoles.md) | Ouverture d'une deuxième salle |
+| [`photos.md`](docs/refonte/photos.md) | Photos : pipeline, attributions, crédits |
+| [`stack-notes.md`](docs/refonte/stack-notes.md) | Pièges Cloudflare / Keystatic |
+| [`mail-ffamhe.md`](docs/refonte/mail-ffamhe.md) | Mail de courtoisie à la FFAMHE (citations ARDAMHE) |
+
 ## Stack
 
 | Brique | Choix |
 | --- | --- |
-| Framework | **Astro 7**, `output: 'static'` — les 12 pages sont générées au build |
+| Framework | **Astro 7**, `output: 'static'` — les 22 pages sont générées au build |
 | Hébergement | **Cloudflare Workers** (projet `dfda-amhe`, compte de l'association) |
 | CMS | **Keystatic** — mode `local` en développement, `github` en production |
 | Contenu | YAML + Markdoc dans `src/content/`, versionné avec le code |
@@ -18,12 +37,6 @@ ce dépôt. Aucune base de données, aucun appel serveur pour un visiteur.
 | Polices | Cormorant Garamond (titres) et Inter (texte), auto-hébergées via Fontsource |
 | Interactivité | JS vanilla dans des `<script>` Astro — carrousels, accordéons, menu, apparitions |
 | React | **uniquement** l'interface d'administration Keystatic ; zéro octet de React sur les pages publiques |
-
-Décisions d'architecture et documents d'analyse : **`docs/refonte/`** —
-[`ARCHITECTURE.md`](docs/refonte/ARCHITECTURE.md) fait foi, les autres documents
-détaillent le design (`design-spec.md`), le modèle de contenu (`content-model.md`),
-l'ouverture d'une deuxième salle (`multi-ecoles.md`), les photos (`photos.md`) et
-les pièges Cloudflare / Keystatic (`stack-notes.md`).
 
 ## Commandes
 
@@ -102,8 +115,9 @@ Le code est dans `src/lib/validation.ts`, appelé une fois par `src/layouts/Base
 
 ```
 src/
-├── pages/            # 7 gabarits → 12 pages (accueil, fiches arme et prof,
-│                     #   actualités, article, mentions légales, confidentialité)
+├── pages/            # 10 gabarits → 22 pages (accueil, fiches arme et prof,
+│                     #   actualités, article, « Les sources » et fiches de
+│                     #   traité, mentions légales, confidentialité, 404)
 ├── layouts/Base.astro    # <head>, données structurées, garde-fous
 ├── components/
 │   ├── sections/     # les blocs de l'accueil + en-tête, pied de page, menu
@@ -117,7 +131,9 @@ src/
 
 ## Administration
 
-L'admin est servie sur `/keystatic`.
+L'admin est servie sur `/keystatic`. Côté rédacteurs, elle est documentée tâche
+par tâche dans [`GUIDE-ADMIN.md`](GUIDE-ADMIN.md) — c'est le document à envoyer à
+un nouvel encadrant, avec son invitation au dépôt.
 
 - **En développement** (`npm run dev`) : mode `local`, les modifications
   s'écrivent directement dans `src/content/` — à committer comme du code.
