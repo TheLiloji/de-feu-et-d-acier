@@ -267,16 +267,36 @@ const SCRIPT_VITRINE = `
     bouton.addEventListener('click', () => {
       video.setAttribute('controls', '');
       bouton.classList.add('est-parti');
-      const retirer = () => { bouton.hidden = true; };
-      bouton.addEventListener('transitionend', retirer, { once: true });
+
+      let minuterie = 0;
+      const oublier = () => {
+        bouton.removeEventListener('transitionend', retirer);
+        clearTimeout(minuterie);
+      };
+      function retirer(evt) {
+        // \`transitionend\` REMONTE, et le calque a des enfants qui transitionnent :
+        // au clic, la pastille play quitte son état survolé et sa transition de
+        // 180 ms (--transition) finit avant le fondu de 380 ms du calque. Sans ce
+        // filtre, c'est elle qui déclenchait le retrait — le fondu était coupé à
+        // 21 % d'opacité (mesuré au banc : retrait à 213 ms au lieu de 380).
+        if (evt && (evt.target !== bouton || evt.propertyName !== 'opacity')) return;
+        oublier();
+        bouton.hidden = true;
+      }
+      bouton.addEventListener('transitionend', retirer);
       // Filet : pas de transitionend si les animations sont neutralisées.
-      setTimeout(retirer, 600);
+      minuterie = setTimeout(retirer, 600);
+
       video.focus({ preventScroll: true });
       const lecture = video.play();
       if (lecture && typeof lecture.catch === 'function') {
         lecture.catch(() => {
           // Lecture refusée : on rend la main à la vignette plutôt que de
-          // laisser un lecteur muet derrière une couche partie.
+          // laisser un lecteur muet derrière une couche partie. Il faut d'abord
+          // désarmer le retrait — sans \`oublier()\`, le filet de 600 ms (ou la
+          // transition de retour vers l'opacité 1) reposait \`hidden\` juste après
+          // et la vignette repartait pour de bon.
+          oublier();
           bouton.classList.remove('est-parti');
           bouton.hidden = false;
         });
