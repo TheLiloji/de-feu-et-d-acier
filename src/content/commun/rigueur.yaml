@@ -15,9 +15,8 @@ lien:
 planche:
   fichier: /src/assets/photos/commun/sources/noble-science-1538-f01r.jpg
   alt: >-
-    Page de titre imprimée : un bandeau xylographié tiré en rouge surmonte une
-    gravure de deux joueurs d'épée à deux mains, lames croisées au centre de la
-    planche.
+    Page de titre imprimée : bandeau rouge et gravure de deux joueurs d'épée
+    à deux mains.
   cadrage: centre
   credit: Andre Paurñfeyndt, La noble science des joueurs d'espée, Anvers, Willem
     Vorsterman, 1538. BnF, département des Manuscrits, Rothschild 291, f. 1r.
@@ -33,6 +32,6 @@ manifesteMobile:
   photo:
     fichier: /src/assets/photos/commun/sources/noble-science-1538-f01r.jpg
     alt: >-
-      Page de titre de « La noble science des joueurs d'espée », Anvers, 1538 :
-      deux joueurs d'épée à deux mains sous un bandeau xylographié rouge.
+      Page de titre de « La noble science des joueurs d'espée », 1538 : deux
+      joueurs d'épée à deux mains.
     cadrage: centre
