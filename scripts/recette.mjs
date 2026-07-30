@@ -2,7 +2,7 @@
 /**
  * Recette automatisée du site — `npm run recette`.
  *
- * Rejoue, sur le rendu réel (jamais déduit du source), les sept contrôles
+ * Rejoue, sur le rendu réel (jamais déduit du source), les huit contrôles
  * d'acceptation qui suivent une grosse édition de contenu ou précèdent un
  * déploiement manuel. Voir docs/RECETTE.md pour le mode d'emploi et la
  * lecture d'un échec.
@@ -19,6 +19,9 @@
  *      cadratin dans un paragraphe de prose (hors crédits et citations).
  *   7. Aucune image cassée (`naturalWidth === 0`) ; zéro violation axe-core
  *      WCAG 2.1 AA.
+ *   8. Les canaux techniques répondent : `/rss.xml` bien formé, au moins un
+ *      article, liens absolus ; `/.well-known/security.txt` avec un contact
+ *      et une date d'expiration à venir.
  *
  * Par défaut, le script construit le site (`npm run build`) puis démarre son
  * propre `npm run preview` sur http://localhost:4321, qu'il arrête à la fin
@@ -471,6 +474,43 @@ async function verifierSitemap(base) {
   );
 }
 
+// ── Point 8 : canaux techniques (RSS, security.txt) ─────────────────────────
+
+async function verifierFluxTechniques(base) {
+  console.log('\n── 8. Canaux techniques : /rss.xml et /.well-known/security.txt ──');
+
+  try {
+    const reponse = await fetch(`${base}/rss.xml`);
+    const xml = reponse.ok ? await reponse.text() : '';
+    const items = (xml.match(/<item>/g) || []).length;
+    const liens = [...xml.matchAll(/<link>([^<]*)<\/link>/g)].map((m) => m[1]);
+    const liensAbsolus = liens.length > 0 && liens.every((l) => l.startsWith('https://'));
+    ligne(
+      '8-flux',
+      '/rss.xml répond, bien formé, au moins un article, liens absolus',
+      reponse.ok && xml.includes('<rss ') && items >= 1 && liensAbsolus,
+      `HTTP ${reponse.status}, ${items} item(s), ${liens.length} lien(s)`,
+    );
+  } catch (e) {
+    ligne('8-flux', 'GET /rss.xml', false, String(e?.message ?? e).slice(0, 120));
+  }
+
+  try {
+    const reponse = await fetch(`${base}/.well-known/security.txt`);
+    const texte = reponse.ok ? await reponse.text() : '';
+    const expire = texte.match(/^Expires:\s*(\S+)/m)?.[1];
+    const encoreValable = Boolean(expire) && new Date(expire) > new Date();
+    ligne(
+      '8-flux',
+      '/.well-known/security.txt répond, avec contact et échéance à venir',
+      reponse.ok && /^Contact:\s*mailto:/m.test(texte) && encoreValable,
+      `HTTP ${reponse.status}, Expires ${expire ?? 'absent'}`,
+    );
+  } catch (e) {
+    ligne('8-flux', 'GET /.well-known/security.txt', false, String(e?.message ?? e).slice(0, 120));
+  }
+}
+
 // ── Point 5 : fiches de traité ───────────────────────────────────────────────
 
 async function verifierFichesTraites(navigateur, base) {
@@ -559,6 +599,7 @@ async function main() {
       rapporterScripts(mesures);
       rapporterH1(mesures);
       await verifierSitemap(base);
+      await verifierFluxTechniques(base);
       await verifierFichesTraites(navigateur, base);
       rapporterNetflix(mesures);
       rapporterTirets(mesures);

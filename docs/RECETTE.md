@@ -41,7 +41,7 @@ Par défaut, le script :
 
 1. construit le site (`npm run build`) ;
 2. démarre son propre `npm run preview` sur `http://localhost:4321` ;
-3. joue les sept contrôles décrits plus bas ;
+3. joue les huit contrôles décrits plus bas ;
 4. arrête le serveur de preview qu'il a démarré — toujours, même en cas
    d'échec ou d'interruption.
 
@@ -71,6 +71,7 @@ recette pour autant.
 | 5 | Sur chaque fiche de traité : autant de crédits affichés que de planches ; la mention « digitalisiert von Google » sur chaque crédit Marozzo ; le lien de licence CC BY 4.0 sur la fiche I.33. |
 | 6 | « Netflix » apparaît exactement une fois sur l'accueil (texte de l'encart d'adhésion) ; zéro tiret cadratin dans un paragraphe de prose, hors lignes de crédit et citations. |
 | 7 | Aucune image cassée (`naturalWidth === 0` après défilement complet) ; zéro violation `axe-core` en WCAG 2.1 AA. |
+| 8 | Les canaux techniques répondent : `/rss.xml` bien formé (au moins un article, liens absolus) ; `/.well-known/security.txt` avec un contact et une date d'expiration à venir. |
 
 ## Lire un échec
 
