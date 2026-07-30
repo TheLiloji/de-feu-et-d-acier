@@ -1232,6 +1232,10 @@ const singletonsCommuns = {
       titreLigne2: fields.text({ label: 'Titre — ligne 2' }),
       lede: fields.text({ label: 'Chapô', multiline: true }),
       texte: fields.text({ label: 'Texte', multiline: true }),
+      lien: lien(
+        'Bouton vers la bibliothèque',
+        'Affiché sous le texte. Laisser l’adresse vide pour ne pas montrer de bouton.',
+      ),
       planche: planchePatrimoniale('Planche de traité', 'commun'),
       legendePlanche: fields.text({
         label: 'Légende de la planche',
