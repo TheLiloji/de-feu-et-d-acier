@@ -136,6 +136,12 @@ const jsonLdSerialise = JSON.stringify(jsonLd)
 
     <link rel="icon" href="/favicon.png" type="image/png" sizes="64x64" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={`${nomAssociation} — Actualités`}
+      href="/rss.xml"
+    />
 
     {/* La police d'affichage porte le logotype du hero : sans preload, elle
         arrive après le premier rendu et le titre saute. L'italique est

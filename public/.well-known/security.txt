@@ -1,0 +1,5 @@
+# Qui prévenir si vous trouvez une faille sur ce site (RFC 9116).
+Contact: mailto:amhe63.dfda@gmail.com
+Expires: 2027-08-01T00:00:00.000Z
+Preferred-Languages: fr, en
+Canonical: https://dfda-amhe.fr/.well-known/security.txt
