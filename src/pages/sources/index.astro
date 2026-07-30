@@ -308,7 +308,13 @@ const idTitre = 'sources-titre';
     display: grid;
   }
 
-  .grille__item > :global(*) {
+  /*
+   * Cibler `.reveal` et non `*` : Astro inline le <script> du composant dans le
+   * premier élément de liste, et un `> *` en `display: grid` annulerait le
+   * `display: none` natif des balises script — le code s'afficherait en texte
+   * dans la grille (bug vu en production le 30/07/2026).
+   */
+  .grille__item > :global(.reveal) {
     display: grid;
   }
 
