@@ -741,9 +741,10 @@ est reconstruit à partir de ce contenu, et cette reconstruction prend un moment
 
 **La reconstruction se déclenche toute seule** à chaque enregistrement, depuis
 le 31 juillet 2026. Vous n'avez personne à prévenir : enregistrez, c'est tout.
-Comptez **un quart d'heure, parfois moins,** entre votre clic sur
-« Enregistrer » et l'affichage sur le site — le temps que le site soit
-revérifié et reconstruit en entier.
+Comptez **quelques minutes** entre votre clic sur « Enregistrer » et
+l'affichage sur le site, **jusqu'à un quart d'heure** les jours où beaucoup de
+photos changent — le temps que le site soit revérifié et reconstruit en
+entier.
 
 Si votre modification n'apparaît pas :
 
