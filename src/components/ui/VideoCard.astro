@@ -155,11 +155,16 @@ const largeursFinales = largeursSrcset(image, { largeurs, rendMax });
 
 // `<video poster>` veut une URL, pas un `ImageMetadata` : on passe par le même
 // pipeline d'optimisation que `<Picture>` plutôt que de servir l'original.
+// Le CMS renvoie une chaîne VIDE (pas null) quand le champ « Image d'attente »
+// n'est pas rempli — et `'' ?? x` garde la chaîne vide : le lecteur partait
+// avec `poster=""`, que le navigateur résout vers… la page elle-même
+// (bug vu le 30/07/2026). On normalise donc avant de choisir.
+const afficheUrl = affiche?.trim() || null;
 const posterOptimise =
-  enLecteur && !affiche && image
+  enLecteur && !afficheUrl && image
     ? (await getImage({ src: image, width: Math.min(image.width, rendMax * 2), format: 'webp' })).src
     : null;
-const poster = enLecteur ? (affiche ?? posterOptimise ?? src ?? undefined) : undefined;
+const poster = enLecteur ? (afficheUrl ?? posterOptimise ?? undefined) : undefined;
 
 // Le cadre est un lien vers la plateforme, sinon un simple bloc.
 const Cadre = enLienSortant ? 'a' : 'div';

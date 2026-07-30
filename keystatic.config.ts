@@ -179,7 +179,7 @@ const champsVideo = {
   url: fields.text({
     label: 'Adresse du fichier vidéo',
     description:
-      'L’adresse du fichier .mp4 déposé sur le stockage du club (R2) — il est alors lu directement sur la page. Une adresse YouTube ou Vimeo fonctionne aussi, mais la vignette devient un simple lien qui fait quitter le site.',
+      'L’adresse du fichier .mp4 : soit un chemin du site pour une petite vidéo déjà déposée par Zaccharie (ex. /videos/gabriel-tardio-tournoi-2025-2026.mp4), soit le stockage du club (R2) pour les plus lourdes. Lue directement sur la page. Une adresse YouTube ou Vimeo fonctionne aussi, mais la vignette devient un simple lien qui fait quitter le site.',
   }),
   sousTitres: fields.text({
     label: 'Sous-titres (fichier .vtt)',
