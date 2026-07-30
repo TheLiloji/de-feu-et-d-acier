@@ -34,10 +34,13 @@
  *   l'admin pour le retrouver).
  */
 import { Picture } from 'astro:assets';
+import Button from '../ui/Button.astro';
 import SectionLabel from '../ui/SectionLabel.astro';
 import SectionTitle from '../ui/SectionTitle.astro';
 import Filet from '../ui/Filet.astro';
 import Reveal from '../ui/Reveal.astro';
+import { lien as lienEcole } from '../../lib/liens';
+import type { Ecole } from '../../lib/ecoles';
 import { cadrageCss, largeursSrcset, resoudrePhoto } from '../../lib/images';
 import { creditPlancheHtml } from '../sources/traites';
 import { resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
@@ -65,8 +68,8 @@ interface Props {
    * et le changement de fond suffit à les séparer (design-spec §2.1 et §3.5).
    */
   filetHaut?: boolean;
-  /** Accepté pour l'uniformité des sections ; non utilisé ici. */
-  ecole?: unknown;
+  /** École servie par la page — sert au bouton vers la bibliothèque. */
+  ecole?: Ecole;
   class?: string;
 }
 
@@ -79,6 +82,7 @@ const {
   id = 'rigueur',
   fond = 'ink',
   filetHaut = false,
+  ecole,
   class: classe,
 } = Astro.props;
 
@@ -102,6 +106,13 @@ const lignesTitre = [
 const lede = resoudre(donnees.lede, ctx, `${SOURCE} › chapô`);
 const texte = resoudre(donnees.texte, ctx, `${SOURCE} › texte`);
 const legende = resoudre(donnees.legendePlanche, ctx, `${SOURCE} › légende de la planche`);
+
+// Bouton vers la bibliothèque (CMS ; adresse vide = pas de bouton). Le helper
+// préfixe les cibles internes par l'école, comme les boutons de Tournois.
+const boutonLibelle = donnees.lien?.libelle?.trim() ?? '';
+const boutonUrlBrute = donnees.lien?.url?.trim() ?? '';
+const boutonHref = boutonUrlBrute && ecole ? lienEcole(ecole, boutonUrlBrute) : boutonUrlBrute;
+const boutonExterne = /^https?:\/\//i.test(boutonUrlBrute);
 const citation = resoudre(donnees.manifesteMobile?.citation, ctx, `${SOURCE} › citation`);
 const sousTitre = resoudre(donnees.manifesteMobile?.sousTitre, ctx, `${SOURCE} › sous-titre`);
 
@@ -216,6 +227,18 @@ const idTitre = `${id}-titre`;
           </div>
           {lede && <p class="rigueur__lede">{lede}</p>}
           {texte && <p class="rigueur__para">{texte}</p>}
+          {
+            boutonLibelle && boutonHref && (
+              <p class="rigueur__bouton">
+                <Button
+                  variante="contour"
+                  libelle={boutonLibelle}
+                  href={boutonHref}
+                  externe={boutonExterne}
+                />
+              </p>
+            )
+          }
         </div>
 
         <figure class="rigueur__cadre">
@@ -367,6 +390,10 @@ const idTitre = `${id}-titre`;
     font-size: var(--fs-body);
     line-height: var(--lh-body);
     color: var(--parch-mute);
+  }
+
+  .rigueur__bouton {
+    margin: clamp(24px, 18px + 1.5vw, 40px) 0 0;
   }
 
   /* ── Cadre traité ───────────────────────────────────────────────────────── */

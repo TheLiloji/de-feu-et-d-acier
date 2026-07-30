@@ -46,6 +46,7 @@
  */
 import { Picture } from 'astro:assets';
 import Reveal from '../ui/Reveal.astro';
+import Button from '../ui/Button.astro';
 import TextLink from '../ui/TextLink.astro';
 import { largeursSrcset } from '../../lib/images';
 import { estExterne } from '../../lib/liens';
@@ -172,9 +173,12 @@ const largeurs = largeursSrcset(traite?.planche ?? null, { largeurs: [190, 280, 
                 {texte && <p class="source-arme__para">{texte}</p>}
                 {identite && <p class="source-arme__identite">{identite}</p>}
 
+                {/* L'action principale est un vrai bouton : le lien texte se
+                    perdait dans la carte (retour client du 30/07/2026). */}
                 {lienUrl && (
                   <p class="source-arme__lien">
-                    <TextLink
+                    <Button
+                      variante="contour"
                       libelle={lienLibelle}
                       href={lienUrl}
                       externe={estExterne(lienUrl)}
@@ -182,11 +186,14 @@ const largeurs = largeursSrcset(traite?.planche ?? null, { largeurs: [190, 280, 
                   </p>
                 )}
 
-                {autres > 0 && hrefBibliotheque && (
+                {/* Le chemin vers la bibliothèque est proposé sur TOUTES les
+                    fiches — y compris le combat viking, qui n'a pas de traité
+                    mais mène quand même aux sources du club. */}
+                {hrefBibliotheque && (
                   <p class="source-arme__autres">
-                    <span class="source-arme__compte">{autresPhrase}</span>
+                    {autres > 0 && <span class="source-arme__compte">{autresPhrase}</span>}
                     <TextLink
-                      libelle="Voir la bibliothèque"
+                      libelle={autres > 0 ? 'Voir la bibliothèque' : 'Parcourir la bibliothèque du club'}
                       href={hrefBibliotheque}
                       ton="mute"
                       taille="petite"

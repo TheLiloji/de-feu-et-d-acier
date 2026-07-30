@@ -9,6 +9,9 @@ texte: >-
   modernes, avec des armes d'entraînement adaptées à chaque discipline. Les
   sources sont à la base de notre travail : on pousse leur application
   jusqu'en assaut, à différents niveaux d'engagement.
+lien:
+  libelle: Parcourir les sources du club
+  url: /sources/
 planche:
   fichier: /src/assets/photos/commun/sources/noble-science-1538-f01r.jpg
   alt: >-
