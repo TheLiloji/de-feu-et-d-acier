@@ -105,9 +105,14 @@ const ctx = contexteDe(ecole.fiche, {
 });
 
 // Les champs d'un traité ne transitent pas par `resoudre()` : la composition
-// typographique (apostrophe courbe, fine insécable dans les « ») se pose ici.
-// Exception assumée : la ligne de crédit de chaque planche, rendue verbatim —
-// cf. `creditPlanche()` dans src/components/sources/traites.ts.
+// typographique (apostrophe courbe, fine insécable dans les « ») se pose à la
+// main, ici pour les champs d'identité ci-dessous. Les champs d'une planche, eux,
+// sont composés en amont par `resoudrePlanche()` — le seul point de passage
+// commun à cette page, à la bibliothèque, à l'encadré « La source » d'une fiche
+// arme et à la visionneuse. Exceptions assumées : la ligne de crédit de chaque
+// planche, rendue verbatim, et les `alt`, laissés bruts comme partout ailleurs —
+// cf. `creditPlanche()` et `resoudrePlanche()` dans
+// src/components/sources/traites.ts.
 const titre = typographieFr(entree.titre);
 const auteur = typographieFr(entree.auteur ?? '');
 const annee = typographieFr(entree.annee ?? '');

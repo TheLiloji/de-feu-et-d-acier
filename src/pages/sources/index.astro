@@ -49,8 +49,7 @@ import {
   anneeCourte,
   armesLiees,
   comptePlanches,
-  plancheVedette,
-  resoudrePlanche,
+  plancheVedetteResolue,
   resoudrePlanches,
   traditionCourte,
   auteurCourt,
@@ -127,7 +126,7 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
 
 const cartes = traites.map((traite) => {
   const entree = traite.entry;
-  const vedette = resoudrePlanche(plancheVedette(entree.planches));
+  const vedette = plancheVedetteResolue(entree.planches);
   // Les planches **résolues**, pas les lignes saisies : une planche dont le
   // fichier n'a pas encore été déposé ne se compte pas.
   const nbPlanches = resoudrePlanches(entree.planches).length;

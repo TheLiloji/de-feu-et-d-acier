@@ -7,6 +7,12 @@
  * sources sont exactement celles des `getStaticPaths` correspondants — une arme
  * décochée dans l'admin disparaît du site *et* du plan, sans rien à synchroniser.
  *
+ * ⚠️ **Contrepartie du fait-main : toute nouvelle section de pages doit être
+ * rebranchée ici.** L'invariant ci-dessus ne tient pas tout seul — la section
+ * « Les sources » a été livrée sans y passer, et neuf pages sont restées hors du
+ * plan jusqu'à ce qu'on s'en aperçoive. Repère : le nombre de `<loc>` doit
+ * valoir le nombre de `*.html` de `dist/client/` moins `404.html`.
+ *
  * Les URL absolues passent par `lienAbsolu()` alimenté par `Astro.site` : le
  * plan reste juste quel que soit le domaine, y compris avec la surcharge
  * `SITE_URL` d'astro.config.mjs (le domaine définitif n'est pas arbitré,
@@ -16,7 +22,7 @@
  * pré-rendus, donc aucune URL à publier) et la page 404.
  */
 import type { APIRoute } from 'astro';
-import { articlesDe, lireDisciplines, profsDe } from '../lib/contenu';
+import { articlesDe, lireDisciplines, profsDe, traitesTries } from '../lib/contenu';
 import { getEcoles } from '../lib/ecoles';
 import { profsAffiches } from '../components/fiches/prof';
 import { lien, lienAbsolu } from '../lib/liens';
@@ -71,6 +77,18 @@ export const GET: APIRoute = async ({ site }) => {
         modifiee: article.entry.date ?? undefined,
       });
     }
+  }
+
+  // Les sources appartiennent à l'association, pas à une implantation : la
+  // collection `traites` est commune (src/content/commun/), et les deux gabarits
+  // résolvent par `getEcolePrincipale()`. Une seule série d'entrées, jamais
+  // préfixée d'une école — comme les pages légales ci-dessous. `traitesTries()`
+  // est exactement la source du `getStaticPaths` de `/sources/[slug]`, sans
+  // filtre : tous les traités saisis ont une page. Pas de `lastmod`, le schéma
+  // d'un traité ne porte aucune date de mise à jour.
+  entrees.push({ chemin: '/sources/', priorite: '0.7' });
+  for (const traite of await traitesTries()) {
+    entrees.push({ chemin: `/sources/${traite.slug}/`, priorite: '0.6' });
   }
 
   // Pages légales : elles appartiennent à l'association, pas à une implantation

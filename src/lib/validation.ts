@@ -1,7 +1,7 @@
 /**
  * Garde-fous du build — ARCHITECTURE.md §7.
  *
- * Sept vérifications, sept échecs de build avec un message qui dit **quoi
+ * Huit vérifications, huit échecs de build avec un message qui dit **quoi
  * corriger et où** :
  *
  *   1. un raccourci inconnu dans un texte du CMS (`{tarrif}`, `{Email}`) ;
@@ -10,9 +10,12 @@
  *   4. deux annonces épinglées en bandeau en même temps ;
  *   5. une image déposée dans un format que le build ne sait pas traiter ;
  *   6. un traité dont les droits ne sont pas en règle (planche sans description
- *      ou sans crédit, licence sans adresse, extrait cité sans sa source) ;
+ *      ou sans crédit, licence sans adresse, extrait cité sans sa source), ou
+ *      rattaché à une arme absente du catalogue des disciplines ;
  *   7. la planche de « La rigueur », sur l'accueil, publiée sans sa ligne de
- *      crédit — même exigence que le n° 6, hors de la collection des traités.
+ *      crédit — même exigence que le n° 6, hors de la collection des traités ;
+ *   8. une piste de sous-titres `.vtt` appelée par une adresse absolue, que le
+ *      navigateur abandonnerait en silence (CORS).
  *
  * Pourquoi ici et pas dans un script `prebuild`
  * ---------------------------------------------
@@ -30,7 +33,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { ECOLES } from '../config/ecoles';
-import { annoncesDe, lireTraites, reader } from './contenu';
+import { annoncesDe, lireDisciplines, lireTraites, reader } from './contenu';
 import { EXTENSIONS_PHOTOS, resoudrePhoto } from './images';
 import { RACCOURCIS_CONNUS } from './raccourcis';
 
@@ -311,9 +314,26 @@ async function verifierAnnonces(aujourdhui: string): Promise<string[]> {
 async function verifierTraites(racineProjet: string): Promise<string[]> {
   const problemes: string[] = [];
 
+  // Une arme rattachée à un traité mais absente du catalogue est ignorée en
+  // silence par `armesLiees()` — une pastille sans nom ne dit rien à personne.
+  // Le silence est le bon comportement au rendu, et le mauvais au build :
+  // renommer une discipline ferait disparaître le traité de la fiche de l'arme
+  // sans que rien ne le signale.
+  const catalogue = new Set((await lireDisciplines()).map((d) => d.slug));
+
   for (const { slug, entry } of await lireTraites()) {
     const ou = `traites › ${slug}`;
     const nom = entry.titre || slug;
+
+    for (const arme of entry.armes ?? []) {
+      if (catalogue.has(arme)) continue;
+      problemes.push(
+        `Arme inconnue rattachée à un traité — ${ou}\n` +
+          `    « ${nom} » renvoie à l’arme « ${arme} », qui n’existe pas dans le catalogue.\n` +
+          `    Armes disponibles : ${[...catalogue].join(', ')}.\n` +
+          '    Corriger « Armes concernées » dans l’admin, ou recréer la discipline manquante.',
+      );
+    }
 
     if (!entry.licence?.url?.trim()) {
       problemes.push(
@@ -400,12 +420,78 @@ async function verifierPlancheRigueur(): Promise<string[]> {
   ];
 }
 
+/**
+ * 8. Une piste de sous-titres servie depuis une autre origine que le site.
+ *
+ * Un `<track>` est chargé avec l'état CORS de l'élément `<video>`. Le lecteur de
+ * `VideoCard.astro` n'a **pas** d'attribut `crossorigin` — délibérément : le
+ * poser sans en-tête `Access-Control-Allow-Origin` sur le bucket R2 ferait
+ * échouer le chargement de la vidéo elle-même. Conséquence : une piste `.vtt`
+ * appelée par une adresse absolue part en `no-cors`, la réponse est opaque, et
+ * le navigateur abandonne la piste **sans erreur en console** — pas de bouton de
+ * sous-titres, et rien qui distingue à l'œil un lecteur correct d'un lecteur
+ * amputé de son accessibilité (WCAG 1.2.2).
+ *
+ * D'où l'invariant : la vidéo va sur R2, le `.vtt` reste sur le site, appelé par
+ * un chemin absolu de site (`/videos/lecon-01.fr.vtt`). C'est la seule règle qui
+ * ne demande ni attribut ni configuration de bucket. Le contrôle s'applique aux
+ * mini-cours d'une fiche arme comme à la vidéo d'interview d'un encadrant.
+ */
+const MOTIF_ADRESSE_ABSOLUE = /^[a-z][a-z0-9+.-]*:|^\/\//i;
+
+function verifierSousTitres(valeur: unknown, ou: string, vus = new Set<unknown>()): string[] {
+  if (!valeur || typeof valeur !== 'object' || vus.has(valeur)) return [];
+  vus.add(valeur);
+
+  if (Array.isArray(valeur)) {
+    return valeur.flatMap((element, i) => verifierSousTitres(element, `${ou}[${i + 1}]`, vus));
+  }
+
+  const objet = valeur as Record<string, unknown>;
+  const problemes: string[] = [];
+
+  const piste = objet.sousTitres;
+  if (typeof piste === 'string' && piste.trim() !== '' && MOTIF_ADRESSE_ABSOLUE.test(piste.trim())) {
+    problemes.push(
+      `Sous-titres hébergés hors du site — ${ou}\n` +
+        `    Adresse : ${piste.trim()}\n` +
+        '    Le navigateur ignorerait cette piste en silence : aucun bouton de sous-titres n’apparaîtrait.\n' +
+        '    Le fichier .vtt doit être déposé sur le site (dossier public/) et appelé par un chemin\n' +
+        '    commençant par « / » — par exemple /videos/lecon-01.fr.vtt. Contrairement à la vidéo, il\n' +
+        '    ne va pas sur le stockage R2.',
+    );
+  }
+
+  for (const [cle, sous] of Object.entries(objet)) {
+    if (typeof sous === 'function') continue;
+    problemes.push(...verifierSousTitres(sous, `${ou} › ${cle}`, vus));
+  }
+
+  return problemes;
+}
+
+async function verifierPistesSousTitres(): Promise<string[]> {
+  const problemes: string[] = [];
+
+  const collections = reader.collections as unknown as Record<
+    string,
+    { all: () => Promise<{ slug: string; entry: unknown }[]> }
+  >;
+  for (const [nom, collection] of Object.entries(collections)) {
+    for (const entree of await collection.all()) {
+      problemes.push(...verifierSousTitres(entree.entry, `${nom} › ${entree.slug}`));
+    }
+  }
+
+  return problemes;
+}
+
 // ── Point d'entrée ─────────────────────────────────────────────────────────
 
 let enCours: Promise<void> | null = null;
 
 /**
- * Lance les sept contrôles. Lève une erreur unique listant tout ce qui cloche.
+ * Lance les huit contrôles. Lève une erreur unique listant tout ce qui cloche.
  *
  * @param aujourdhui Date de référence (`AAAA-MM-JJ`), pour les tests.
  */
@@ -420,6 +506,7 @@ export function validerContenu(aujourdhui = new Date().toISOString().slice(0, 10
       ...(await verifierAnnonces(aujourdhui)),
       ...(await verifierTraites(racineProjet)),
       ...(await verifierPlancheRigueur()),
+      ...(await verifierPistesSousTitres()),
     ];
 
     if (problemes.length === 0) return;

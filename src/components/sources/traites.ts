@@ -15,7 +15,7 @@
  *      lesquelles ont une fiche publique (l'épée-bocle n'en a pas).
  *
  * ⚠️ **Le crédit d'une planche ne passe par aucune normalisation.** C'est la
- * seule chaîne du site dans ce cas, et c'est délibéré : cette ligne est exigée
+ * seule prose du site dans ce cas, et c'est délibéré : cette ligne est exigée
  * mot pour mot par la bibliothèque qui a numérisé le document (« Source
  * gallica.bnf.fr / Bibliothèque nationale de France », « digitalisiert von
  * Google », le lien de licence CC BY 4.0 et la mention des modifications pour
@@ -23,8 +23,15 @@
  * d'un « © » par `creditAffiche` — ce dernier serait même faux : la plupart de
  * ces planches sont sous *Public Domain Mark*, c'est-à-dire explicitement
  * dépourvues de droit d'auteur. Cf. `creditPlanche()` plus bas.
+ *
+ * Les deux autres champs rédigés d'une planche — la **légende** et le **folio** —
+ * sont eux composés par `typographieFr`, dans `resoudrePlanche()` : ils sont de
+ * la prose, au même titre que la présentation du traité, et doivent l'être
+ * partout où ils s'affichent. Le champ `alt`, lui, reste brut, comme tous les
+ * `alt` du site.
  */
 import { resoudrePhoto } from '../../lib/images';
+import { typographieFr } from '../../lib/typographie';
 
 // ── Formes minimales lues depuis le CMS ────────────────────────────────────
 //
@@ -86,6 +93,24 @@ export function plancheVedette<P extends PlancheCms>(
 ): P | null {
   const liste = planches ?? [];
   return liste.find((p) => p.majestueuse) ?? liste[0] ?? null;
+}
+
+/**
+ * La planche mise en avant, **résolue** — et choisie parmi les seules planches
+ * dont le fichier est réellement présent.
+ *
+ * C'est la version à appeler depuis un gabarit. Choisir *puis* résoudre laisse
+ * un trou : une planche cochée « majestueuse » dont l'image n'a pas encore été
+ * déposée renvoyait `null`, et le cadre de la carte restait noir alors que le
+ * traité a d'autres planches parfaitement affichables. Filtrer d'abord fait
+ * jouer le repli « à défaut la première » sur ce qui existe, exactement comme
+ * `resoudrePlanches()` écarte les trous d'une galerie.
+ */
+export function plancheVedetteResolue(
+  planches?: readonly PlancheCms[] | null,
+): PlancheResolue | null {
+  const affichables = (planches ?? []).filter((p) => resoudrePhoto(p.image));
+  return resoudrePlanche(plancheVedette(affichables));
 }
 
 /**
@@ -180,15 +205,31 @@ export interface PlancheResolue {
   ratio: number;
 }
 
-/** Résout une planche. `null` si le fichier n'a pas (encore) été déposé. */
+/**
+ * Résout une planche. `null` si le fichier n'a pas (encore) été déposé.
+ *
+ * **La composition typographique se pose ici**, et non dans les gabarits : c'est
+ * le seul goulot par lequel passent les trois consommateurs (la bibliothèque, la
+ * fiche de traité, l'encadré « La source » d'une fiche arme) *et* la légende
+ * courte de la visionneuse. Posée dans un gabarit, elle aurait laissé les autres
+ * en apostrophes droites.
+ *
+ * Trois régimes, délibérément différents :
+ *
+ *   - `legende` et `folio` sont de la prose lue à l'écran → `typographieFr` ;
+ *   - `credit` reste **verbatim** — voir l'avertissement en tête de fichier ;
+ *   - `alt` reste brut, comme tous les `alt` du site (`Galerie.astro`) : il n'est
+ *     pas lu à l'écran mais à voix haute, et une fine insécable U+202F dans un
+ *     attribut n'apporte rien à un lecteur d'écran.
+ */
 export function resoudrePlanche(planche?: PlancheCms | null): PlancheResolue | null {
   const source = resoudrePhoto(planche?.image);
   if (!source) return null;
   return {
     source,
     alt: (planche?.alt ?? '').trim(),
-    legende: (planche?.legende ?? '').trim(),
-    folio: (planche?.folio ?? '').trim(),
+    legende: typographieFr(planche?.legende),
+    folio: typographieFr(planche?.folio),
     credit: creditPlanche(planche?.credit),
     ratio: source.height > 0 ? source.width / source.height : 1,
   };

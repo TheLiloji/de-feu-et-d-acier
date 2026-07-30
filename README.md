@@ -92,8 +92,8 @@ dans la fiche de l'école. Partout ailleurs on écrit un raccourci, résolu à l
 génération du site :
 
 `{email}` `{telephone}` `{lieu}` `{adresse}` `{ville}` `{tarif}` `{saison}`
-`{creneaux}` `{essai}` `{nb_armes}` `{nb_profs}` — plus `{arme}` et `{prof}` sur
-les pages de fiche.
+`{creneaux}` `{creneaux_court}` `{essai}` `{nb_armes}` `{nb_profs}` — plus
+`{arme}` et `{prof}` sur les pages de fiche.
 
 `{nb_armes}` et `{nb_profs}` sont **comptés** sur ce qui est réellement affiché :
 le titre « Quatre armes, quatre grammaires. » se recale tout seul si une carte
@@ -104,12 +104,19 @@ apparaît ou disparaît.
 `npm run build` s'arrête, avec la liste complète des problèmes et le fichier
 fautif, si :
 
-1. un texte contient un raccourci inconnu (`{tarrif}`) ;
+1. un texte contient un raccourci inconnu ou mal orthographié (`{tarrif}`, `{Email}`) ;
 2. aucune école n'est marquée principale, ou plusieurs le sont ;
 3. une image de contenu n'a pas de description alternative ;
-4. deux annonces sont épinglées en bandeau en même temps.
+4. deux annonces sont épinglées en bandeau en même temps ;
+5. une image est déposée dans un format que le build ne sait pas traiter (HEIC…) ;
+6. un traité n'est pas en règle : planche sans description ou sans crédit, licence
+   sans adresse, extrait cité sans sa source, arme rattachée hors catalogue ;
+7. la planche de « La rigueur », sur l'accueil, est publiée sans sa ligne de crédit ;
+8. une piste de sous-titres `.vtt` est appelée par une adresse absolue — le
+   navigateur l'abandonnerait en silence (CORS).
 
-Le code est dans `src/lib/validation.ts`, appelé une fois par `src/layouts/Base.astro`.
+Le code est dans `src/lib/validation.ts`, appelé une fois par `src/layouts/Base.astro` ;
+son en-tête reste la référence si cette liste vient à dater.
 
 ## Structure du code
 
