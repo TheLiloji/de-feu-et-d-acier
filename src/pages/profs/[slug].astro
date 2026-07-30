@@ -136,6 +136,7 @@ export const getStaticPaths = (async () => {
             url: lien(ecole, entree.lienExterne?.url),
           },
           video: {
+            titre: entree.video?.titre ?? '',
             url: entree.video?.url ?? '',
             duree: entree.video?.duree ?? '',
             vignette: resoudrePhoto(entree.video?.vignette),

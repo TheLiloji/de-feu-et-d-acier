@@ -365,6 +365,11 @@ function collectionsEcole(e: EcoleConfig) {
         ),
         video: fields.object(
           {
+            titre: fields.text({
+              label: 'Titre affiché',
+              description:
+                'Ce que la vidéo montre : « En combat · saison 2025-2026 », « L’interview en vidéo »… Vide : « En vidéo ».',
+            }),
             url: champsVideo.url,
             duree: fields.text({ label: 'Durée', description: 'Ex. 06:24' }),
             vignette: imageEditoriale('Vignette', dossierPhotos),
@@ -372,9 +377,9 @@ function collectionsEcole(e: EcoleConfig) {
             affiche: champsVideo.affiche,
           },
           {
-            label: 'Vidéo d’interview (facultatif)',
+            label: 'Vidéo (facultatif)',
             description:
-              'Le bloc reste masqué sur le site tant que l’adresse est vide. La vidéo est lue sur la page, sans lecteur YouTube.',
+              'Interview, extrait de combat, highlight de tournoi… Le bloc reste masqué sur le site tant que l’adresse est vide. La vidéo est lue sur la page, sans lecteur YouTube.',
           },
         ),
         ordre,

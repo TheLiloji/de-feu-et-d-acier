@@ -46,6 +46,8 @@ export interface LienExterneProf {
 }
 
 export interface VideoProf {
+  /** Titre affiché sur la carte : interview, combat, highlight… (CMS). */
+  titre?: string | null;
   url?: string | null;
   duree?: string | null;
   vignette?: ImageMetadata | null;
@@ -100,7 +102,9 @@ const {
   libelleRetour = 'Retour aux encadrants',
   tag = 'Fiche prof',
   video = null,
-  legendeVideo = "L'interview en vidéo",
+  // Défaut neutre : toutes les vidéos de prof ne sont pas des interviews
+  // (celle de Gabriel est un highlight de combat). Le CMS peut préciser.
+  legendeVideo = 'En vidéo',
   idTitre = 'fiche-prof-titre',
   class: classe,
 } = Astro.props;
@@ -177,7 +181,7 @@ const aVideo = Boolean(video?.url || video?.vignette);
             sousTitres={video?.sousTitres}
             affiche={video?.affiche}
             duree={video?.duree}
-            titre={legendeVideo}
+            titre={video?.titre?.trim() || legendeVideo}
             taille="l"
             ratio="16 / 9"
             rayon={3}
