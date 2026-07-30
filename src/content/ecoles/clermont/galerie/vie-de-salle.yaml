@@ -13,35 +13,34 @@ photos:
   - fichier: /src/assets/photos/clermont/galerie-medievale-montferrand.jpg
     legende: Médiévale de Montferrand
     alt: >-
-      Assaut à la rapière en plein soleil devant un mur d'enceinte en pierre
-      volcanique, sous le regard d'un public assis.
+      Assaut à la rapière devant un mur de pierre volcanique, public assis en
+      arrière-plan.
     cadrage: centre
     credit: Alexandre Vergne — L'IMAGINARIUM
   - fichier: /src/assets/photos/clermont/galerie-au-contact.jpg
     legende: Au contact
     alt: >-
-      Deux escrimeurs en doublets bleu et blanc se rejoignent en corps-à-corps à
-      la fin d'un assaut, dans un gymnase aux gradins bleus.
+      Deux escrimeurs en doublets bleu et blanc au corps-à-corps dans un
+      gymnase.
     cadrage: centre
     credit: Enzo Cirillo
   - fichier: /src/assets/photos/clermont/galerie-en-garde.jpg
     legende: En garde
     alt: >-
-      Escrimeur de profil, masque peint en vert et doublet vert à motifs
-      floraux, épée levée devant un mur bordeaux.
+      Escrimeur de profil, masque et doublet verts, épée levée devant un mur
+      bordeaux.
     cadrage: haut
     credit: ''
   - fichier: /src/assets/photos/clermont/galerie-sous-les-remparts.jpg
     legende: Sous les remparts
     alt: >-
-      Deux escrimeurs en doublets bleu roi et violet s'affrontent sur l'herbe
-      devant les remparts, sous un ciel d'été.
+      Deux escrimeurs s'affrontent sur l'herbe devant des remparts.
     cadrage: centre
     credit: Alexandre Vergne — L'IMAGINARIUM
   - fichier: /src/assets/photos/clermont/galerie-le-duel.jpg
     legende: Le duel
     alt: >-
-      Duel à l'épée de côté : un escrimeur en noir en fente profonde face à un
-      partenaire en gambison rouge, dans une salle aux murs bordeaux.
+      Duel à l'épée de côté entre deux escrimeurs, en noir et en rouge, dans
+      une salle aux murs bordeaux.
     cadrage: centre
     credit: ''
