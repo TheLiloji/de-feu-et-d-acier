@@ -535,7 +535,7 @@ Titre, image de couverture, chapô, corps rédigé, page dédiée.
 | `categorie` | Catégorie | `select` | vie du club / tournoi / stage / sources & technique / matériel |
 | `auteur` | Écrit par | `relationship` → `profs` | facultatif |
 | `epingle` | Mettre à la une | `checkbox` | remonte en tête de `/actualites` |
-| `corps` | Contenu | `markdoc` (contentField) | titres h2/h3, gras, italique, listes, liens, images, citations |
+| `corps` | Contenu | `markdoc` (contentField) | **corps libre** : titres h2/h3, gras, italique, listes, liens, images, citations, **et les six widgets** (widgets.md) |
 | `galerie` | Photos de l'article | `array(photo)` | facultatif |
 | `liens` | Liens utiles | `array(object)` | résultats, inscriptions… |
 | `ecolesConcernees` | Écoles concernées | `multiRelationship` | vide = toutes |
@@ -657,7 +657,7 @@ dans la maquette V2. Ajouter un prof = créer une entrée ; le retirer = décoch
 | `portrait` | Portrait | `photo` | fichier + alt + cadrage |
 | `armes` | Armes enseignées | `multiRelationship` → `disciplines` | génère « MESSER · VIKING · BOCLE » |
 | `accroche` | Accroche | `text` | « Top 1 % mondial · épée longue acier » |
-| `bio` | Biographie | `markdoc` (contentField) | 3-10 lignes ; extrait repris sur l'accueil |
+| `bio` | Biographie | `markdoc` (contentField) | **corps libre** : même palette et mêmes widgets que `articles.corps` |
 | `lienExterne` | Lien externe | `object(libelle,url)` | HEMA Ratings, site perso |
 | `interview` | Interview | `array(object)` | question + réponse (fiche prof) |
 | `video` | Vidéo d'interview | `object` | url + durée + vignette |
@@ -770,7 +770,7 @@ vers l'efficacité en assaut.
 | `dates` | Siècles | `text` | « XIVᵉ — XVᵉ s. » |
 | `photo` | Photo de l'arme | `photo` | |
 | `resume` | Chapô de la fiche arme | `text` multiline | 300 car. Accroche du hero de fiche **et** `<meta name="description">`. Ne doit pas reprendre l'ouverture de `description` : les deux blocs se suivent à deux blocs d'intervalle. La carte d'accueil, elle, affiche `sousTitre`. |
-| `description` | Description longue | `markdoc` (contentField) | haut de la fiche arme |
+| `description` | Description longue | `markdoc` (contentField) | **corps libre** : même palette et mêmes widgets que `articles.corps` |
 | `referent` | Prof référent | `relationship` → `profs` | |
 | `miniCours` | Mini-cours | `array(object)` | titre, sousTitre, duree, video, vignette, sousTitres (.vtt), affiche |
 | `source` | La source | `object` | titre, texte, lien **seulement**. Plus d'image : la planche, sa description et son crédit viennent de la fiche du traité (`traites`), parce qu'ils sont inséparables — cf. ARCHITECTURE.md §4 |
@@ -1092,7 +1092,7 @@ fiches arme, qui n'a plus d'image propre.
 | `urlNumerisation` | Lien vers la numérisation | `text` | **garde-fou** : la fiche doit pouvoir renvoyer au document |
 | `licence` | Droits d'utilisation | `object(resume, url)` | `url` **obligatoire** — garde-fou n° 6 |
 | `armes` | Armes concernées | `multiRelationship` → `disciplines` | l'ordre d'affichage vient du catalogue, pas de la saisie |
-| `presentation` | Présentation | `markdoc` (contentField) | la voix du club sur le traité |
+| `presentation` | Présentation | `markdoc` (contentField) | **corps libre** : la voix du club sur le traité, widgets compris |
 | `extraitCitation` | Extrait cité | `text` multiline | **courte citation seulement** |
 | `extraitCredit` | Crédit de l'extrait | `text` | obligatoire dès qu'il y a un extrait |
 | `extraitUrl` | Lien vers la page de l'extrait | `text` | obligatoire dès qu'il y a un extrait |
@@ -1344,7 +1344,7 @@ et « Réglages » sont en bas parce qu'on y touche deux fois par an.
 
 ## 7. Garde-fous à implémenter au build
 
-Le schéma seul ne suffit pas. **Sept contrôles** sont implémentés dans
+Le schéma seul ne suffit pas. **Neuf contrôles** sont implémentés dans
 `src/lib/validation.ts`, appelés une fois par `src/layouts/Base.astro`. Aucun n'est un
 avertissement : chacun **fait échouer le build**, avec un message qui nomme le fichier et
 le champ. Un avertissement dans un journal de build se perd, et le contenu fautif partirait
@@ -1362,6 +1362,16 @@ en production.
 7. **La planche de « La rigueur »** publiée sans sa ligne de crédit. Elle est saisie
    dans le singleton `rigueur` et échappe donc au contrôle n° 6, alors que c'est la
    planche la plus visible du site.
+8. **Piste de sous-titres `.vtt` appelée par une adresse absolue.** Un `<track>`
+   servi depuis une autre origine que la page est abandonné en silence par le
+   navigateur : la vidéo va sur R2, le `.vtt` reste dans `public/`.
+9. **Widgets des quatre corps libres** (bio d'un encadrant, description longue d'une
+   arme, contenu d'un article, présentation d'un traité) : renvoi vers un slug
+   inexistant ou vers une page non publiée, renvoi sans destination choisie, photo de
+   galerie sans description, planche sans description ou sans crédit, widget inconnu,
+   widget imbriqué dans une citation ou une liste, bouton sans texte ni adresse.
+   C'est le seul contrôle qui ouvre les corps Markdoc — les autres parcours sautent
+   les valeurs paresseuses du lecteur. Cf. `docs/refonte/widgets.md` §5.
 
 Le contrôle du **contenu orphelin** (un prof ou une annonce dont `ecole` pointe vers une
 école archivée) reste à écrire : il ne peut pas se produire aujourd'hui, le site n'ayant

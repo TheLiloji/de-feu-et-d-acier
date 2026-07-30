@@ -1,5 +1,27 @@
 import { collection, config, fields, singleton } from '@keystatic/core';
-import { ECOLES, MULTI, libelleEcole, type EcoleConfig } from './src/config/ecoles';
+import {
+  ECOLES,
+  ECOLE_PRINCIPALE,
+  MULTI,
+  libelleEcole,
+  type EcoleConfig,
+} from './src/config/ecoles';
+import {
+  ACCENT,
+  RACCOURCIS,
+  cadrage,
+  champsVideo,
+  enTete,
+  imageEditoriale,
+  imageLogo,
+  lien,
+  ordre,
+  photo,
+  photoDecorative,
+  planchePatrimoniale,
+  visible,
+} from './src/cms/champs';
+import { widgetsDeCorps } from './src/cms/widgets';
 
 // ───────────────────────────────────────────────────────────────────────────
 //  Stockage : fichiers locaux en dev, commits GitHub en prod.
@@ -16,248 +38,55 @@ const storage =
     : ({ kind: 'local' } as const);
 
 // ───────────────────────────────────────────────────────────────────────────
-//  Helpers de schéma
-//  Règle : libellés en français, clés sans accent (lisibles en diff git).
+//  Champs de texte
+//
+//  Les helpers de schéma communs — photo, cadrage, champs vidéo, lien, ordre,
+//  en-tête de section… — vivent dans `src/cms/champs.ts`, et les six widgets
+//  de corps libre dans `src/cms/widgets.ts`. Ne restent ici que les deux
+//  gabarits de texte riche : ils dépendent des clés de collection que ce
+//  fichier déplie, ce que le module des widgets ne peut pas connaître.
+//  Cf. docs/refonte/widgets.md §3 et §6.
 // ───────────────────────────────────────────────────────────────────────────
 
 /**
- * Rappel de la syntaxe d'accent, ajouté aux descriptions des champs rendus par
- * `SectionTitle` : le fragment entouré d'astérisques passe en ember italique,
- * c'est le seul accent coloré de la maquette (design-spec §9.3). La convention
- * n'était documentée nulle part côté admin — d'où des titres à plat.
+ * Rappel des blocs insérables, ajouté à la description des quatre corps libres.
+ * Le menu d’insertion existe déjà dans l’éditeur, mais rien ne le signale à
+ * qui ne l’a jamais cliqué — et c’est toute la composition libre des pages.
  */
-const ACCENT =
-  'Entourer d’astérisques le fragment à mettre en valeur (ember, italique) : *gratuites*. Écrire \\* pour une astérisque littérale.';
-
-/** Rappel des raccourcis, ajouté aux descriptions des champs qui les acceptent. */
-const RACCOURCIS =
-  'Raccourcis : {email}, {telephone}, {lieu}, {adresse}, {tarif}, {saison}, {creneaux}, {creneaux_court}, {essai}.';
+const BLOCS =
+  'Le bouton « + » de la barre d’outils insère un bloc là où se trouve le curseur : galerie de photos, vidéo, questions-réponses, renvoi vers une autre page du site, bouton, planche de traité. Texte et blocs s’enchaînent dans l’ordre que vous voulez. Mode d’emploi : GUIDE-ADMIN.md, § 6.';
 
 /**
- * Normalise le nom du fichier déposé depuis l'admin.
- *
- * Keystatic enregistre par défaut le fichier **tel quel** : `IMG_4821.JPG`,
- * `Rapière (2).jpg`… Or le build retrouve les photos par leur chemin. Une
- * extension en capitales ou un nom accentué se traduisait par une photo
- * silencieusement absente du site. On assainit donc à l'entrée : minuscules,
- * accents retirés, tout le reste ramené à des tirets.
+ * Les deux collections d’école visées par les listes déroulantes du widget
+ * « Renvoi vers une page du site ». Un encadrant et un article appartiennent à
+ * une école ; une arme et un traité sont communs à toute l’association.
  */
-const nomDeFichier = (original: string): string =>
-  original
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9.-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+interface CiblesRenvoi {
+  /** Clé de la collection des encadrants, ex. `profs_clermont`. */
+  profs: string;
+  /** Clé de la collection des articles, ex. `articles_clermont`. */
+  articles: string;
+}
 
 /**
- * Image éditoriale. Elle atterrit dans `src/assets/photos/…` pour passer par
- * `astro:assets` (sharp) au build : AVIF/WebP + srcset. Cf. photos.md §5.
- * Ne jamais pointer vers `public/` pour une photo : aucune optimisation.
- */
-const imageEditoriale = (label: string, dossier: string, description?: string) =>
-  fields.image({
-    label,
-    directory: `src/assets/photos/${dossier}`,
-    publicPath: `/src/assets/photos/${dossier}/`,
-    transformFilename: nomDeFichier,
-    description:
-      description ??
-      'JPEG ou PNG déjà préparé : 2400 px maximum sur le grand côté, moins de 1,5 Mo. Ne jamais déposer un fichier brut d’appareil photo.',
-  });
-
-/**
- * Logo de partenaire. Même dossier que les photos communes — c'est là que le
- * chantier photos les a déposés (cf. docs/refonte/photos-manifest.json). Le
- * rendu servira le fichier d'origine sans le recompresser : un logo à plat
- * supporte mal une repasse JPEG.
- */
-const imageLogo = (label: string) =>
-  fields.image({
-    label,
-    directory: 'src/assets/photos/commun',
-    publicPath: '/src/assets/photos/commun/',
-    transformFilename: nomDeFichier,
-    description: 'PNG à fond transparent de préférence. Le fichier est servi tel quel.',
-  });
-
-/** Cadrage : remplace le « point focal 50% 40% », incompréhensible pour un prof. */
-const cadrage = fields.select({
-  label: 'Cadrage de la photo',
-  description: 'Quelle partie de la photo garder si elle doit être recadrée.',
-  options: [
-    { label: 'Centre (par défaut)', value: 'centre' },
-    { label: 'Haut / visages', value: 'haut' },
-    { label: 'Bas', value: 'bas' },
-    { label: 'Gauche', value: 'gauche' },
-    { label: 'Droite', value: 'droite' },
-  ],
-  defaultValue: 'centre',
-});
-
-/** Photo = fichier + description alternative (obligatoire à l'usage) + cadrage. */
-const photo = (label: string, dossier: string) =>
-  fields.object(
-    {
-      fichier: imageEditoriale('Fichier', dossier),
-      alt: fields.text({
-        label: 'Description de l’image',
-        description:
-          'Lue à voix haute par les lecteurs d’écran, et affichée si la photo ne charge pas. Ex. « L’équipe sur la piste du gymnase ».',
-      }),
-      cadrage,
-      credit: fields.text({
-        label: 'Crédit photo (facultatif)',
-        // Le « © » est posé au rendu (`creditAffiche`, src/lib/images.ts) : deux
-        // photographes saisis à deux moments différents donnaient sinon deux
-        // formats côte à côte. Un « © » saisi quand même est absorbé, pas doublé.
-        description:
-          'Le nom seul — le « © » est ajouté automatiquement. Ex. « Alexandre Vergne — L’IMAGINARIUM ».',
-      }),
-    },
-    { label },
-  );
-
-/**
- * Planche de traité affichée **hors** de la section « Les sources » — la gravure
- * de « La rigueur », sur l'accueil.
+ * Corps libre : texte riche **et** widgets insérables. Les quatre gabarits de
+ * contenu long du site — biographie d’un encadrant, description longue d’une
+ * arme, contenu d’un article, présentation d’un traité.
  *
- * Même forme qu'une photo (fichier, description, cadrage, crédit), mais la ligne
- * de crédit y est rendue **mot pour mot**, sans « © » ajouté : ces planches sont
- * des numérisations de bibliothèque, sous *Public Domain Mark* ou déclarées
- * « domaine public » par Gallica. Un « © » y serait faux, et la mention de source
- * est exigée telle quelle par l'institution qui a numérisé le document. D'où un
- * groupe de champs à part, dont le libellé dit la vérité au prof qui le remplit
- * (cf. `creditPlanche()`, src/components/sources/traites.ts).
+ * ⚠️ Les quatre champs déclarent **le même jeu de widgets**, à dessein : un tag
+ * présent dans un fichier mais absent du champ qui le relit rend l’entrée
+ * impossible à ouvrir dans l’admin (widgets.md §1.6). Le jour où un cinquième
+ * gabarit accueille des widgets, il passe par ce helper, pas par un autre.
  */
-const planchePatrimoniale = (label: string, dossier: string) =>
-  fields.object(
-    {
-      fichier: imageEditoriale('Fichier', dossier),
-      alt: fields.text({
-        label: 'Description de l’image',
-        description:
-          'Lue à voix haute par les lecteurs d’écran. Décrire ce que la gravure montre. Ex. « Deux joueurs d’épée à deux mains, lames croisées ».',
-      }),
-      cadrage,
-      credit: fields.text({
-        label: 'Ligne de crédit de la bibliothèque',
-        multiline: true,
-        description:
-          'À recopier EXACTEMENT comme la bibliothèque la demande — c’est la contrepartie du droit de publier l’image. Rien n’est ajouté ni corrigé à l’affichage : ni « © », ni retouche de ponctuation. Ex. « … Rothschild 291, f. 1r. Source gallica.bnf.fr / Bibliothèque nationale de France. »',
-      }),
-    },
-    { label },
-  );
-
-/**
- * Les trois champs d'une vidéo — adresse du fichier, sous-titres, affiche.
- *
- * Le site **n'embarque pas de lecteur de plateforme** : une `<iframe>` YouTube
- * déposerait des cookies tiers avant tout consentement (ARCHITECTURE.md §6).
- * Les vidéos du club sont donc déposées sur notre propre stockage R2 et lues par
- * le lecteur natif du navigateur (`VideoCard.astro`). Une adresse de plateforme
- * reste acceptée, mais la vignette n'est alors qu'un lien sortant : le visiteur
- * quitte le site.
- *
- * D'où les libellés ci-dessous, et le champ de sous-titres — sans piste `.vtt`,
- * une vidéo publiée est inaccessible à qui ne l'entend pas (WCAG 1.2.2).
- *
- * ⚠️ **La vidéo va sur R2, les sous-titres restent sur le site.** Une piste de
- * texte (`<track>`) est chargée avec l'état CORS de l'élément `<video>` : servie
- * depuis une autre origine que la page, elle part en mode `no-cors`, la réponse
- * est opaque, et le navigateur abandonne la piste **sans message d'erreur** — pas
- * de bouton « sous-titres » dans les commandes, personne ne s'en aperçoit. Le
- * remède théorique (`crossorigin="anonymous"` sur le `<video>`) est pire : sans
- * en-tête `Access-Control-Allow-Origin` sur le bucket, il fait échouer le
- * chargement de la **vidéo** elle-même. On demande donc un `.vtt` déposé dans
- * `public/`, appelé par un chemin de site (`/videos/lecon-01.fr.vtt`) : même
- * origine, aucun attribut, aucune règle CORS à maintenir.
- */
-const champsVideo = {
-  url: fields.text({
-    label: 'Adresse du fichier vidéo',
-    description:
-      'L’adresse du fichier .mp4 : soit un chemin du site pour une petite vidéo déjà déposée par Zaccharie (ex. /videos/gabriel-tardio-tournoi-2025-2026.mp4), soit le stockage du club (R2) pour les plus lourdes. Lue directement sur la page. Une adresse YouTube ou Vimeo fonctionne aussi, mais la vignette devient un simple lien qui fait quitter le site.',
-  }),
-  sousTitres: fields.text({
-    label: 'Sous-titres (fichier .vtt)',
-    description:
-      'Le chemin du fichier de sous-titres français sur le site — il commence par « / », par exemple /videos/lecon-01.fr.vtt. Contrairement à la vidéo, ce fichier ne va PAS sur le stockage R2 : une adresse complète (https://…) ne fonctionnerait pas, le navigateur ignorerait les sous-titres sans rien dire. Confiez le .vtt à Zaccharie, qui le dépose sur le site. À remplir dès qu’une vidéo est publiée : sans lui, personne ne peut suivre sans le son. Sans effet sur une vidéo YouTube.',
-  }),
-  affiche: fields.text({
-    label: 'Image d’attente (facultatif)',
-    description:
-      'Seulement si l’image fixe affichée avant le départ de la vidéo ne doit pas être la vignette ci-dessous : l’adresse d’une image déposée à côté de la vidéo.',
-  }),
-};
-
-/** Photo purement décorative : pas de champ crédit, il ne serait pas affiché. */
-const photoDecorative = (label: string, dossier: string, description?: string) =>
-  fields.object(
-    {
-      fichier: imageEditoriale('Fichier', dossier),
-      alt: fields.text({
-        label: 'Description de l’image',
-        description:
-          'Obligatoire, même si l’image est déjà décrite ailleurs sur la page : la publication est refusée sans elle (le garde-fou n° 3 du build ne fait aucune exception). Restez court, puisque la description détaillée est ailleurs.',
-      }),
-      cadrage,
-    },
-    { label, description },
-  );
-
-/** Bouton / lien : libellé + destination. */
-const lien = (label: string, description?: string) =>
-  fields.object(
-    {
-      libelle: fields.text({ label: 'Texte du bouton' }),
-      url: fields.text({
-        label: 'Adresse',
-        description: 'https://…, mailto:…, tel:… ou une ancre interne (#creneaux).',
-      }),
-    },
-    { label, description },
-  );
-
-/** Affiché / masqué, sans suppression (principe « retirer ≠ supprimer »). */
-const visible = fields.checkbox({
-  label: 'Affiché sur le site',
-  description: 'Décocher pour retirer du site sans perdre la fiche.',
-  defaultValue: true,
-});
-
-/** Ordre d'affichage. Convention 10, 20, 30… pour pouvoir intercaler. */
-const ordre = fields.integer({
-  label: 'Ordre d’affichage',
-  description: 'Le plus petit s’affiche en premier. Utiliser 10, 20, 30… pour pouvoir intercaler.',
-  defaultValue: 100,
-});
-
-/** En-tête de section : sur-titre + titre sur deux lignes + chapô. */
-const enTete = (eyebrow: string, description?: string) =>
-  fields.object(
-    {
-      eyebrow: fields.text({ label: 'Sur-titre', defaultValue: eyebrow }),
-      titreLigne1: fields.text({ label: 'Titre — ligne 1', description: ACCENT }),
-      titreLigne2: fields.text({
-        label: 'Titre — ligne 2',
-        description: `Rendue en ember italique. ${ACCENT}`,
-      }),
-      lede: fields.text({
-        label: 'Chapô',
-        multiline: true,
-        description: RACCOURCIS,
-      }),
-    },
-    { label: eyebrow, description },
-  );
-
-/** Texte riche « corps d'article » : titres, listes, liens, images, citations. */
-const corpsRiche = (label: string, dossierImages: string) =>
+const corpsLibre = (
+  label: string,
+  dossierImages: string,
+  cibles: CiblesRenvoi,
+  description?: string,
+) =>
   fields.markdoc({
     label,
+    description: description ? `${description} ${BLOCS}` : BLOCS,
     options: {
       heading: [2, 3],
       bold: true,
@@ -276,7 +105,27 @@ const corpsRiche = (label: string, dossierImages: string) =>
         publicPath: `/src/assets/photos/${dossierImages}/`,
       },
     },
+    components: widgetsDeCorps({
+      dossierImages,
+      collectionProfs: cibles.profs,
+      collectionArticles: cibles.articles,
+    }),
   });
+
+/**
+ * Les cibles de renvoi depuis un contenu **commun** (armes, traités).
+ *
+ * Un contenu commun n’appartient à aucune école, alors que les encadrants et
+ * les articles, eux, en ont une : le dossier EST l’école (ARCHITECTURE.md §3).
+ * On vise donc l’école principale, celle qui est servie sur « / ». Aujourd’hui
+ * elle est la seule ; le jour où une deuxième salle ouvre, deux options
+ * resteront ouvertes — retirer ces deux types des corps communs, ou résoudre le
+ * renvoi vers l’école de la page servie. À trancher à ce moment-là.
+ */
+const CIBLES_COMMUNES: CiblesRenvoi = {
+  profs: `profs_${ECOLE_PRINCIPALE.slug}`,
+  articles: `articles_${ECOLE_PRINCIPALE.slug}`,
+};
 
 /** Texte riche court : gras, italique, liens. Pas de titre, pas d'image. */
 const texteRiche = (label: string, description?: string) =>
@@ -317,6 +166,13 @@ const racine = (e: EcoleConfig) => `src/content/ecoles/${e.slug}`;
 function collectionsEcole(e: EcoleConfig) {
   const dossierPhotos = e.slug;
 
+  // Les encadrants et les articles vers lesquels un corps de cette école peut
+  // renvoyer : les siens.
+  const cibles: CiblesRenvoi = {
+    profs: `profs_${e.slug}`,
+    articles: `articles_${e.slug}`,
+  };
+
   return {
     profs: collection({
       label: libelleEcole('Encadrants', e),
@@ -350,7 +206,7 @@ function collectionsEcole(e: EcoleConfig) {
           description: 'Une ligne, sous le nom. Ex. « Rapière française & italienne · bolonaise ».',
           validation: { length: { max: 90 } },
         }),
-        bio: texteRiche('Biographie'),
+        bio: corpsLibre('Biographie', dossierPhotos, cibles),
         lienExterne: lien('Lien externe (facultatif)', 'Profil HEMA Ratings, site personnel…'),
         interview: fields.array(
           fields.object({
@@ -487,7 +343,7 @@ function collectionsEcole(e: EcoleConfig) {
           description: 'Remonte l’article en tête de la page « Actualités ».',
           defaultValue: false,
         }),
-        corps: corpsRiche('Contenu', dossierPhotos),
+        corps: corpsLibre('Contenu', dossierPhotos, cibles),
         galerie: fields.array(photo('Photo', dossierPhotos), {
           label: 'Photos de l’article',
           itemLabel: (p) => p.fields.alt.value || 'Photo',
@@ -824,7 +680,7 @@ const collectionsCommunes = {
           'Le paragraphe d’accroche en haut de la fiche, qui sert AUSSI de description du site pour Google. Une phrase complète, qui se suffit à elle-même. ⚠️ Ne pas y reprendre les premières phrases de la « Description longue » ci-dessous : elles s’afficheraient deux fois à deux blocs d’intervalle. Le chapô situe l’arme, la description la raconte. (La carte d’accueil, elle, affiche le sous-titre.)',
         validation: { length: { max: 300 } },
       }),
-      description: corpsRiche('Description longue (fiche arme)', 'commun'),
+      description: corpsLibre('Description longue (fiche arme)', 'commun', CIBLES_COMMUNES),
       miniCours: fields.array(
         fields.object({
           titre: fields.text({
@@ -1013,8 +869,10 @@ const collectionsCommunes = {
           itemLabel: (p) => p.fields.folio.value || p.fields.alt.value || 'Planche',
         },
       ),
-      presentation: texteRiche(
+      presentation: corpsLibre(
         'Présentation',
+        'commun',
+        CIBLES_COMMUNES,
         'Trois à six phrases : de quelle tradition vient ce traité, ce qu’il contient, et pourquoi il parle aux armes travaillées au club. Rester sur ce que la source dit — pas d’enjolivement historique.',
       ),
       ordre,

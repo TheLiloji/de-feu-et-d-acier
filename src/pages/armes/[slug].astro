@@ -34,6 +34,7 @@ import {
   plancheVedetteResolue,
 } from '../../components/sources/traites';
 import {
+  articlesDe,
   lireDisciplines,
   lireFiches,
   lireHero,
@@ -41,11 +42,13 @@ import {
   lireMenus,
   profsDe,
   traitesDeLArme,
+  traitesTries,
 } from '../../lib/contenu';
 import { getEcolePrincipale } from '../../lib/ecoles';
 import { cadrageCss, creditAffiche, resoudrePhoto } from '../../lib/images';
 import { estExterne, lien } from '../../lib/liens';
 import { contexteDe, majusculeInitiale, resoudre } from '../../lib/raccourcis';
+import { indexRenvois } from '../../lib/renvois';
 import { typographieFr } from '../../lib/typographie';
 
 export async function getStaticPaths() {
@@ -78,16 +81,22 @@ function avecArticle(nom: string): string {
 const { slug } = Astro.params;
 
 const ecole = await getEcolePrincipale();
-const [identite, hero, fiches, menus, disciplines, profs, traitesArme] = await Promise.all([
-  lireIdentite(),
-  lireHero(),
-  lireFiches(),
-  lireMenus(),
-  lireDisciplines(),
-  profsDe(ecole),
-  // Les traités dont « Armes concernées » cite cette arme, dans l'ordre du CMS.
-  traitesDeLArme(slug),
-]);
+const [identite, hero, fiches, menus, disciplines, profs, traitesArme, traites, articles] =
+  await Promise.all([
+    lireIdentite(),
+    lireHero(),
+    lireFiches(),
+    lireMenus(),
+    lireDisciplines(),
+    profsDe(ecole),
+    // Les traités dont « Armes concernées » cite cette arme, dans l'ordre du CMS.
+    traitesDeLArme(slug),
+    // Les deux dernières lectures ne servent qu'à l'index des renvois : un corps
+    // libre peut pointer vers n'importe quelle page du site. Le Reader mémoïse
+    // (`readItem` est enveloppé dans `cache()`), le coût est celui d'un `Map.get`.
+    traitesTries(),
+    articlesDe(ecole),
+  ]);
 
 const affichees = disciplines.filter((d) => d.entry.affichee);
 const entree = affichees.find((d) => d.slug === slug);
@@ -118,6 +127,16 @@ const ctx = contexteDe(
   { nbArmes: affichees.length, nbProfs: profs.filter((p) => p.entry.visible).length },
   { arme: avecArticle(arme.nom) },
 );
+
+/**
+ * Les pages qu'un widget « Renvoi » peut viser depuis la description longue.
+ *
+ * L'index est bâti par la page et passé en props : ni `CorpsLibre` ni
+ * `src/lib/renvois.ts` ne lisent de contenu (multi-ecoles.md §6.6, invariants 3
+ * et 4). Il est fourni même si aucune fiche n'a encore de renvoi — l'oublier
+ * ferait passer pour cassé le premier renvoi qu'un rédacteur poserait.
+ */
+const renvois = indexRenvois({ ecole, disciplines, traites, profs, articles });
 
 const sourceFiches = 'src/content/commun/fiches.yaml (bandeau de fin — fiche arme)';
 const bandeau = {
@@ -208,8 +227,10 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
 
   <ArmeCorps
     node={corps.node}
+    ecole={ecole}
     ctx={ctx}
     source={`src/content/commun/disciplines/${slug}.mdoc — description longue`}
+    renvois={renvois}
   />
 
   <ArmeMiniCours lecons={lecons} id={ANCRE_MINI_COURS} />

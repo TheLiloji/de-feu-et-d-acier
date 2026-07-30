@@ -189,7 +189,10 @@ const items = await Promise.all(
       // de collection, pas du texte à raccourcis) : la fine insécable devant
       // le « ? » se pose ici. Cf. src/lib/typographie.ts.
       question: typographieFr(q.entry.question),
-      reponseHtml: lierEmail(resoudre(rendreMarkdoc(node), contexte, source), email),
+      // `source` est passé deux fois, et pour deux fautes différentes : un
+      // raccourci inconnu (`resoudre`) et un widget collé dans une réponse de
+      // FAQ, qui ne sait pas les afficher (`rendreMarkdoc`, widgets.md §4.5).
+      reponseHtml: lierEmail(resoudre(rendreMarkdoc(node, source), contexte, source), email),
       ouvert: index === indexOuvert,
     };
   }),

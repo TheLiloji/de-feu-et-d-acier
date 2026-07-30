@@ -30,6 +30,7 @@
  * mente pas sur elles.
  */
 import Base from '../../layouts/Base.astro';
+import CorpsLibre from '../../components/corps/CorpsLibre.astro';
 import EncadreNumerisation from '../../components/sources/EncadreNumerisation.astro';
 import EnteteTraite from '../../components/sources/EnteteTraite.astro';
 import ExtraitTraite from '../../components/sources/ExtraitTraite.astro';
@@ -41,6 +42,7 @@ import Button from '../../components/ui/Button.astro';
 import TabBar from '../../components/ui/TabBar.astro';
 import { estNomIcone } from '../../components/ui/icones';
 import {
+  articlesDe,
   lireDisciplines,
   lireHero,
   lireIdentite,
@@ -48,10 +50,11 @@ import {
   profsDe,
   traitesTries,
 } from '../../lib/contenu';
+import { decouperCorps, texteDuCorps } from '../../lib/corps';
 import { getEcolePrincipale } from '../../lib/ecoles';
 import { lien, lienArme } from '../../lib/liens';
-import { corpsEnTexte, rendreCorps } from '../../lib/markdoc';
 import { contexteDe, resoudre } from '../../lib/raccourcis';
+import { indexRenvois } from '../../lib/renvois';
 import { typographieFr } from '../../lib/typographie';
 import {
   anneeCourte,
@@ -68,13 +71,16 @@ export async function getStaticPaths() {
 const { slug } = Astro.params;
 
 const ecole = await getEcolePrincipale();
-const [identite, hero, menus, disciplines, profs, traites] = await Promise.all([
+const [identite, hero, menus, disciplines, profs, traites, articles] = await Promise.all([
   lireIdentite(),
   lireHero(),
   lireMenus(),
   lireDisciplines(),
   profsDe(ecole),
   traitesTries(),
+  // Pour l'index des renvois seulement : la présentation d'un traité peut
+  // renvoyer vers n'importe quelle page du site, articles compris.
+  articlesDe(ecole),
 ]);
 
 const rang = traites.findIndex((t) => t.slug === slug);
@@ -123,16 +129,35 @@ const anneeBreve = typographieFr(anneeCourte(entree.annee));
 const armes = armesLiees(entree.armes, disciplines);
 const planches = resoudrePlanches(entree.planches);
 
-const presentation = resoudre(
-  rendreCorps(await entree.presentation()),
-  ctx,
-  `src/content/commun/traites/${slug}.mdoc — présentation`,
-);
+/*
+ * La présentation est un **corps libre** (widgets.md §0) : du texte, et des
+ * widgets posés au fil de la page. Le lecteur en renvoie l'arbre analysé ; le
+ * découpage et le rendu appartiennent à `CorpsLibre`. Le découpage est refait
+ * ici, à vide, pour savoir si la section a quelque chose à montrer — il est pur,
+ * et une section vide laisserait voir ses marges.
+ */
+const sourcePresentation = `src/content/commun/traites/${slug}.mdoc — présentation`;
+const presentation = await entree.presentation();
+const aDeLaPresentation = decouperCorps(presentation.node, sourcePresentation).length > 0;
+
+/**
+ * Les pages qu'un widget « Renvoi » peut viser depuis la présentation.
+ *
+ * L'index est bâti ici et passé en props : ni `CorpsLibre` ni `renvois.ts` ne
+ * lisent de contenu (multi-ecoles.md §6.6, invariants 3 et 4). Il est fourni
+ * même quand aucune fiche ne porte encore de renvoi — l'oublier ferait passer
+ * pour cassé le premier renvoi qu'un rédacteur poserait.
+ */
+const renvois = indexRenvois({ ecole, disciplines, traites, profs, articles });
 
 // Meta description : les premières lignes de la présentation, à défaut le champ
 // « Tradition ». Sans ce repli, `Base` publierait la description du site sur les
-// huit fiches à la fois.
-const description = corpsEnTexte(presentation) || tradition || undefined;
+// huit fiches à la fois. Seule la **prose** y entre : une description qui
+// commencerait par la légende d'une planche ne dirait pas de quoi la page parle.
+const description =
+  resoudre(texteDuCorps(presentation.node, 155, sourcePresentation), ctx, sourcePresentation) ||
+  tradition ||
+  undefined;
 
 // Barre d'onglets mobile : chrome global. Aucun onglet actif — la barre n'a pas
 // d'entrée « Sources » —, et l'exergue reste l'onglet des épées croisées.
@@ -187,10 +212,16 @@ const idTitre = 'traite-titre';
     />
 
     {
-      presentation && (
+      aDeLaPresentation && (
         <section class="presentation" aria-label="Présentation du traité">
           <div class="gouttiere">
-            <div class="presentation__prose" set:html={presentation} />
+            <CorpsLibre
+              node={presentation.node}
+              ecole={ecole}
+              ctx={ctx}
+              source={sourcePresentation}
+              renvois={renvois}
+            />
           </div>
         </section>
       )
@@ -258,63 +289,11 @@ const idTitre = 'traite-titre';
 <style>
   /* ── Présentation ────────────────────────────────────────────────────────── */
 
+  /* La présentation est rendue par `CorpsLibre`, qui porte sa mesure, sa
+     typographie et le rythme de ses blocs. Il ne reste ici que la respiration
+     avant la galerie des planches. */
   .presentation {
     padding-block-end: clamp(36px, 22.5px + 3.46vw, 72px);
-  }
-
-  /* Le contenu est injecté par `set:html` : il échappe au scope, d'où les
-     sélecteurs `:global()` sous une racine, elle, scopée. */
-  .presentation__prose {
-    max-width: 68ch;
-    font-size: clamp(14.5px, 13.571px + 0.2381vw, 17px);
-    line-height: 1.7;
-    color: var(--parch-soft);
-  }
-
-  .presentation__prose :global(p) {
-    margin: 0;
-  }
-
-  .presentation__prose :global(* + p),
-  .presentation__prose :global(* + ul),
-  .presentation__prose :global(* + ol) {
-    margin-top: 1.1em;
-  }
-
-  .presentation__prose :global(strong) {
-    font-weight: 600;
-    color: var(--parch);
-  }
-
-  .presentation__prose :global(em) {
-    font-style: italic;
-  }
-
-  .presentation__prose :global(a) {
-    color: var(--parch);
-    text-decoration: underline;
-    text-decoration-color: var(--ember);
-    text-underline-offset: 0.25em;
-    transition: color var(--transition);
-  }
-
-  .presentation__prose :global(a:hover),
-  .presentation__prose :global(a:focus-visible) {
-    color: var(--ember-hot);
-  }
-
-  .presentation__prose :global(ul),
-  .presentation__prose :global(ol) {
-    margin: 0;
-    padding-left: 1.2em;
-  }
-
-  .presentation__prose :global(li + li) {
-    margin-top: 0.35em;
-  }
-
-  .presentation__prose :global(li::marker) {
-    color: var(--ember);
   }
 
   /* ── Pied de fiche ───────────────────────────────────────────────────────── */

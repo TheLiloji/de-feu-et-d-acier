@@ -156,7 +156,11 @@ const rangees = await Promise.all(
         logo: resoudrePhoto(p.entry.logo),
         alt: typographieFr(p.entry.logoAlt) || `Logo ${nom}`,
         logoClair: Boolean(p.entry.logoClair),
-        html: resoudre(rendreMarkdoc(node), contexte, source),
+        // `source` est passé deux fois, et pour deux fautes différentes : un
+        // raccourci inconnu (`resoudre`) et un widget collé dans une
+        // présentation de partenaire, qui ne sait pas les afficher
+        // (`rendreMarkdoc`, widgets.md §4.5).
+        html: resoudre(rendreMarkdoc(node, source), contexte, source),
         href: lien(ecole, url),
         libelleLien: typographieFr(p.entry.lien?.libelle) || `Visiter ${nom}`,
         externe: estExterne(url),

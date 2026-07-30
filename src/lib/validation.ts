@@ -1,7 +1,7 @@
 /**
  * Garde-fous du build — ARCHITECTURE.md §7.
  *
- * Huit vérifications, huit échecs de build avec un message qui dit **quoi
+ * Neuf vérifications, neuf échecs de build avec un message qui dit **quoi
  * corriger et où** :
  *
  *   1. un raccourci inconnu dans un texte du CMS (`{tarrif}`, `{Email}`) ;
@@ -15,7 +15,11 @@
  *   7. la planche de « La rigueur », sur l'accueil, publiée sans sa ligne de
  *      crédit — même exigence que le n° 6, hors de la collection des traités ;
  *   8. une piste de sous-titres `.vtt` appelée par une adresse absolue, que le
- *      navigateur abandonnerait en silence (CORS).
+ *      navigateur abandonnerait en silence (CORS) ;
+ *   9. un widget de corps libre en défaut : renvoi vers une page inexistante ou
+ *      non publiée, image de galerie ou planche sans description, planche sans
+ *      crédit, widget inconnu, widget imbriqué dans une citation ou une liste,
+ *      bouton sans texte ou sans adresse.
  *
  * Pourquoi ici et pas dans un script `prebuild`
  * ---------------------------------------------
@@ -32,8 +36,22 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { ECOLES } from '../config/ecoles';
-import { annoncesDe, lireDisciplines, lireTraites, reader } from './contenu';
+import {
+  LIBELLES_WIDGETS,
+  NOMS_WIDGETS,
+  TYPES_RENVOI,
+  estNomWidget,
+  type TypeRenvoi,
+} from '../cms/widgets';
+import { ECOLES, ECOLE_PRINCIPALE, type EcoleConfig } from '../config/ecoles';
+import {
+  annoncesDe,
+  articlesDe,
+  lireDisciplines,
+  lireTraites,
+  profsDe,
+  reader,
+} from './contenu';
 import { EXTENSIONS_PHOTOS, resoudrePhoto } from './images';
 import { RACCOURCIS_CONNUS } from './raccourcis';
 
@@ -486,12 +504,450 @@ async function verifierPistesSousTitres(): Promise<string[]> {
   return problemes;
 }
 
+/**
+ * 9. Les corps libres : biographie, description longue, article, présentation.
+ *
+ * Quatre champs du CMS acceptent des **widgets** insérés dans le fil du texte
+ * (docs/refonte/widgets.md). Ils échappent à tous les contrôles précédents pour
+ * une raison mécanique : un corps Markdoc est une valeur **paresseuse** du
+ * lecteur, c'est-à-dire une fonction, et les parcours récursifs des n° 3, 5 et
+ * 8 sautent explicitement les fonctions pour ne pas déclencher une lecture de
+ * fichier à chaque nœud. Personne ne regardait donc l'intérieur des corps.
+ *
+ * L'enjeu n'est pas théorique : `Markdoc.transform` **supprime sans un mot** un
+ * tag qu'il ne connaît pas, et une carte de renvoi vers un article repassé en
+ * brouillon mènerait à une page qui n'existe plus. Une disparition silencieuse
+ * de contenu, ou un lien mort, sont exactement ce qu'un garde-fou doit rendre
+ * impossible.
+ *
+ * Ce contrôle relit donc les quatre champs, tag par tag, et refuse :
+ *
+ *   a. un renvoi vers un slug inexistant, ou vers une page non publiée ;
+ *   b. un renvoi dont la destination n'a pas été choisie ;
+ *   c. une photo de galerie sans description alternative ;
+ *   d. une planche sans description, ou sans sa ligne de crédit ;
+ *   e. un widget dont le nom n'existe pas ;
+ *   f. un widget imbriqué dans une citation, une liste ou un paragraphe ;
+ *   g. une image de widget dans un format que le build ne sait pas traiter ;
+ *   h. une piste de sous-titres de widget vidéo en adresse absolue ;
+ *   i. un bouton sans texte ou sans adresse.
+ *
+ * Les points c, d, g et h reprennent **mot pour mot** les messages des
+ * contrôles n° 3, 5, 6 et 8 : c'est la même faute, elle se corrige de la même
+ * façon, elle doit se lire pareil.
+ */
+
+/** Nœud d'AST Markdoc, réduit à ce que le contrôle a besoin de connaître. */
+interface NoeudMarkdoc {
+  type?: string;
+  tag?: string;
+  attributes?: Record<string, unknown>;
+  children?: NoeudMarkdoc[];
+}
+
+/** Un corps libre à relire : où il vit, et comment l'admin l'appelle. */
+interface ChampDeCorps {
+  /** Clé de collection Keystatic (`disciplines`, `profs_clermont`…). */
+  collection: string;
+  /** Nom du champ markdoc dans le schéma. */
+  champ: string;
+  /** Libellé français du champ, tel qu'il s'affiche dans l'admin. */
+  libelle: string;
+  /** Dossier des fichiers de la collection, pour nommer le fichier fautif. */
+  dossier: string;
+  /**
+   * École dont dépendent les renvois « encadrant » et « article ». Les contenus
+   * communs (armes, traités) n'en ont pas : ils visent l'école principale, comme
+   * le schéma du widget (cf. `CIBLES_COMMUNES` dans keystatic.config.ts).
+   */
+  ecole: EcoleConfig;
+}
+
+function champsDeCorps(): ChampDeCorps[] {
+  const champs: ChampDeCorps[] = [
+    {
+      collection: 'disciplines',
+      champ: 'description',
+      libelle: 'Description longue (fiche arme)',
+      dossier: 'src/content/commun/disciplines',
+      ecole: ECOLE_PRINCIPALE,
+    },
+    {
+      collection: 'traites',
+      champ: 'presentation',
+      libelle: 'Présentation',
+      dossier: 'src/content/commun/traites',
+      ecole: ECOLE_PRINCIPALE,
+    },
+  ];
+
+  for (const ecole of ECOLES) {
+    champs.push(
+      {
+        collection: `profs_${ecole.slug}`,
+        champ: 'bio',
+        libelle: 'Biographie',
+        dossier: `src/content/ecoles/${ecole.slug}/profs`,
+        ecole,
+      },
+      {
+        collection: `articles_${ecole.slug}`,
+        champ: 'corps',
+        libelle: 'Contenu',
+        dossier: `src/content/ecoles/${ecole.slug}/articles`,
+        ecole,
+      },
+    );
+  }
+
+  return champs;
+}
+
+/** Ce qu'un renvoi peut viser, et ce qui a réellement une page sur le site. */
+interface CiblesDeRenvoi {
+  /** Les slugs qui ont une page publique, par type. */
+  publiees: Record<TypeRenvoi, Set<string>>;
+  /** Tous les slugs saisis, publiés ou non : de quoi distinguer les deux fautes. */
+  connus: Record<TypeRenvoi, Set<string>>;
+}
+
+/**
+ * Comment nommer chaque type de cible dans un message : « un traité », « les
+ * traités ». Écrire « la fiche de type traite » à un encadrant serait absurde.
+ */
+const NOMS_CIBLE: Record<TypeRenvoi, { singulier: string; pluriel: string }> = {
+  arme: { singulier: 'une arme', pluriel: 'les armes' },
+  traite: { singulier: 'un traité', pluriel: 'les traités' },
+  encadrant: { singulier: 'un encadrant', pluriel: 'les encadrants' },
+  article: { singulier: 'un article', pluriel: 'les articles' },
+};
+
+/** Ce qu'il faut faire pour qu'une cible saisie mais masquée retrouve sa page. */
+const REMEDE_MASQUE: Record<TypeRenvoi, string> = {
+  arme: 'Sa case « Affichée dans la grille des armes » est décochée : sans carte, pas de fiche.',
+  // Toutes les fiches de traité ont une page : la branche ne peut pas se
+  // produire aujourd'hui, mais le jour où un champ « visible » apparaît sur la
+  // collection, c'est ici que la phrase se corrige.
+  traite: 'La fiche de traité existe mais n’est pas servie sur le site.',
+  encadrant: 'Sa case « Affiché sur le site » est décochée : un encadrant masqué n’a pas de fiche.',
+  article: 'Il est encore en brouillon, et un brouillon n’a pas d’adresse.',
+};
+
+async function ciblesDeRenvoi(ecole: EcoleConfig): Promise<CiblesDeRenvoi> {
+  const [disciplines, traites, profs, articles] = await Promise.all([
+    lireDisciplines(),
+    lireTraites(),
+    profsDe(ecole),
+    articlesDe(ecole),
+  ]);
+
+  return {
+    connus: {
+      arme: new Set(disciplines.map((d) => d.slug)),
+      traite: new Set(traites.map((t) => t.slug)),
+      encadrant: new Set(profs.map((p) => p.slug)),
+      article: new Set(articles.map((a) => a.slug)),
+    },
+    publiees: {
+      arme: new Set(disciplines.filter((d) => d.entry.affichee).map((d) => d.slug)),
+      traite: new Set(traites.map((t) => t.slug)),
+      encadrant: new Set(profs.filter((p) => p.entry.visible).map((p) => p.slug)),
+      article: new Set(articles.filter((a) => a.entry.statut === 'publie').map((a) => a.slug)),
+    },
+  };
+}
+
+/** « 1ᵉʳ bloc du texte », « 4ᵉ bloc du texte » — ce que le rédacteur compte à l'œil. */
+function rangDuBloc(index: number): string {
+  return `${index + 1}${index === 0 ? 'ᵉʳ' : 'ᵉ'} bloc du texte`;
+}
+
+/** Les slugs d'un type, triés, pour une liste d'erreur stable d'un build à l'autre. */
+const listeSlugs = (slugs: Set<string>): string =>
+  slugs.size === 0 ? '(aucun)' : [...slugs].sort((a, b) => a.localeCompare(b, 'fr')).join(', ');
+
+/** Une chaîne d'attribut, débarrassée de ses espaces. Vide si l'attribut manque. */
+const texteAttribut = (valeur: unknown): string =>
+  typeof valeur === 'string' ? valeur.trim() : '';
+
+function verifierCorps(
+  node: unknown,
+  ou: string,
+  cibles: CiblesDeRenvoi,
+  racineProjet: string,
+): string[] {
+  const enfants = (node as NoeudMarkdoc | null)?.children ?? [];
+  const problemes: string[] = [];
+
+  enfants.forEach((enfant, i) => {
+    const bloc = `${ou} › ${rangDuBloc(i)}`;
+    if (enfant?.type === 'tag') {
+      problemes.push(...verifierWidget(enfant, bloc, cibles, racineProjet));
+    } else {
+      problemes.push(...verifierWidgetsImbriques(enfant, bloc));
+    }
+  });
+
+  return problemes;
+}
+
+/**
+ * 9f. Un widget posé ailleurs qu'au premier niveau du texte.
+ *
+ * L'éditeur le permet techniquement : le nœud d'un widget appartient au groupe
+ * `block`, et une citation comme une puce acceptent `block+`. Le rendu, lui, ne
+ * sait pas traiter ce cas — un carrousel dans une puce n'a d'ailleurs pas de
+ * sens. Mieux vaut le dire au build que le laisser disparaître.
+ */
+function verifierWidgetsImbriques(noeud: NoeudMarkdoc | undefined, ou: string): string[] {
+  if (!noeud || typeof noeud !== 'object') return [];
+
+  const problemes: string[] = [];
+  for (const enfant of noeud.children ?? []) {
+    if (enfant?.type === 'tag') {
+      const nom = String(enfant.tag ?? '');
+      const libelle = estNomWidget(nom) ? LIBELLES_WIDGETS[nom] : nom;
+      problemes.push(
+        `Widget mal placé — ${ou}\n` +
+          `    Le widget « ${libelle} » est imbriqué dans un autre bloc (citation, liste, paragraphe).\n` +
+          '    Un widget se pose seul, entre deux paragraphes : le site ne sait pas l’afficher ailleurs.\n' +
+          '    Le sortir de son bloc — le sélectionner, Ctrl+X, puis Ctrl+V sur une ligne vide.',
+      );
+      continue;
+    }
+    problemes.push(...verifierWidgetsImbriques(enfant, ou));
+  }
+  return problemes;
+}
+
+function verifierWidget(
+  noeud: NoeudMarkdoc,
+  ou: string,
+  cibles: CiblesDeRenvoi,
+  racineProjet: string,
+): string[] {
+  const nom = String(noeud.tag ?? '');
+  const attributs = noeud.attributes ?? {};
+
+  // 9e. Un tag que ni l'éditeur ni le rendu ne connaissent. `Markdoc.transform`
+  // le supprimerait sans un mot : c'est le pire résultat possible.
+  if (!estNomWidget(nom)) {
+    return [
+      `Widget inconnu « ${nom} » — ${ou}\n` +
+        `    Widgets disponibles : ${NOMS_WIDGETS.join(', ')}.\n` +
+        '    Ce bloc ne s’afficherait pas du tout sur le site. Le supprimer depuis l’admin, ou\n' +
+        '    corriger son nom dans le fichier.',
+    ];
+  }
+
+  switch (nom) {
+    case 'galerie':
+      return verifierWidgetGalerie(attributs, ou, racineProjet);
+    case 'planche':
+      return verifierWidgetPlanche(attributs, ou, racineProjet);
+    case 'renvoi':
+      return verifierWidgetRenvoi(attributs, ou, cibles);
+    case 'bouton':
+      return verifierWidgetBouton(attributs, ou);
+    case 'video':
+      return verifierWidgetVideo(attributs, ou, racineProjet);
+    default:
+      // « Questions-réponses » : l'éditeur exige déjà une question par bloc, et
+      // rien de ce qu'il porte ne peut mettre le site en défaut.
+      return [];
+  }
+}
+
+/** 9c et 9g — une galerie de photos du club. */
+function verifierWidgetGalerie(
+  attributs: Record<string, unknown>,
+  ou: string,
+  racineProjet: string,
+): string[] {
+  const photos = Array.isArray(attributs.photos) ? attributs.photos : [];
+  const problemes: string[] = [];
+
+  photos.forEach((brute, i) => {
+    const photo = (brute ?? {}) as Record<string, unknown>;
+    const oup = `${ou} › photo n° ${i + 1}`;
+    const fichier = texteAttribut(photo.image);
+
+    if (!texteAttribut(photo.description)) {
+      problemes.push(
+        `Image sans description alternative — ${oup}\n` +
+          `    Fichier : ${fichier || '(aucun)'}\n` +
+          '    Remplir « Description de l’image » dans l’admin : elle est lue par les lecteurs d’écran.',
+      );
+    }
+
+    if (fichier) problemes.push(...verifierFormat(fichier, oup, racineProjet));
+  });
+
+  return problemes;
+}
+
+/** 9d et 9g — une planche de bibliothèque posée dans le fil du texte. */
+function verifierWidgetPlanche(
+  attributs: Record<string, unknown>,
+  ou: string,
+  racineProjet: string,
+): string[] {
+  const problemes: string[] = [];
+  const fichier = texteAttribut(attributs.image);
+
+  if (!texteAttribut(attributs.alt)) {
+    problemes.push(
+      `Planche sans description alternative — ${ou}\n` +
+        `    Fichier : ${fichier || '(aucun)'}\n` +
+        '    Remplir « Description de l’image » dans l’admin : elle est lue par les lecteurs d’écran.',
+    );
+  }
+
+  if (!texteAttribut(attributs.credit)) {
+    problemes.push(
+      `Planche sans crédit — ${ou}\n` +
+        `    Fichier : ${fichier || '(aucun)'}\n` +
+        '    Recopier la ligne de crédit exigée par la bibliothèque, sans la modifier. Sans elle,\n' +
+        '    la publication de cette planche n’est pas en règle.',
+    );
+  }
+
+  if (fichier) problemes.push(...verifierFormat(fichier, ou, racineProjet));
+
+  return problemes;
+}
+
+/** 9a et 9b — la carte de circulation vers une autre page du site. */
+function verifierWidgetRenvoi(
+  attributs: Record<string, unknown>,
+  ou: string,
+  cibles: CiblesDeRenvoi,
+): string[] {
+  const cible = (attributs.cible ?? {}) as { discriminant?: unknown; value?: unknown };
+  const type = texteAttribut(cible.discriminant);
+  const slug = texteAttribut(cible.value);
+  const types = TYPES_RENVOI as readonly string[];
+
+  if (!types.includes(type)) {
+    return [
+      `Renvoi de type inconnu « ${type || '(vide)'} » — ${ou}\n` +
+        `    Types disponibles : ${types.join(', ')}.\n` +
+        '    Rouvrir le widget « Renvoi vers une page du site » et choisir un type dans la liste.',
+    ];
+  }
+
+  const typeRenvoi = type as TypeRenvoi;
+  const quoi = NOMS_CIBLE[typeRenvoi];
+
+  // 9b. Le type est choisi, la page ne l'est pas : Keystatic n'écrit alors pas
+  // de `value` du tout. La carte n'aurait ni titre, ni image, ni destination.
+  if (!slug) {
+    return [
+      `Renvoi sans destination — ${ou}\n` +
+        `    La carte annonce un renvoi vers ${quoi.singulier}, mais aucune page n’est choisie.\n` +
+        `    Pages disponibles : ${listeSlugs(cibles.publiees[typeRenvoi])}.\n` +
+        '    Choisir une page dans la liste déroulante du widget, ou supprimer le widget.',
+    ];
+  }
+
+  // 9a, premier cas : le slug n'existe nulle part. Fiche renommée, supprimée,
+  // ou adresse saisie à la main.
+  if (!cibles.connus[typeRenvoi].has(slug)) {
+    return [
+      `Renvoi cassé — ${ou}\n` +
+        `    La carte pointe vers « ${slug} », qui n’existe pas parmi ${quoi.pluriel}.\n` +
+        `    Pages disponibles : ${listeSlugs(cibles.publiees[typeRenvoi])}.\n` +
+        '    Rouvrir le widget et choisir la page dans la liste déroulante.',
+    ];
+  }
+
+  // 9a, second cas : la fiche existe, mais elle n'est pas publiée. Le lien
+  // mènerait à une page absente du site.
+  if (!cibles.publiees[typeRenvoi].has(slug)) {
+    return [
+      `Renvoi vers une page non publiée — ${ou}\n` +
+        `    La carte pointe vers « ${slug} », qui n’a pas de page sur le site.\n` +
+        `    ${REMEDE_MASQUE[typeRenvoi]}\n` +
+        `    Publier la fiche visée, renvoyer vers une autre page, ou supprimer le widget.\n` +
+        `    Pages publiées : ${listeSlugs(cibles.publiees[typeRenvoi])}.`,
+    ];
+  }
+
+  return [];
+}
+
+/** 9i — un bouton doit mener quelque part, et dire où. */
+function verifierWidgetBouton(attributs: Record<string, unknown>, ou: string): string[] {
+  const libelle = texteAttribut(attributs.libelle);
+  const url = texteAttribut(attributs.url);
+  if (libelle && url) return [];
+
+  return [
+    `Bouton incomplet — ${ou}\n` +
+      `    Texte : ${libelle || '(vide)'} · Adresse : ${url || '(vide)'}\n` +
+      '    Un bouton sans texte ou sans adresse ne mène nulle part. Remplir les deux champs, ou\n' +
+      '    supprimer le widget.',
+  ];
+}
+
+/** 9g et 9h — une vidéo posée dans le fil du texte. */
+function verifierWidgetVideo(
+  attributs: Record<string, unknown>,
+  ou: string,
+  racineProjet: string,
+): string[] {
+  const problemes = verifierSousTitres(attributs, ou);
+  const vignette = texteAttribut(attributs.vignette);
+  if (vignette) problemes.push(...verifierFormat(vignette, ou, racineProjet));
+  return problemes;
+}
+
+async function verifierCorpsLibres(racineProjet: string): Promise<string[]> {
+  const problemes: string[] = [];
+  const parEcole = new Map<string, CiblesDeRenvoi>();
+
+  const collections = reader.collections as unknown as Record<
+    string,
+    { all: () => Promise<{ slug: string; entry: Record<string, unknown> }[]> }
+  >;
+
+  for (const champ of champsDeCorps()) {
+    const collection = collections[champ.collection];
+    if (!collection) continue;
+
+    let cibles = parEcole.get(champ.ecole.slug);
+    if (!cibles) {
+      cibles = await ciblesDeRenvoi(champ.ecole);
+      parEcole.set(champ.ecole.slug, cibles);
+    }
+
+    for (const { slug, entry } of await collection.all()) {
+      // Le corps est une valeur paresseuse : une fonction qu'il faut appeler
+      // pour obtenir `{ node }`, l'AST Markdoc brut (cf. widgets.md §1.4).
+      const lire = entry[champ.champ];
+      if (typeof lire !== 'function') continue;
+
+      const contenu = (await (lire as () => Promise<{ node: unknown } | null>)()) ?? null;
+      problemes.push(
+        ...verifierCorps(
+          contenu?.node,
+          `${champ.dossier}/${slug}.mdoc › ${champ.libelle}`,
+          cibles,
+          racineProjet,
+        ),
+      );
+    }
+  }
+
+  return problemes;
+}
+
 // ── Point d'entrée ─────────────────────────────────────────────────────────
 
 let enCours: Promise<void> | null = null;
 
 /**
- * Lance les huit contrôles. Lève une erreur unique listant tout ce qui cloche.
+ * Lance les neuf contrôles. Lève une erreur unique listant tout ce qui cloche.
  *
  * @param aujourdhui Date de référence (`AAAA-MM-JJ`), pour les tests.
  */
@@ -507,6 +963,7 @@ export function validerContenu(aujourdhui = new Date().toISOString().slice(0, 10
       ...(await verifierTraites(racineProjet)),
       ...(await verifierPlancheRigueur()),
       ...(await verifierPistesSousTitres()),
+      ...(await verifierCorpsLibres(racineProjet)),
     ];
 
     if (problemes.length === 0) return;

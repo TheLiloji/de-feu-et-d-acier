@@ -1,0 +1,602 @@
+---
+/**
+ * Corps libre — la prose et les widgets, dans l'ordre où le rédacteur les a
+ * posés.
+ *
+ * C'est l'aiguilleur des quatre champs à composition libre (widgets.md §0) : la
+ * biographie d'un encadrant, la description longue d'une arme, le contenu d'un
+ * article et la présentation d'un traité. Il remplace les trois parcours d'AST
+ * qui existaient en parallèle (`ArmeCorps.astro`, `actualites/[slug].astro` et
+ * `rendreMarkdoc()` pour les fiches prof et traité).
+ *
+ * Deux moitiés :
+ *
+ *   1. **la prose** — les runs passent par `Markdoc.transform`, qui échappe le
+ *      texte et ne rend que les nœuds qu'il connaît, puis par `resoudre()`, qui
+ *      résout les raccourcis et compose la typographie française. Le nœud
+ *      `image` est le seul surchargé : il fait passer chaque image du corps par
+ *      `astro:assets` (dérivé WebP plafonné à 1280 px, `width`/`height` posés),
+ *      ce que le renderer générique ne sait pas faire ;
+ *   2. **les widgets** — chacun est rendu par un composant du site. Aucun
+ *      langage visuel nouveau : `GalerieCorps` reprend le bloc « Photos » d'une
+ *      actualité, `VideoCard` et `ProfInterview` sont ceux des fiches,
+ *      `RenvoiCorps` est une `MediaCard`, `PlancheCorps` une rangée de
+ *      `GaleriePlanches`, `BoutonCorps` un `Button`.
+ *
+ * ⚠️ **Rien ne disparaît en silence.** `Markdoc.transform` supprime les tags
+ * qu'il ne connaît pas sans un mot (widgets.md §1.5) : le découpage
+ * (`src/lib/corps.ts`) refuse donc tout widget inconnu ou mal placé, et un
+ * renvoi cassé casse le build (`src/lib/renvois.ts`). Le silence est la seule
+ * chose qu'on ne s'autorise pas.
+ *
+ * Invariant tenu : le composant ne lit aucun contenu. L'école, le contexte de
+ * raccourcis et l'index des renvois lui sont passés en props
+ * (multi-ecoles.md §6.6, invariants 3 et 4).
+ */
+import { getImage } from 'astro:assets';
+import Markdoc, { type Config, type Node as NoeudMarkdoc } from '@markdoc/markdoc';
+import ProfInterview from '../fiches/ProfInterview.astro';
+import VideoCard from '../ui/VideoCard.astro';
+import BoutonCorps from './BoutonCorps.astro';
+import GalerieCorps from './GalerieCorps.astro';
+import PlancheCorps from './PlancheCorps.astro';
+import RenvoiCorps from './RenvoiCorps.astro';
+import type { EcoleConfig } from '../../config/ecoles';
+import {
+  decouperCorps,
+  lireBouton,
+  lireGalerie,
+  lirePlanche,
+  lireQuestions,
+  lireRenvoi,
+  lireVideo,
+} from '../../lib/corps';
+import { cadrageCss, creditAffiche, resoudrePhoto } from '../../lib/images';
+import { estExterne, lien } from '../../lib/liens';
+import { resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
+import { resoudreRenvoi, type CibleRenvoi } from '../../lib/renvois';
+import { typographieFr } from '../../lib/typographie';
+
+export interface Props {
+  /** Nœud renvoyé par le lecteur : `(await entree.corps()).node`. */
+  node: unknown;
+  /** École servie par la page — résout les adresses du widget « Bouton ». */
+  ecole: EcoleConfig;
+  /** Contexte des raccourcis de la page (`contexteDe(...)`). */
+  ctx: ContexteRaccourcis;
+  /** Chemin du fichier et nom du champ, cités dans tous les messages d'erreur. */
+  source: string;
+  /**
+   * Index des cibles de renvoi, bâti par la page (`indexRenvois(...)`).
+   *
+   * Obligatoire, même sur un gabarit qui n'a pas encore de widget « Renvoi » :
+   * l'index se construit d'un `Promise.all` de plus, et l'oublier ferait passer
+   * pour cassé le premier renvoi qu'un rédacteur poserait.
+   */
+  renvois: readonly CibleRenvoi[];
+  /** Préfixe des `id` de visionneuse. Défaut : `corps`. */
+  prefixeId?: string;
+  class?: string;
+}
+
+const { node, ecole, ctx, source, renvois, prefixeId = 'corps', class: classe } = Astro.props;
+
+const blocs = decouperCorps(node, source);
+
+// ── 1. Les images de la prose ───────────────────────────────────────────────
+//
+// Elles sont collectées avant tout rendu : `getImage` est asynchrone, et la
+// fonction de transformation d'un nœud Markdoc, elle, ne l'est pas.
+
+interface NoeudLu {
+  type?: string;
+  attributes?: Record<string, unknown> | null;
+  children?: readonly NoeudLu[] | null;
+}
+
+function collecterImages(noeuds: readonly unknown[], dans: Set<string>): void {
+  for (const brut of noeuds) {
+    if (!brut || typeof brut !== 'object') continue;
+    const noeud = brut as NoeudLu;
+    if (noeud.type === 'image') {
+      const chemin = noeud.attributes?.src;
+      if (typeof chemin === 'string' && chemin) dans.add(chemin);
+    }
+    if (Array.isArray(noeud.children)) collecterImages(noeud.children, dans);
+  }
+}
+
+const cheminsImages = new Set<string>();
+for (const bloc of blocs) {
+  if (bloc.type === 'prose') collecterImages(bloc.noeuds, cheminsImages);
+}
+
+interface ImageOptimisee {
+  src: string;
+  largeur: number;
+  hauteur: number;
+}
+
+const imagesOptimisees = new Map<string, ImageOptimisee>();
+for (const chemin of cheminsImages) {
+  const meta = resoudrePhoto(chemin);
+  // Fichier absent du dépôt : l'image est omise du rendu plutôt que de casser
+  // la page — même politique que `resoudrePhotos()`.
+  if (!meta) continue;
+  const largeur = Math.min(meta.width, 1280);
+  const hauteur = Math.round((meta.height * largeur) / meta.width);
+  const optimisee = await getImage({ src: meta, width: largeur, height: hauteur, format: 'webp' });
+  imagesOptimisees.set(chemin, { src: optimisee.src, largeur, hauteur });
+}
+
+/** Un lien qui fait quitter le site — `mailto:` et `tel:` n'ouvrent pas d'onglet. */
+const lienSortant = (href: string) => estExterne(href) && !/^(mailto|tel):/i.test(href);
+
+/**
+ * Configuration de rendu de la prose.
+ *
+ * Deux nœuds seulement sont surchargés, et pour deux raisons différentes :
+ *
+ *   - `image`, pour passer par `astro:assets` (widgets.md §4.3) ;
+ *   - `link`, pour conserver le comportement des deux parcours d'AST que ce
+ *     composant remplace : un lien sortant s'ouvre dans un nouvel onglet, avec
+ *     `rel="noopener noreferrer"`. Sans cette surcharge, la reprise du rendu par
+ *     `Markdoc.transform` serait une régression silencieuse.
+ */
+const config: Config = {
+  nodes: {
+    image: {
+      ...Markdoc.nodes.image,
+      transform(noeud: NoeudMarkdoc, cfg: Config) {
+        const attributs = noeud.transformAttributes(cfg);
+        const optimisee = imagesOptimisees.get(String(noeud.attributes?.src ?? ''));
+        if (!optimisee) return null;
+        return new Markdoc.Tag('img', {
+          ...attributs,
+          src: optimisee.src,
+          width: optimisee.largeur,
+          height: optimisee.hauteur,
+          loading: 'lazy',
+          decoding: 'async',
+        });
+      },
+    },
+    link: {
+      ...Markdoc.nodes.link,
+      transform(noeud: NoeudMarkdoc, cfg: Config) {
+        const attributs = noeud.transformAttributes(cfg);
+        const enfants = noeud.transformChildren(cfg);
+        const href = String(noeud.attributes?.href ?? '');
+        return new Markdoc.Tag(
+          'a',
+          lienSortant(href)
+            ? { ...attributs, target: '_blank', rel: 'noopener noreferrer' }
+            : attributs,
+          enfants,
+        );
+      },
+    },
+  },
+};
+
+const rendreProse = (noeuds: readonly unknown[]): string => {
+  const rendu = Markdoc.transform(noeuds as NoeudMarkdoc[], config);
+  return resoudre(Markdoc.renderers.html(rendu), ctx, source);
+};
+
+// ── 2. Les blocs, prêts à rendre ────────────────────────────────────────────
+
+interface PhotoRendue {
+  source: ImageMetadata;
+  alt: string;
+  legende: string;
+  credit: string;
+  objectPosition: string;
+}
+
+type Element =
+  | { kind: 'prose'; html: string }
+  | { kind: 'galerie'; id: string; mode: 'grille' | 'carrousel'; photos: PhotoRendue[] }
+  | {
+      kind: 'video';
+      titre: string;
+      url: string;
+      duree: string;
+      image: ImageMetadata | null;
+      affiche: string;
+      sousTitres: string;
+    }
+  | {
+      kind: 'questions';
+      titre: string;
+      idTitre: string;
+      entretien: { question: string; reponse: string }[];
+    }
+  | { kind: 'renvoi'; cible: CibleRenvoi; libelle: string }
+  | {
+      kind: 'bouton';
+      libelle: string;
+      href: string;
+      variante: 'pleine' | 'contour';
+      externe: boolean;
+    }
+  | {
+      kind: 'planche';
+      id: string;
+      source: ImageMetadata;
+      alt: string;
+      legende: string;
+      credit: string;
+    };
+
+const elements: Element[] = [];
+
+for (const bloc of blocs) {
+  if (bloc.type === 'prose') {
+    const html = rendreProse(bloc.noeuds).trim();
+    if (html) elements.push({ kind: 'prose', html });
+    continue;
+  }
+
+  const { attributs, rang } = bloc;
+
+  switch (bloc.nom) {
+    case 'galerie': {
+      const widget = lireGalerie(attributs);
+      // Une photo dont le fichier n'a pas (encore) été déposé est écartée ; une
+      // galerie qui se retrouve vide n'est pas rendue.
+      const photos = widget.photos.flatMap((photo) => {
+        const image = resoudrePhoto(photo.image);
+        if (!image) return [];
+        return [
+          {
+            source: image,
+            // L'`alt` reste brut, comme tous les `alt` du site ; la légende de
+            // la visionneuse, elle, est composée.
+            alt: photo.description,
+            legende: typographieFr(photo.description),
+            credit: creditAffiche(photo.credit),
+            objectPosition: cadrageCss(photo.cadrage),
+          },
+        ];
+      });
+      if (photos.length > 0) {
+        elements.push({
+          kind: 'galerie',
+          id: `${prefixeId}-galerie-${rang}`,
+          mode: widget.mode,
+          photos,
+        });
+      }
+      break;
+    }
+
+    case 'video': {
+      const widget = lireVideo(attributs);
+      const image = resoudrePhoto(widget.vignette);
+      // Ni adresse ni vignette : le bloc est en cours de saisie, il ne rend rien
+      // (c'est déjà le comportement de `VideoCard`).
+      if (!widget.url && !image) break;
+      elements.push({
+        kind: 'video',
+        titre: resoudre(widget.titre, ctx, source),
+        url: widget.url,
+        duree: widget.duree,
+        image,
+        affiche: widget.affiche,
+        sousTitres: widget.sousTitres,
+      });
+      break;
+    }
+
+    case 'questions': {
+      const widget = lireQuestions(attributs);
+      const entretien = widget.questions
+        .filter((qr) => qr.question.trim().length > 0)
+        .map((qr) => ({
+          question: resoudre(qr.question, ctx, source),
+          reponse: resoudre(qr.reponse, ctx, source),
+        }));
+      if (entretien.length === 0) break;
+      elements.push({
+        kind: 'questions',
+        titre: resoudre(widget.titre, ctx, source) || 'L’interview',
+        idTitre: `${prefixeId}-questions-${rang}`,
+        entretien,
+      });
+      break;
+    }
+
+    case 'renvoi': {
+      const widget = lireRenvoi(attributs);
+      elements.push({
+        kind: 'renvoi',
+        cible: resoudreRenvoi(renvois, widget, source, rang),
+        libelle: resoudre(widget.libelle, ctx, source),
+      });
+      break;
+    }
+
+    case 'bouton': {
+      const widget = lireBouton(attributs);
+      const href = lien(ecole, widget.url);
+      if (!widget.libelle || !href) break;
+      elements.push({
+        kind: 'bouton',
+        libelle: resoudre(widget.libelle, ctx, source),
+        href,
+        variante: widget.variante,
+        externe: lienSortant(href),
+      });
+      break;
+    }
+
+    case 'planche': {
+      const widget = lirePlanche(attributs);
+      const image = resoudrePhoto(widget.image);
+      if (!image) break;
+      elements.push({
+        kind: 'planche',
+        id: `${prefixeId}-planche-${rang}`,
+        source: image,
+        alt: widget.alt,
+        legende: typographieFr(widget.legende),
+        // Verbatim : ni « © », ni composition typographique (ARCHITECTURE.md §6).
+        credit: widget.credit.trim(),
+      });
+      break;
+    }
+  }
+}
+---
+
+{
+  elements.length > 0 && (
+    <div class:list={['corps-libre', classe]}>
+      {elements.map((element) => (
+        <Fragment>
+          {element.kind === 'prose' && (
+            <div class="corps-libre__prose" set:html={element.html} />
+          )}
+
+          {element.kind === 'galerie' && (
+            <div class="corps-libre__bloc">
+              <GalerieCorps photos={element.photos} mode={element.mode} id={element.id} />
+            </div>
+          )}
+
+          {element.kind === 'video' && (
+            <div class="corps-libre__bloc">
+              <VideoCard
+                url={element.url}
+                image={element.image}
+                affiche={element.affiche}
+                alt={element.titre}
+                sousTitres={element.sousTitres}
+                duree={element.duree}
+                titre={element.titre}
+                taille="l"
+                ratio="16 / 9"
+                rayon={3}
+                sizes="(min-width: 820px) 58ch, 92vw"
+                rendMax={760}
+              />
+            </div>
+          )}
+
+          {element.kind === 'questions' && (
+            <div class="corps-libre__questions">
+              <ProfInterview
+                entretien={element.entretien}
+                titre={element.titre}
+                idTitre={element.idTitre}
+                niveauTitre="h2"
+              />
+            </div>
+          )}
+
+          {element.kind === 'renvoi' && (
+            <RenvoiCorps cible={element.cible} libelle={element.libelle} />
+          )}
+
+          {element.kind === 'bouton' && (
+            <BoutonCorps
+              libelle={element.libelle}
+              href={element.href}
+              variante={element.variante}
+              externe={element.externe}
+            />
+          )}
+
+          {element.kind === 'planche' && (
+            <div class="corps-libre__bloc">
+              <PlancheCorps
+                source={element.source}
+                alt={element.alt}
+                legende={element.legende}
+                credit={element.credit}
+                id={element.id}
+              />
+            </div>
+          )}
+        </Fragment>
+      ))}
+    </div>
+  )
+}
+
+<style>
+  /*
+   * Le rythme vertical est porté par le `gap` du conteneur, et par lui seul :
+   * un widget n'a pas à connaître ses voisins, et deux marges qui s'additionnent
+   * (celle d'un paragraphe et celle d'un bloc) ne se lisent plus.
+   */
+  .corps-libre {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(28px, 17.6px + 2.67vw, 56px);
+  }
+
+  /*
+   * Deux mesures, et deux seulement : la prose se lit à ~80 signes par ligne
+   * (58ch en Inter), les blocs média respirent un peu plus large. `ch` est la
+   * largeur du zéro, pas celle d'un signe courant — 58ch ≈ 80 signes.
+   */
+  .corps-libre__prose {
+    max-width: 58ch;
+    font-size: clamp(15px, 14.257px + 0.1905vw, 17px);
+    line-height: var(--lh-body);
+    color: var(--parch-soft);
+  }
+
+  .corps-libre__bloc {
+    width: 100%;
+    max-width: 72ch;
+  }
+
+  /*
+   * `ProfInterview` est un bloc de page : il porte sa propre gouttière et son
+   * propre rythme vertical. Dans un corps, la gouttière est déjà posée par la
+   * page — d'où `--gouttiere: 0px`, qui neutralise le `padding-inline` de
+   * `.gouttiere` par héritage plutôt que par une surcharge de spécificité.
+   *
+   * ⚠️ À ne poser que sur ce bloc : une `Visionneuse` (galerie, planche) est un
+   * dialogue plein écran qui, lui, a besoin de la vraie valeur.
+   */
+  .corps-libre__questions {
+    --gouttiere: 0px;
+    width: 100%;
+    max-width: 72ch;
+  }
+
+  .corps-libre__questions :global(section) {
+    padding-block: 0;
+  }
+
+  /* ── La prose ───────────────────────────────────────────────────────────── */
+  /* Elle est injectée par `set:html` : ses nœuds n'ont pas l'attribut de portée,
+     d'où `:global()` sur chaque descendant, sous une racine, elle, scopée. */
+
+  .corps-libre__prose :global(h2),
+  .corps-libre__prose :global(h3),
+  .corps-libre__prose :global(h4) {
+    margin-block: clamp(34px, 22.114px + 3.0476vw, 66px) clamp(10px, 8.514px + 0.381vw, 14px);
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--parch);
+    text-wrap: balance;
+  }
+
+  .corps-libre__prose :global(h2) {
+    font-size: var(--fs-display-m);
+  }
+
+  .corps-libre__prose :global(h3) {
+    font-size: var(--fs-display-s);
+  }
+
+  .corps-libre__prose :global(h4) {
+    font-size: clamp(17px, 15.143px + 0.4762vw, 22px);
+  }
+
+  .corps-libre__prose :global(:is(h2, h3, h4):first-child) {
+    margin-block-start: 0;
+  }
+
+  .corps-libre__prose :global(p) {
+    margin-block: 0 1.15em;
+  }
+
+  .corps-libre__prose :global(ul),
+  .corps-libre__prose :global(ol) {
+    margin-block: 0 1.15em;
+    padding-inline-start: 1.4em;
+  }
+
+  .corps-libre__prose :global(li) {
+    margin-block-end: 0.45em;
+  }
+
+  .corps-libre__prose :global(li > p) {
+    margin-block-end: 0.35em;
+  }
+
+  .corps-libre__prose :global(li::marker) {
+    color: var(--ember);
+  }
+
+  .corps-libre__prose :global(strong) {
+    font-weight: 600;
+    color: var(--parch);
+  }
+
+  .corps-libre__prose :global(em) {
+    font-style: italic;
+  }
+
+  .corps-libre__prose :global(a) {
+    color: var(--parch);
+    text-decoration: underline;
+    text-decoration-color: var(--ember);
+    text-underline-offset: 0.25em;
+    transition: color var(--transition);
+  }
+
+  .corps-libre__prose :global(a:hover),
+  .corps-libre__prose :global(a:focus-visible) {
+    color: var(--ember-hot);
+    text-decoration-color: var(--ember-hot);
+  }
+
+  .corps-libre__prose :global(blockquote) {
+    margin: clamp(26px, 17.086px + 2.2857vw, 50px) 0;
+    padding-inline-start: clamp(18px, 13.543px + 1.1429vw, 30px);
+    border-inline-start: 2px solid var(--ember);
+    font-family: var(--font-display);
+    font-size: clamp(19px, 16.4px + 0.6667vw, 26px);
+    font-style: italic;
+    line-height: 1.35;
+    color: var(--parch);
+  }
+
+  .corps-libre__prose :global(blockquote p) {
+    margin-block-end: 0.4em;
+  }
+
+  .corps-libre__prose :global(blockquote p:last-child) {
+    margin-block-end: 0;
+  }
+
+  .corps-libre__prose :global(hr) {
+    margin-block: clamp(34px, 22.114px + 3.0476vw, 66px);
+    border: 0;
+    border-top: var(--filet);
+  }
+
+  .corps-libre__prose :global(img) {
+    width: 100%;
+    height: auto;
+    margin-block: clamp(24px, 16.571px + 1.9048vw, 44px);
+    border-radius: var(--radius-2);
+  }
+
+  .corps-libre__prose :global(code) {
+    font-size: 0.92em;
+    color: var(--parch);
+  }
+
+  .corps-libre__prose :global(pre) {
+    margin-block: 1.15em;
+    padding: clamp(14px, 11.029px + 0.7619vw, 22px);
+    overflow-x: auto;
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    background: var(--surface-1);
+  }
+
+  /* La dernière marge d'un run ne s'ajoute pas au `gap` du conteneur. */
+  .corps-libre__prose > :global(:last-child) {
+    margin-block-end: 0;
+  }
+</style>

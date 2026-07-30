@@ -33,6 +33,12 @@
  * Son `sizes` (`720px`) n'est pas la bascule du gabarit mais la largeur de
  * fenêtre à partir de laquelle la colonne dépasse les 640 px de la vignette,
  * en une comme en deux colonnes.
+ *
+ * **La biographie a quitté le hero** (widgets.md §7.14). Elle est devenue un
+ * corps libre : le rédacteur y insère des galeries, des vidéos, des renvois vers
+ * d'autres pages. Un corps qui porte tout cela n'a plus sa place dans une
+ * colonne de hero — il est rendu par la page, sous ce bloc. Ne restent ici que
+ * le portrait, l'identité, la vidéo de la fiche et le crédit du portrait.
  */
 import { Picture } from 'astro:assets';
 import Button from '../ui/Button.astro';
@@ -64,8 +70,6 @@ export interface Props {
   armes?: string;
   /** Accroche d'une ligne. */
   accroche?: string;
-  /** Biographie, déjà convertie en HTML depuis Markdoc. */
-  bio?: string;
   portrait?: ImageMetadata | null;
   portraitAlt?: string;
   /** `object-position` issu du cadrage CMS (`cadrageCss()`). */
@@ -92,7 +96,6 @@ const {
   nom,
   armes,
   accroche,
-  bio,
   portrait = null,
   portraitAlt,
   portraitPosition = '50% 20%',
@@ -113,6 +116,12 @@ const alt = portraitAlt || `Portrait de ${nom}`;
 const aLienExterne = Boolean(lienExterne?.url);
 const libelleLienExterne = lienExterne?.libelle?.trim() || 'Profil HEMA Ratings';
 const aVideo = Boolean(video?.url || video?.vignette);
+/*
+ * Le filet ne se pose que s'il sépare deux choses. Depuis que la biographie est
+ * sortie du hero, une fiche sans vidéo ni crédit de portrait n'a plus rien sous
+ * l'accroche : le filet y flotterait seul au milieu de la colonne.
+ */
+const aDuCorps = aVideo || Boolean(credit);
 ---
 
 <div
@@ -167,9 +176,7 @@ const aVideo = Boolean(video?.url || video?.vignette);
   </div>
 
   <div class="prof-hero__corps">
-    <span class="prof-hero__filet" aria-hidden="true"></span>
-
-    {bio && <div class="prof-hero__bio" set:html={bio} />}
+    {aDuCorps && <span class="prof-hero__filet" aria-hidden="true"></span>}
 
     {
       aVideo && (
@@ -328,55 +335,13 @@ const aVideo = Boolean(video?.url || video?.vignette);
 
   /* ── Le corps ───────────────────────────────────────────────────────────── */
 
-  /* Le filet de 56 px entre l'accroche et la bio n'existe qu'en desktop : en
-     mobile la bio est déjà détachée par le changement de fond. */
+  /* Le filet de 56 px sous l'accroche n'existe qu'en desktop : en mobile, ce
+     qui le suit est déjà détaché par le changement de fond. */
   .prof-hero__filet {
     display: none;
     width: 56px;
     height: 1px;
     background: var(--parch-line);
-  }
-
-  .prof-hero__bio {
-    max-width: 640px;
-    font-size: clamp(14.5px, 13.571px + 0.2381vw, 17px);
-    line-height: var(--lh-body);
-    color: var(--parch-soft);
-  }
-
-  .prof-hero__bio :global(p) {
-    margin: 0;
-  }
-
-  .prof-hero__bio :global(p + p),
-  .prof-hero__bio :global(ul),
-  .prof-hero__bio :global(ol) {
-    margin-block-start: 0.9em;
-  }
-
-  .prof-hero__bio :global(ul),
-  .prof-hero__bio :global(ol) {
-    padding-inline-start: 1.3em;
-  }
-
-  .prof-hero__bio :global(li + li) {
-    margin-block-start: 0.35em;
-  }
-
-  .prof-hero__bio :global(strong) {
-    font-weight: 600;
-    color: var(--parch);
-  }
-
-  .prof-hero__bio :global(a) {
-    color: var(--parch);
-    text-decoration: underline;
-    text-decoration-color: var(--ember);
-    transition: color var(--transition);
-  }
-
-  .prof-hero__bio :global(a:hover) {
-    color: var(--ember-hot);
   }
 
   .prof-hero__video {

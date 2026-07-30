@@ -2,10 +2,22 @@
 /**
  * Fiche d'un encadrant — `/profs/<slug>/`, gabarit de design-spec §6.
  *
- * Quatre blocs, dans l'ordre de la maquette : fil d'Ariane, hero (portrait +
- * identité + biographie + vidéo), interview, bande d'appel. Les blocs vidéo et
- * interview sont masqués tant qu'ils sont vides (ARCHITECTURE.md §1) — c'est le
- * cas des trois fiches aujourd'hui, et la page reste complète sans eux.
+ * Cinq blocs, dans l'ordre : fil d'Ariane, hero (portrait + identité + vidéo),
+ * biographie, interview, bande d'appel. Les blocs vidéo et interview sont
+ * masqués tant qu'ils sont vides (ARCHITECTURE.md §1), et la page reste
+ * complète sans eux.
+ *
+ * **La biographie a quitté le hero** (widgets.md §7.14) : c'est un corps libre,
+ * où le rédacteur insère galeries, vidéos, questions-réponses et renvois vers
+ * d'autres pages du site. Un corps qui porte tout cela n'a plus sa place dans
+ * une colonne de hero — il est devenu une section à part entière, sous le hero
+ * et avant l'interview.
+ *
+ * Le corps se lit **dans le corps de la page**, jamais dans `getStaticPaths` :
+ * un nœud Markdoc est une instance d'`Ast.Node` dont `Markdoc.transform` appelle
+ * les méthodes, et le faire voyager comme donnée de route est fragile
+ * (widgets.md §6.4). C'est déjà ce que font la fiche arme, l'article et la fiche
+ * de traité.
  *
  * Les pages sont générées depuis les encadrants **affichés** de l'école : une
  * fiche décochée dans l'admin (« Affiché sur le site ») disparaît de la grille
@@ -19,11 +31,11 @@
  * et allumer « ACCUEIL » le serait tout autant puisqu'on n'y est pas.
  */
 import type { GetStaticPaths, InferGetStaticPropsType } from 'astro';
+import CorpsLibre from '../../components/corps/CorpsLibre.astro';
 import ProfCta from '../../components/fiches/ProfCta.astro';
 import ProfFilAriane from '../../components/fiches/ProfFilAriane.astro';
 import ProfHero from '../../components/fiches/ProfHero.astro';
 import ProfInterview from '../../components/fiches/ProfInterview.astro';
-import { corpsEnTexte, rendreCorps } from '../../lib/markdoc';
 import { libelleArmes, prenomDe, profsAffiches } from '../../components/fiches/prof';
 import Footer from '../../components/sections/Footer.astro';
 import Nav from '../../components/sections/Nav.astro';
@@ -31,6 +43,7 @@ import TabBar from '../../components/ui/TabBar.astro';
 import type { NomIcone } from '../../components/ui/icones';
 import Base from '../../layouts/Base.astro';
 import {
+  articlesDe,
   lireDisciplines,
   lireEntetes,
   lireFiches,
@@ -38,12 +51,15 @@ import {
   lireIdentite,
   lireMenus,
   profsDe,
+  traitesTries,
 } from '../../lib/contenu';
+import { decouperCorps, texteDuCorps } from '../../lib/corps';
 import { getEcolePrincipale } from '../../lib/ecoles';
 import { cadrageCss, creditAffiche, resoudrePhoto } from '../../lib/images';
 import { typographieFr } from '../../lib/typographie';
 import { lien } from '../../lib/liens';
 import { contexteDe, resoudre } from '../../lib/raccourcis';
+import { indexRenvois } from '../../lib/renvois';
 
 /** Forme d'un onglet de `TabBar` — recopiée pour ne pas typer depuis un .astro. */
 interface OngletBarre {
@@ -91,15 +107,6 @@ export const getStaticPaths = (async () => {
         { prof: prenom, arme: libelleArmes(entree.armes, disciplines) || undefined },
       );
 
-      // Le corps Markdoc est converti ici, au build : les props d'une route
-      // statique doivent rester des données, jamais des fonctions du Reader.
-      // Les raccourcis y sont résolus comme dans n'importe quel autre champ :
-      // la biographie et une réponse de FAQ partagent le même type de champ,
-      // un rédacteur ne peut pas deviner que « {tarif} » ne marcherait ici qu'à
-      // moitié (ARCHITECTURE.md §7).
-      const lireBio = entree.bio as unknown as () => Promise<{ node: unknown }>;
-      const bio = resoudre(rendreCorps(await lireBio()), ctx, `${source} — biographie`);
-
       const accroche = resoudre(entree.accroche, ctx, `${source} — accroche`);
 
       const entretien = (entree.interview ?? []).map((qr, i) => ({
@@ -118,13 +125,17 @@ export const getStaticPaths = (async () => {
           ctaEntete: hero.boutonPrincipal,
           onglets,
           slug: prof.slug,
+          // Le contexte des raccourcis est un objet de chaînes : il voyage sans
+          // risque, et la biographie — lue plus bas, dans le corps de la page —
+          // doit résoudre « {tarif} » comme n'importe quel autre champ du CMS
+          // (ARCHITECTURE.md §7).
+          ctx,
           // Le nom ne transite pas par `resoudre()` : c'est un slug de
           // collection. Sa typographie se pose ici (H1, fil d'Ariane, <title>).
           nom: typographieFr(entree.nom),
           prenom,
           armes: libelleArmes(entree.armes, disciplines),
           accroche,
-          bio,
           portrait: resoudrePhoto(entree.portrait?.fichier),
           portraitAlt: entree.portrait?.alt ?? '',
           portraitPosition: cadrageCss(entree.portrait?.cadrage),
@@ -172,10 +183,11 @@ const {
   menus,
   ctaEntete,
   onglets,
+  slug,
+  ctx,
   nom,
   armes,
   accroche,
-  bio,
   portrait,
   portraitAlt,
   portraitPosition,
@@ -188,11 +200,43 @@ const {
   cta,
 } = Astro.props as Props;
 
+// ── La biographie et les pages qu'elle peut viser ───────────────────────────
+//
+// Quatre lectures, toutes mémoïsées par le Reader (`readItem` est enveloppé
+// dans `cache()`) : les encadrants pour retrouver la fiche servie, et les trois
+// autres collections pour l'index des renvois. Un corps libre peut pointer vers
+// n'importe quelle page du site.
+
+const [disciplines, profs, traites, articles] = await Promise.all([
+  lireDisciplines(),
+  profsDe(ecole),
+  traitesTries(),
+  articlesDe(ecole),
+]);
+
+const prof = profs.find((p) => p.slug === slug);
+if (!prof) {
+  throw new Error(
+    `Fiche encadrant introuvable pour « /profs/${slug}/ ».\n` +
+      `Les fiches vivent dans src/content/ecoles/${ecole.slug}/profs/.`,
+  );
+}
+
+const sourceBio = `src/content/ecoles/${ecole.slug}/profs/${slug}.mdoc — biographie`;
+const lireBio = prof.entry.bio as unknown as () => Promise<{ node: unknown }>;
+const bio = await lireBio();
+// Le découpage est pur : le refaire ici ne coûte qu'un parcours d'arbre, et
+// c'est la seule façon de savoir si la section a quelque chose à montrer.
+const aDeLaBio = decouperCorps(bio.node, sourceBio).length > 0;
+
+const renvois = indexRenvois({ ecole, disciplines, traites, profs, articles });
+
 // Meta description. L'accroche seule ne suffit pas : elle fait 24 à 40 signes
 // (« Armes courtes & bouclier »), ce qu'un moteur remplace par un extrait de
-// son cru. On la complète donc par le début de la biographie, bornée à la
-// longueur utile.
-const description = [accroche, corpsEnTexte(bio)]
+// son cru. On la complète donc par le début de la biographie — sa **prose**
+// seule : une description qui commencerait par le titre d'une vidéo ou la
+// légende d'une planche ne dirait pas de qui la page parle.
+const description = [accroche, resoudre(texteDuCorps(bio.node, 200, sourceBio), ctx, sourceBio)]
   .map((morceau) => morceau.trim())
   .filter(Boolean)
   .join(' — ')
@@ -220,7 +264,6 @@ const description = [accroche, corpsEnTexte(bio)]
         nom={nom}
         armes={armes}
         accroche={accroche}
-        bio={bio}
         portrait={portrait}
         portraitAlt={portraitAlt}
         portraitPosition={portraitPosition}
@@ -232,6 +275,22 @@ const description = [accroche, corpsEnTexte(bio)]
         idTitre="fiche-prof-titre"
       />
     </div>
+
+    {
+      aDeLaBio && (
+        <section class="fiche-prof__bio" aria-label={`Biographie de ${nom}`}>
+          <div class="gouttiere">
+            <CorpsLibre
+              node={bio.node}
+              ecole={ecole}
+              ctx={ctx}
+              source={sourceBio}
+              renvois={renvois}
+            />
+          </div>
+        </section>
+      )
+    }
 
     <ProfInterview entretien={entretien} />
 
@@ -261,18 +320,27 @@ const description = [accroche, corpsEnTexte(bio)]
    * Les 26 px du bas sont ceux du bloc `Bio` de la maquette : ils étaient en
    * fait fournis par `ProfInterview`, masqué tant qu'aucune question n'est
    * saisie — le filet haut de la bande CTA atterrissait alors sur les jambages
-   * de la dernière ligne de la bio. On les pose ici, où ils ne dépendent de
-   * rien.
+   * de la dernière ligne du bloc précédent. On les pose ici, où ils ne dépendent
+   * de rien.
    *
-   * Desktop : 72 px sous le fil d'Ariane, 88 px avant l'interview (§6.3).
+   * Desktop : 72 px sous le fil d'Ariane, 88 px avant le bloc suivant (§6.3).
+   *
+   * La biographie porte **le même bas de bloc**, et rien d'autre : les deux
+   * sections se suivent au même rythme, et retirer l'une ne change pas
+   * l'espacement de l'autre.
    */
-  .fiche-prof__hero {
+  .fiche-prof__hero,
+  .fiche-prof__bio {
     padding-block: 0 26px;
   }
 
   @media (min-width: 1000px) {
     .fiche-prof__hero {
       padding-block: clamp(40px, 1rem + 3vw, 72px) clamp(48px, 1rem + 3.6vw, 88px);
+    }
+
+    .fiche-prof__bio {
+      padding-block: 0 clamp(48px, 1rem + 3.6vw, 88px);
     }
   }
 </style>

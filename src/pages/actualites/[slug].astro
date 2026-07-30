@@ -22,11 +22,16 @@
  * est écrit dans le dépôt dès l'enregistrement, et le dépôt est public. Un
  * brouillon est « pas encore publié », pas « secret ».
  *
- * ⚠️ Rendu Markdoc — voir la note « MARKDOC » plus bas : le dépôt n'a pas
- * encore de composant de texte riche partagé, celui-ci est local à la page.
+ * Le corps est un **corps libre** (widgets.md §0) : du texte, et des widgets
+ * insérés où le rédacteur veut. Il est rendu par `CorpsLibre`, qui a remplacé le
+ * parcours d'arbre Markdoc écrit ici quand le dépôt n'avait pas de rendu
+ * partagé. Les blocs « Photos » et « Liens utiles » de bas de page, eux, restent
+ * des **champs de la fiche**, à place fixe : le widget « Galerie de photos »
+ * sert à intercaler des photos *dans* le fil du texte.
  */
-import { getImage, Picture } from 'astro:assets';
+import { Picture } from 'astro:assets';
 import Base from '../../layouts/Base.astro';
+import CorpsLibre from '../../components/corps/CorpsLibre.astro';
 import Footer from '../../components/sections/Footer.astro';
 import FilArianeSources from '../../components/sources/FilArianeSources.astro';
 import Nav from '../../components/sections/Nav.astro';
@@ -42,13 +47,16 @@ import {
   lireIdentite,
   lireMenus,
   profsDe,
+  traitesTries,
   type Article,
 } from '../../lib/contenu';
 import { getEcolePrincipale } from '../../lib/ecoles';
+import { decouperCorps } from '../../lib/corps';
 import { cadrageCss, creditAffiche, largeursSrcset, resoudrePhoto } from '../../lib/images';
 import { typographieFr } from '../../lib/typographie';
 import { estExterne, lien, lienArticle, lienProf } from '../../lib/liens';
-import { contexteDe, resoudre } from '../../lib/raccourcis';
+import { contexteDe } from '../../lib/raccourcis';
+import { indexRenvois, libelleCategorie } from '../../lib/renvois';
 
 /**
  * Une URL par article publié. Aucune route n'est créée pour les brouillons.
@@ -68,13 +76,16 @@ export async function getStaticPaths() {
 const { slug } = Astro.params;
 
 const ecole = await getEcolePrincipale();
-const [identite, hero, menus, articles, profs, disciplines] = await Promise.all([
+const [identite, hero, menus, articles, profs, disciplines, traites] = await Promise.all([
   lireIdentite(),
   lireHero(),
   lireMenus(),
   articlesDe(ecole),
   profsDe(ecole),
   lireDisciplines(),
+  // Pour l'index des renvois seulement : un corps libre peut renvoyer vers
+  // n'importe quelle page du site, traités compris.
+  traitesTries(),
 ]);
 
 // Contexte des raccourcis : le corps d'un article est un champ de texte riche
@@ -122,14 +133,11 @@ const plusAncien = rang < chronologie.length - 1 ? chronologie[rang + 1] : null;
 
 // ── Habillage ───────────────────────────────────────────────────────────────
 
-/** Libellés des catégories du CMS (`keystatic.config.ts`, collection articles). */
-const CATEGORIES: Record<string, string> = {
-  'vie-du-club': 'Vie du club',
-  tournoi: 'Tournoi',
-  stage: 'Stage',
-  sources: 'Sources & technique',
-  materiel: 'Matériel',
-};
+/*
+ * Les libellés de catégorie vivent dans `src/lib/renvois.ts` : une carte de
+ * renvoi vers un article les affiche en sur-titre, et deux tables parallèles
+ * auraient fini par diverger.
+ */
 
 const FORMAT_DATE = new Intl.DateTimeFormat('fr-FR', {
   day: 'numeric',
@@ -147,7 +155,7 @@ const dateLisible = (iso?: string | null) =>
 const largeurs = (image: ImageMetadata, souhaitees: number[]) =>
   largeursSrcset(image, { largeurs: souhaitees });
 
-const categorie = CATEGORIES[entree.categorie ?? ''] ?? '';
+const categorie = libelleCategorie(entree.categorie);
 const date = dateLisible(entree.date);
 // Titre, chapô et signature sont des champs libres du CMS : sans raccourcis,
 // donc sans passage par `resoudre()`. Leur typographie se pose ici — c'est le
@@ -192,131 +200,28 @@ const liensUtiles = (entree.liens ?? []).filter((l) => l?.libelle && l?.url);
 const estSortant = (url: string) =>
   estExterne(url) && !url.startsWith('mailto:') && !url.startsWith('tel:');
 
-// ── MARKDOC ─────────────────────────────────────────────────────────────────
+// ── Le corps ────────────────────────────────────────────────────────────────
 //
 // Le Reader Keystatic rend le corps sous sa forme *analysée* : un arbre Markdoc
-// (`{ node }`), pas du HTML. Il faut donc le parcourir.
-//
-// Ni `@markdoc/markdoc` ni le `DocumentRenderer` de Keystatic ne sont utilisés :
-// le premier n'est pas une dépendance déclarée du projet (il n'arrive
-// qu'indirectement, via `@keystatic/core`), le second est un composant React —
-// or React ne sert QUE l'admin, jamais le site public (ARCHITECTURE.md §2).
-// Ce petit parcours couvre exactement ce que le champ « Contenu » autorise
-// (`corpsRiche` de keystatic.config.ts) : titres h2/h3, gras, italique, liens,
-// citations, listes ordonnées ou non, filets, images.
-//
-// ⚠️ Note d'intégration : les fiches prof (`bio`), les fiches arme
-// (`description`) et les réponses de FAQ emploient le même type de champ. Le
-// jour où deux gabarits en ont besoin, ces trente lignes ont vocation à devenir
-// un `src/components/ui/TexteRiche.astro`. Elles sont volontairement écrites
-// sans dépendance à cette page pour rendre l'extraction triviale.
-
-interface NoeudMarkdoc {
-  type?: string;
-  attributes?: Record<string, unknown> | null;
-  children?: readonly NoeudMarkdoc[] | null;
-}
-
-const echapper = (texte: string) =>
-  texte
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-
-/** Toutes les images citées dans le corps, pour les faire passer par sharp. */
-function collecterImages(noeud: NoeudMarkdoc, dans: Set<string>): void {
-  if (noeud.type === 'image') {
-    const source = noeud.attributes?.src;
-    if (typeof source === 'string' && source) dans.add(source);
-  }
-  for (const enfant of noeud.children ?? []) collecterImages(enfant, dans);
-}
+// (`{ node }`), pas du HTML. Il est découpé et rendu par `CorpsLibre` — prose et
+// widgets, dans l'ordre où le rédacteur les a posés (widgets.md §4). Les trente
+// lignes de parcours d'arbre qui vivaient ici ont fondu dedans : c'était le plus
+// complet des trois parcours du dépôt (images passées par `astro:assets`), et
+// c'est lui qui a servi de référence.
 
 const contenu = await entree.corps();
-const racine = contenu.node as unknown as NoeudMarkdoc;
+const sourceCorps = `src/content/ecoles/${ecole.slug}/articles/${slug}.mdoc — corps`;
+const aDuCorps = decouperCorps(contenu.node, sourceCorps).length > 0;
 
-const sources = new Set<string>();
-collecterImages(racine, sources);
-
-const imagesDuCorps = new Map<string, { src: string; largeur: number; hauteur: number }>();
-for (const source of sources) {
-  const meta = resoudrePhoto(source);
-  if (!meta) continue; // fichier absent : l'image est simplement omise du rendu
-  const largeur = Math.min(meta.width, 1280);
-  const hauteur = Math.round((meta.height * largeur) / meta.width);
-  const optimisee = await getImage({ src: meta, width: largeur, height: hauteur, format: 'webp' });
-  imagesDuCorps.set(source, { src: optimisee.src, largeur, hauteur });
-}
-
-function rendreMarkdoc(noeud: NoeudMarkdoc): string {
-  const attributs = noeud.attributes ?? {};
-  const enfants = () => (noeud.children ?? []).map(rendreMarkdoc).join('');
-
-  switch (noeud.type) {
-    case 'text':
-      return echapper(String(attributs.content ?? ''));
-    case 'code':
-      return `<code>${echapper(String(attributs.content ?? ''))}</code>`;
-    case 'fence':
-      return `<pre><code>${echapper(String(attributs.content ?? ''))}</code></pre>`;
-    case 'heading': {
-      // L'admin n'autorise que h2 et h3 ; on borne quand même, un h1 de corps
-      // entrerait en concurrence avec le titre de l'article.
-      const niveau = Math.min(Math.max(Number(attributs.level) || 2, 2), 4);
-      return `<h${niveau}>${enfants()}</h${niveau}>`;
-    }
-    case 'paragraph':
-      return `<p>${enfants()}</p>`;
-    case 'blockquote':
-      return `<blockquote>${enfants()}</blockquote>`;
-    case 'list':
-      return attributs.ordered ? `<ol>${enfants()}</ol>` : `<ul>${enfants()}</ul>`;
-    case 'item':
-      return `<li>${enfants()}</li>`;
-    case 'strong':
-      return `<strong>${enfants()}</strong>`;
-    case 'em':
-      return `<em>${enfants()}</em>`;
-    case 's':
-      return `<s>${enfants()}</s>`;
-    case 'hr':
-      return '<hr />';
-    case 'hardbreak':
-      return '<br />';
-    case 'softbreak':
-      return ' ';
-    case 'link': {
-      const href = String(attributs.href ?? '');
-      if (!href) return enfants();
-      const sortant = estSortant(href);
-      const titre =
-        typeof attributs.title === 'string' && attributs.title
-          ? ` title="${echapper(attributs.title)}"`
-          : '';
-      const cible = sortant ? ' target="_blank" rel="noopener noreferrer"' : '';
-      return `<a href="${echapper(href)}"${titre}${cible}>${enfants()}</a>`;
-    }
-    case 'image': {
-      const resolue = imagesDuCorps.get(String(attributs.src ?? ''));
-      if (!resolue) return '';
-      const alt = echapper(String(attributs.alt ?? ''));
-      return (
-        `<img src="${echapper(resolue.src)}" alt="${alt}" ` +
-        `width="${resolue.largeur}" height="${resolue.hauteur}" loading="lazy" decoding="async" />`
-      );
-    }
-    // `document`, `inline`, et tout nœud inconnu : on rend les enfants.
-    default:
-      return enfants();
-  }
-}
-
-const corpsHtml = resoudre(
-  rendreMarkdoc(racine),
-  ctx,
-  `src/content/ecoles/${ecole.slug}/articles/${slug}.mdoc — corps`,
-);
+/**
+ * Les pages qu'un widget « Renvoi » peut viser depuis le corps de l'article.
+ *
+ * L'index est bâti ici et passé en props : ni `CorpsLibre` ni `renvois.ts` ne
+ * lisent de contenu (multi-ecoles.md §6.6, invariants 3 et 4). Il est fourni
+ * même quand aucun article ne porte encore de renvoi — l'oublier ferait passer
+ * pour cassé le premier renvoi qu'un rédacteur poserait.
+ */
+const renvois = indexRenvois({ ecole, disciplines, traites, profs, articles });
 
 const nbPhotos =
   galerie.length === 1 ? '1 photo' : galerie.length > 1 ? `${galerie.length} photos` : '';
@@ -405,9 +310,21 @@ const nbPhotos =
       )
     }
 
-    <div class="gouttiere">
-      <div class="corps" set:html={corpsHtml} />
-    </div>
+    {
+      aDuCorps && (
+        <div class="gouttiere">
+          <div class="corps">
+            <CorpsLibre
+              node={contenu.node}
+              ecole={ecole}
+              ctx={ctx}
+              source={sourceCorps}
+              renvois={renvois}
+            />
+          </div>
+        </div>
+      )
+    }
 
     {
       galerie.length > 0 && (
@@ -659,137 +576,12 @@ const nbPhotos =
 
   /* ── Corps de l'article ──────────────────────────────────────────────────── */
 
-  /* Mesure : `ch` est la largeur du zéro, pas celle d'un signe courant — en
-     Inter à 17 px, 1ch ≈ 10,9 px pour ~7,7 px de signe moyen. Les 72ch d'origine
-     valaient donc ~100 signes par ligne. 58ch ramène à ~80 signes et place le
-     corps juste en deçà du chapô (56ch en `--fs-body-lede`), ce qui remet la
-     tête et le corps dans la même colonne de lecture. */
+  /* Le corps est rendu par `CorpsLibre`, qui porte sa mesure (58ch), sa
+     typographie et le rythme de ses blocs. Il ne reste ici que la respiration
+     de la section : la borner en largeur écraserait aussi les widgets, plus
+     larges que la prose à dessein. */
   .corps {
-    max-width: 58ch;
     padding-block: clamp(34px, 19.886px + 3.619vw, 72px);
-    font-size: clamp(15px, 14.257px + 0.1905vw, 17px);
-    line-height: var(--lh-body);
-    color: var(--parch-soft);
-  }
-
-  /* Le corps est injecté par `set:html` : ses nœuds n'ont pas l'attribut de
-     portée, d'où `:global()` sur chaque descendant. */
-  .corps :global(h2),
-  .corps :global(h3),
-  .corps :global(h4) {
-    margin-block: clamp(34px, 22.114px + 3.0476vw, 66px) clamp(10px, 8.514px + 0.381vw, 14px);
-    font-family: var(--font-display);
-    font-weight: 400;
-    line-height: 1.1;
-    color: var(--parch);
-    text-wrap: balance;
-  }
-
-  .corps :global(h2) {
-    font-size: var(--fs-display-m);
-  }
-
-  .corps :global(h3) {
-    font-size: var(--fs-display-s);
-  }
-
-  .corps :global(h4) {
-    font-size: clamp(17px, 15.143px + 0.4762vw, 22px);
-  }
-
-  .corps :global(:is(h2, h3, h4):first-child) {
-    margin-block-start: 0;
-  }
-
-  .corps :global(p) {
-    margin-block: 0 1.15em;
-  }
-
-  .corps :global(ul),
-  .corps :global(ol) {
-    margin-block: 0 1.15em;
-    padding-inline-start: 1.4em;
-  }
-
-  .corps :global(li) {
-    margin-block-end: 0.45em;
-  }
-
-  .corps :global(li > p) {
-    margin-block-end: 0.35em;
-  }
-
-  .corps :global(li::marker) {
-    color: var(--ember);
-  }
-
-  .corps :global(strong) {
-    font-weight: 600;
-    color: var(--parch);
-  }
-
-  .corps :global(em) {
-    font-style: italic;
-  }
-
-  .corps :global(a) {
-    color: var(--parch);
-    text-decoration: underline;
-    text-decoration-color: var(--ember);
-    text-underline-offset: 0.25em;
-    transition: color var(--transition);
-  }
-
-  .corps :global(a:hover),
-  .corps :global(a:focus-visible) {
-    color: var(--ember-hot);
-    text-decoration-color: var(--ember-hot);
-  }
-
-  .corps :global(blockquote) {
-    margin: clamp(26px, 17.086px + 2.2857vw, 50px) 0;
-    padding-inline-start: clamp(18px, 13.543px + 1.1429vw, 30px);
-    border-inline-start: 2px solid var(--ember);
-    font-family: var(--font-display);
-    font-size: clamp(19px, 16.4px + 0.6667vw, 26px);
-    font-style: italic;
-    line-height: 1.35;
-    color: var(--parch);
-  }
-
-  .corps :global(blockquote p) {
-    margin-block-end: 0.4em;
-  }
-
-  .corps :global(blockquote p:last-child) {
-    margin-block-end: 0;
-  }
-
-  .corps :global(hr) {
-    margin-block: clamp(34px, 22.114px + 3.0476vw, 66px);
-    border: 0;
-    border-top: var(--filet);
-  }
-
-  .corps :global(img) {
-    width: 100%;
-    height: auto;
-    margin-block: clamp(24px, 16.571px + 1.9048vw, 44px);
-    border-radius: var(--radius-2);
-  }
-
-  .corps :global(code) {
-    font-size: 0.92em;
-    color: var(--parch);
-  }
-
-  .corps :global(pre) {
-    margin-block: 1.15em;
-    padding: clamp(14px, 11.029px + 0.7619vw, 22px);
-    overflow-x: auto;
-    border: var(--filet);
-    border-radius: var(--radius-2);
-    background: var(--surface-1);
   }
 
   /* ── Blocs « Photos » / « Liens utiles » (tête du Mini-cours, §5.3) ──────── */

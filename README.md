@@ -113,7 +113,11 @@ fautif, si :
    sans adresse, extrait cité sans sa source, arme rattachée hors catalogue ;
 7. la planche de « La rigueur », sur l'accueil, est publiée sans sa ligne de crédit ;
 8. une piste de sous-titres `.vtt` est appelée par une adresse absolue — le
-   navigateur l'abandonnerait en silence (CORS).
+   navigateur l'abandonnerait en silence (CORS) ;
+9. un bloc inséré dans un corps de page est en défaut : renvoi vers une page
+   inexistante ou non publiée, photo de galerie ou planche sans description,
+   planche sans crédit, bloc inconnu, bloc imbriqué dans une citation ou une
+   liste, bouton sans texte ou sans adresse.
 
 Le code est dans `src/lib/validation.ts`, appelé une fois par `src/layouts/Base.astro` ;
 son en-tête reste la référence si cette liste vient à dater.

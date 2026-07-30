@@ -1,0 +1,50 @@
+---
+/**
+ * Widget « Bouton » — un appel à l'action posé dans un corps de texte.
+ *
+ * Rien de neuf : c'est le `Button` du site, dans une enveloppe qui porte les
+ * marges de bloc et la règle mobile de la maquette (design-spec §9.5, un bouton
+ * occupe toute la largeur sous 620 px). L'adresse est résolue par l'appelant
+ * (`lien(ecole, url)`), pour que ce composant n'ait connaissance ni de l'école
+ * ni du contenu.
+ */
+import Button from '../ui/Button.astro';
+
+export interface Props {
+  /** Libellé saisi dans l'admin, déjà passé par `resoudre()`. */
+  libelle: string;
+  /** Adresse déjà résolue dans l'école : `/sources/`, `#creneaux`, `https://…`. */
+  href: string;
+  variante?: 'pleine' | 'contour';
+  /** Lien sortant : nouvel onglet et flèche oblique. */
+  externe?: boolean;
+  class?: string;
+}
+
+const { libelle, href, variante = 'contour', externe = false, class: classe } = Astro.props;
+---
+
+{
+  libelle && href && (
+    <div class:list={['bouton-corps', classe]}>
+      <Button variante={variante} libelle={libelle} href={href} externe={externe} />
+    </div>
+  )
+}
+
+<style>
+  .bouton-corps {
+    display: flex;
+  }
+
+  /* Sous 620 px, un bouton d'action tient toute la largeur : c'est la règle de
+     la maquette, et c'est aussi la seule cible tactile confortable. Le `Button`
+     rend un `<a>` : on l'étire depuis ici plutôt qu'en lui passant
+     `pleineLargeur`, qui vaudrait aussi en desktop. */
+  @media (max-width: 619px) {
+    .bouton-corps :global(.bouton) {
+      display: flex;
+      width: 100%;
+    }
+  }
+</style>
