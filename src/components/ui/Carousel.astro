@@ -466,7 +466,9 @@ const style = [
     place-items: center;
     width: 24px;
     height: 24px;
-    margin: -8.5px -3.5px -10.5px;
+    /* Composante horizontale à 0 : les cibles de 24 px se touchent sans se
+       chevaucher (WCAG 2.5.8 — les 3 points d'accessibilité de l'accueil). */
+    margin: -8.5px 0 -10.5px;
     padding: 0;
     border: 0;
     background: none;

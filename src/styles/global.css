@@ -11,9 +11,9 @@
 /* Display : Cormorant Garamond, roman + italique (77 nœuds en italique dans la
    maquette). Corps : Inter. $body et $eyebrow pointent vers la même famille :
    une seule police de labeur est chargée. */
-@import '@fontsource-variable/cormorant-garamond/index.css';
-@import '@fontsource-variable/cormorant-garamond/wght-italic.css';
-@import '@fontsource-variable/inter/index.css';
+/* Sous-ensembles latin + latin-ext uniquement — cf. fonts.css (régénéré depuis
+   node_modules, constat Lighthouse du 30/07/2026). */
+@import './fonts.css';
 
 @import './tokens.css';
 

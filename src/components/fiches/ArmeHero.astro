@@ -110,6 +110,7 @@ const aDates = Boolean(dates);
           widths={largeurs}
           sizes="(min-width: 1000px) 45vw, 100vw"
           loading="eager"
+          fetchpriority="high"
           decoding="async"
         />
       )
@@ -349,12 +350,57 @@ const aDates = Boolean(dates);
     }
   }
 
+  /* ── ≥ 820 px : la pastille d'époque redevient une ligne nue ────────────── */
+  /* La pastille arrondie est un motif du gabarit MOBILE (design-spec §5.4).
+     Dès 820 px, la barre incrustée disparaît et le fil d'Ariane prend le
+     relais : la pastille flotterait seule entre 820 et 999 px (constat de
+     recette du 30/07/2026 — et le client ne veut pas de pastilles arrondies).
+     Ligne nue : tiret ember, nom en ember, siècles en parchemin atténué
+     (design-spec §5.3, bloc « Era ») — les quatre nœuds à 10,5 px, sur-titre
+     secondaire (`--fs-eyebrow-s`) : `MÉDIÉVALE` w600 / ls 2,9 → 0.276em. */
+  @media (min-width: 820px) {
+    .fiche-hero__era {
+      gap: 10px;
+      margin-bottom: 8px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: none;
+      font-size: var(--fs-eyebrow-s);
+      letter-spacing: 0.276em;
+      /* Entre 820 et 999 px la ligne repose encore sur la photo : parchemin
+         plein, sinon l'ember tombe à ~2:1 sur un cliché clair (contraste
+         mesuré par la recette sur le messer). L'ember et le parchemin atténué
+         reviennent à ≥ 1000 px, sur le fond $ink de la colonne texte. */
+      color: var(--parch);
+    }
+
+    .fiche-hero__tiret {
+      display: block;
+    }
+
+    .fiche-hero__epoque {
+      color: var(--parch);
+    }
+  }
+
   /* ── ≥ 1000 px : deux colonnes ──────────────────────────────────────────── */
 
   @media (min-width: 1000px) {
     /* design-spec §5.4 : 90 px, lh 0,9. */
     .fiche-hero :global(.fiche-hero__nom) {
       --titre-lh: var(--lh-display-tight);
+    }
+
+    /* Sur le $ink de la colonne texte, la rampe maquette reprend : siècles en
+       parchemin atténué, nom d'époque en ember (design-spec §5.3). Sous
+       1000 px, la ligne reste parchemin plein — elle repose sur la photo. */
+    .fiche-hero__era {
+      color: var(--parch-mute);
+    }
+
+    .fiche-hero__epoque {
+      color: var(--ember);
     }
 
     .fiche-hero {
@@ -440,30 +486,6 @@ const aDates = Boolean(dates);
       border-bottom: 0;
     }
 
-    /* L'époque redevient une ligne nue : tiret ember, nom en ember, siècles en
-       parchemin atténué (design-spec §5.3, bloc « Era »). Les quatre nœuds y
-       sont à **10,5 px** — sur-titre secondaire, pas label de section : d'où
-       `--fs-eyebrow-s` et non `--fs-eyebrow`, qui monterait à 12,5.
-       `MÉDIÉVALE` : w600 / ls 2,9 / `$ember` → 2,9 / 10,5 = 0.276em. */
-    .fiche-hero__era {
-      gap: 10px;
-      margin-bottom: 8px;
-      padding: 0;
-      border: 0;
-      border-radius: 0;
-      background: none;
-      font-size: var(--fs-eyebrow-s);
-      letter-spacing: 0.276em;
-      color: var(--parch-mute);
-    }
-
-    .fiche-hero__tiret {
-      display: block;
-    }
-
-    .fiche-hero__epoque {
-      color: var(--ember);
-    }
 
     .fiche-hero__point {
       font-family: var(--font-body);

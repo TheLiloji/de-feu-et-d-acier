@@ -96,6 +96,22 @@ const signature = [auteur, annee].filter(Boolean).join(' · ');
  * largeurs commune, cf. src/lib/images.ts.
  */
 const largeurs = largeursSrcset(planche, { largeurs: [280, 420, 560, 840] });
+
+/**
+ * `sizes` au ratio réel de la planche : le champ est carré et l'image en
+ * `contain` — une planche en portrait (ratio < 1) n'occupe qu'une fraction de
+ * la largeur du champ. Annoncer la largeur du champ faisait télécharger des
+ * dérivés ~2× trop larges (mesure Lighthouse du 30/07/2026, pire LCP du site
+ * sur /sources/). Même logique que `tailles()` de GaleriePlanches.astro.
+ */
+const ratio = planche ? Math.min(1, planche.width / planche.height) : 1;
+const r = ratio.toFixed(3);
+const tailles = [
+  `(min-width: 1280px) ${Math.round(320 * ratio)}px`,
+  `(min-width: 1000px) calc(30vw * ${r})`,
+  `(min-width: 620px) calc(45vw * ${r})`,
+  `calc(92vw * ${r})`,
+].join(', ');
 ---
 
 <a class:list={['carte-traite', classe]} href={href}>
@@ -107,8 +123,9 @@ const largeurs = largeursSrcset(planche, { largeurs: [280, 420, 560, 840] });
           alt={alt}
           formats={['avif', 'webp']}
           widths={largeurs}
-          sizes="(min-width: 1280px) 320px, (min-width: 1000px) 30vw, (min-width: 620px) 45vw, 92vw"
+          sizes={tailles}
           loading={charge}
+          fetchpriority={charge === 'eager' ? 'high' : undefined}
           decoding="async"
         />
       )
