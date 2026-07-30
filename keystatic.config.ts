@@ -274,9 +274,9 @@ function collectionsEcole(e: EcoleConfig) {
           validation: { isRequired: true },
         }),
         message: fields.text({
-          label: 'Message',
+          label: 'Message (facultatif)',
           multiline: true,
-          description: `Une à deux phrases. ${RACCOURCIS}`,
+          description: `Une à deux phrases. Vide : le bandeau affiche le titre. ${RACCOURCIS}`,
           validation: { length: { max: 240 } },
         }),
         ton: fields.select({
