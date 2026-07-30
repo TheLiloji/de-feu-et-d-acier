@@ -18,6 +18,7 @@
  */
 import { Picture } from 'astro:assets';
 import Icon from './Icon.astro';
+import { analyserLigne, texteSansMarqueurs } from './titre';
 import { largeursSrcset } from '../../lib/images';
 
 export interface Props {
@@ -27,8 +28,27 @@ export interface Props {
   prenom?: string;
   /** Armes enseignées, déjà mises en forme. Ex. « MESSER · VIKING · BOCLE ». */
   discipline?: string;
-  /** Accroche d'une ligne. Ex. « Rapière française & italienne · bolonaise ». */
+  /**
+   * Accroche d'une ligne. Ex. « Rapière française & italienne · bolonaise ».
+   *
+   * Le fragment entre `*…*` est celui que dore `doree` — même convention que
+   * les titres de section (`./titre.ts`), `\*` pour une astérisque littérale.
+   * Les marqueurs ne s'affichent jamais, cochée ou non.
+   */
   accroche?: string;
+  /**
+   * « Accroche dorée (palmarès) » du CMS, portée jusqu'ici.
+   *
+   * La carte d'accueil est la première apparition du prof : si sa fiche annonce
+   * un rang, la grille doit le dire aussi, sans quoi l'or de la fiche arrive
+   * sans avoir été promis. Le traitement est celui de `ProfHero` — même
+   * convention de fragment, même reflet en une passe — mais sans le tiret de
+   * palmarès : sur une carte de 220 à 427 px, cet ornement mangerait la moitié
+   * de la ligne qu'il est censé mettre en valeur.
+   *
+   * Décochée, pas une règle dorée de ce fichier ne s'applique.
+   */
+  doree?: boolean;
   portrait?: ImageMetadata | null;
   /** Repli : URL d'une image du dossier `public/`. */
   src?: string | null;
@@ -55,6 +75,7 @@ const {
   prenom,
   discipline,
   accroche,
+  doree = false,
   portrait = null,
   src = null,
   alt,
@@ -82,6 +103,13 @@ const texteAlt = alt ?? `Portrait de ${nom}`;
 // Politique de largeurs commune (src/lib/images.ts) : portrait de grille de
 // 427 px au plus (photos.md §5.4), donc jamais plus de 854 px servis.
 const largeursFinales = largeursSrcset(portrait, { largeurs, rendMax });
+
+// L'accroche et sa part dorée — même découpage que `ProfHero`, même parseur
+// (`./titre.ts`). Sans case cochée, on rend le texte nu : le nœud est celui
+// d'avant, et les cartes non dorées ne bougent pas d'un pixel.
+const fragmentsAccroche = analyserLigne(accroche);
+const orFragment = doree && fragmentsAccroche.some((f) => f.accent);
+const accrocheNue = texteSansMarqueurs(accroche);
 ---
 
 <Balise
@@ -117,7 +145,26 @@ const largeursFinales = largeursSrcset(portrait, { largeurs, rendMax });
   <div class="prof-card__contenu">
     {discipline && <p class="prof-card__discipline">{discipline}</p>}
     <Nom class="prof-card__nom">{nomAffiche}</Nom>
-    {!compacte && accroche && <p class="prof-card__accroche">{accroche}</p>}
+    {
+      !compacte && accroche && (
+        <p
+          class:list={[
+            'prof-card__accroche',
+            { 'prof-card__accroche--or-plein': doree && !orFragment },
+          ]}
+        >
+          {orFragment
+            ? fragmentsAccroche.map((fragment) =>
+                fragment.accent ? (
+                  <span class="prof-card__or">{fragment.texte}</span>
+                ) : (
+                  fragment.texte
+                ),
+              )
+            : accrocheNue}
+        </p>
+      )
+    }
     {!compacte && <span class="prof-card__sep" aria-hidden="true"></span>}
     {
       href && (
@@ -242,6 +289,88 @@ const largeursFinales = largeursSrcset(portrait, { largeurs, rendMax });
     color: var(--parch);
   }
 
+  /* ── L'accroche dorée ───────────────────────────────────────────────────── */
+
+  /*
+   * Le pendant de `ProfHero` sur la grille d'accueil : mêmes couches, même
+   * dégradé, même passe unique. Deux différences, et deux seulement — pas de
+   * tiret de palmarès (la carte est trop étroite pour l'ornement), et le survol
+   * relance le reflet depuis la carte entière, qui est déjà la cible de tous ses
+   * autres états.
+   *
+   * ⚠️ Trois classes dans le sélecteur du bloc, et c'est la leçon du hero :
+   * `.prof-card[data-avant] .prof-card__accroche` (juste au-dessus) vaut deux
+   * classes et concerne précisément la carte qui peut être dorée — Gabriel est
+   * mis en avant. Une seule classe ici et le parchemin gagnait, c'est-à-dire la
+   * couleur de repli des navigateurs sans `background-clip: text`.
+   *
+   * Le fragment, lui, hérite : une couleur posée sur le `<span>` l'emporte de
+   * toute façon sur celle du paragraphe.
+   */
+  .prof-card .prof-card__accroche.prof-card__accroche--or-plein,
+  .prof-card .prof-card__accroche .prof-card__or {
+    color: var(--or);
+    font-weight: 600;
+  }
+
+  @supports ((background-clip: text) or (-webkit-background-clip: text)) {
+    .prof-card .prof-card__accroche.prof-card__accroche--or-plein,
+    .prof-card .prof-card__accroche .prof-card__or {
+      background-image: linear-gradient(
+        100deg,
+        var(--or) 0%,
+        var(--or) 36%,
+        var(--or-clair) 46%,
+        var(--or-eclat) 50%,
+        var(--or-clair) 54%,
+        var(--or) 64%,
+        var(--or) 100%
+      );
+      background-repeat: no-repeat;
+      background-size: 400% 100%;
+      background-position: 100% 0;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      animation: prof-card-or 1500ms cubic-bezier(0.32, 0, 0.24, 1) 480ms 1 forwards;
+    }
+
+    /* Le fond est peint sur la boîte : sans `fit-content`, un dégradé de 4 × la
+       colonne laisserait le reflet passer à côté du texte. Le fragment en ligne
+       a déjà pour boîte la chasse de son texte. */
+    .prof-card .prof-card__accroche.prof-card__accroche--or-plein {
+      width: fit-content;
+    }
+
+    /* Une passe de plus au survol de la carte — même procédé qu'au hero : un
+       second nom d'animation, pas une ligne de JavaScript. */
+    .prof-card[data-cliquable]:hover .prof-card__accroche--or-plein,
+    .prof-card[data-cliquable]:hover .prof-card__or {
+      animation-name: prof-card-or-bis;
+      animation-delay: 0ms;
+    }
+  }
+
+  /* Deux noms, un seul dessin : le second n'existe que pour rejouer la passe. */
+  @keyframes prof-card-or {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: 0 0;
+    }
+  }
+
+  @keyframes prof-card-or-bis {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: 0 0;
+    }
+  }
+
   .prof-card__sep {
     display: block;
     width: 100%;
@@ -308,6 +437,19 @@ const largeursFinales = largeursSrcset(portrait, { largeurs, rendMax });
 
     .prof-card[data-cliquable]:hover .prof-card__photo :global(img) {
       transform: none;
+    }
+
+    /* Plus de balayage : le dégradé se fige sur sa position centrale, reflet
+       posé au milieu de la ligne. Un or uniforme perdrait le métal que la case
+       promet — même arbitrage qu'au hero de fiche. `!important` parce que la
+       règle globale de global.css écrase les durées : sans lui, l'animation se
+       jouerait en 0,01 ms au lieu d'être coupée. */
+    .prof-card .prof-card__accroche.prof-card__accroche--or-plein,
+    .prof-card[data-cliquable]:hover .prof-card__accroche--or-plein,
+    .prof-card .prof-card__accroche .prof-card__or,
+    .prof-card[data-cliquable]:hover .prof-card__or {
+      animation: none !important;
+      background-position: 50% 0;
     }
   }
 </style>

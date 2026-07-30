@@ -203,12 +203,14 @@ function collectionsEcole(e: EcoleConfig) {
         }),
         accroche: fields.text({
           label: 'Accroche',
-          description: 'Une ligne, sous le nom. Ex. « Rapière française & italienne · bolonaise ».',
+          description:
+            'Une ligne, sous le nom. Ex. « Rapière française & italienne · bolonaise ». Avec l’accroche dorée ci-dessous : encadrez d’astérisques la SEULE partie à mettre en or — « *Top 1 % mondial* · épée longue acier ». Sans astérisques, toute l’accroche est dorée. Pour écrire une vraie astérisque : \\*',
           validation: { length: { max: 90 } },
         }),
         accrocheDoree: fields.checkbox({
           label: 'Accroche dorée (palmarès)',
-          description: 'Lettres d’or et reflet : réservée à un titre ou un rang réel.',
+          description:
+            'Lettres d’or et reflet sur la partie entre astérisques de l’accroche — sur la fiche et sur la carte d’accueil. Réservée à un titre ou un rang réel.',
           defaultValue: false,
         }),
         bio: corpsLibre('Biographie', dossierPhotos, cibles),

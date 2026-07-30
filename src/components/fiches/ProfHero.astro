@@ -44,6 +44,7 @@ import { Picture } from 'astro:assets';
 import Button from '../ui/Button.astro';
 import Pill from '../ui/Pill.astro';
 import VideoCard from '../ui/VideoCard.astro';
+import { analyserLigne, texteSansMarqueurs } from '../ui/titre';
 import { largeursSrcset } from '../../lib/images';
 
 export interface LienExterneProf {
@@ -68,15 +69,23 @@ export interface Props {
   nom: string;
   /** Ligne d'armes déjà composée. Ex. « Épée longue ». */
   armes?: string;
-  /** Accroche d'une ligne. */
+  /**
+   * Accroche d'une ligne.
+   *
+   * Le fragment entre `*…*` est celui que dore la case ci-dessous — même
+   * convention que les titres de section (`../ui/titre.ts`), `\*` pour une
+   * astérisque littérale. Les marqueurs ne s'affichent jamais.
+   */
   accroche?: string;
   /**
    * « Accroche dorée (palmarès) » du CMS.
    *
-   * Passe l'accroche en lettres d'or (dégradé métallique balayé une fois) et
-   * dore les trois ornements du hero : le tiret de l'accroche, le filet, la
-   * ligne d'armes. Rien d'autre ne change — et sur une fiche décochée, pas une
-   * règle de ce fichier ne s'applique.
+   * Dore les trois ornements du hero — le tiret de l'accroche, le filet, la
+   * ligne d'armes — et passe en lettres d'or **le fragment marqué `*…*` de
+   * l'accroche** ; le reste de la ligne garde sa couleur. Sans marqueur, c'est
+   * toute l'accroche qui est dorée, comme avant l'arrivée de la convention.
+   * Rien d'autre ne change — et sur une fiche décochée, pas une règle de ce
+   * fichier ne s'applique.
    */
   doree?: boolean;
   portrait?: ImageMetadata | null;
@@ -136,6 +145,27 @@ const aVideo = Boolean(video?.url || video?.vignette);
  * ligne de palmarès. Une fiche décochée retrouve exactement la règle d'avant.
  */
 const aDuCorps = aVideo || Boolean(credit) || doree;
+
+/*
+ * L'accroche et sa part dorée.
+ *
+ * Le découpage passe par le parseur des titres (`analyserLigne`) : c'est la
+ * mécanique `*…*` déjà en service sur les onze titres de section, échappement
+ * `\*` compris. Pas de seconde syntaxe, pas de seconde expression régulière.
+ *
+ * Trois états, et un seul rend des `<span>` :
+ *   - **fiche décochée** : le texte nu, exactement le nœud d'avant — c'est la
+ *     condition de non-régression au pixel des fiches de Marie et Ludwig ;
+ *   - **cochée, avec marqueur** : un `<span>` par fragment, l'or sur le seul
+ *     fragment marqué ;
+ *   - **cochée, sans marqueur** : le texte nu et toute la ligne en or (repli).
+ *
+ * Les marqueurs sont retirés dans les trois cas : une astérisque saisie sur une
+ * fiche décochée ne doit pas s'afficher pour autant.
+ */
+const fragmentsAccroche = analyserLigne(accroche);
+const orFragment = doree && fragmentsAccroche.some((f) => f.accent);
+const accrocheNue = texteSansMarqueurs(accroche);
 ---
 
 <div
@@ -188,7 +218,22 @@ const aDuCorps = aVideo || Boolean(credit) || doree;
     <h1 class="prof-hero__nom" id={idTitre}>{nom}</h1>
     {
       accroche && (
-        <p class:list={['prof-hero__accroche', { 'prof-hero__accroche--or': doree }]}>{accroche}</p>
+        <p
+          class:list={[
+            'prof-hero__accroche',
+            { 'prof-hero__accroche--or': doree, 'prof-hero__accroche--or-plein': doree && !orFragment },
+          ]}
+        >
+          {orFragment
+            ? fragmentsAccroche.map((fragment) =>
+                fragment.accent ? (
+                  <span class="prof-hero__or">{fragment.texte}</span>
+                ) : (
+                  fragment.texte
+                ),
+              )
+            : accrocheNue}
+        </p>
       )
     }
   </div>
@@ -373,7 +418,13 @@ const aDuCorps = aVideo || Boolean(credit) || doree;
    *   3. le balayage : UNE passe de gauche à droite au chargement, rejouée au
    *      survol du bloc de titre. Jamais de boucle.
    *
-   * Le dégradé fait 4 × la largeur du bloc et sa bande claire occupe le quart
+   * **Deux porteurs possibles, un seul jeu de règles.** L'or couvre soit le
+   * fragment marqué `*…*` (`.prof-hero__or`, le cas courant), soit l'accroche
+   * entière quand aucun fragment n'est marqué (`--or-plein`). Les deux
+   * sélecteurs vont donc toujours de pair, à une exception près, signalée plus
+   * bas : la largeur, qui ne concerne que le bloc.
+   *
+   * Le dégradé fait 4 × la largeur du porteur et sa bande claire occupe le quart
    * central : la fenêtre visible (25 % de l'image) est donc **entièrement en
    * `--or`** aux positions 100 % (départ) comme 0 % (arrivée), et ne montre le
    * reflet qu'entre les deux. Le reflet entre par la gauche, traverse toute la
@@ -389,8 +440,8 @@ const aDuCorps = aVideo || Boolean(credit) || doree;
    * banc : 480 ms d'or plat). Départ et arrivée identiques, ce retour ne se
    * voit plus : il ne reste qu'une passe de plus, sans le moindre saut.
    *
-   * ⚠️ Deux classes dans le sélecteur, et ce n'est pas du zèle. Plus bas dans ce
-   * fichier, `@media (min-width: 1000px) { .prof-hero__accroche { color:
+   * ⚠️ Deux classes dans le sélecteur du bloc, et ce n'est pas du zèle. Plus bas
+   * dans ce fichier, `@media (min-width: 1000px) { .prof-hero__accroche { color:
    * var(--parch) } }` (design-spec §6.3) a exactement la même spécificité et
    * vient après : avec une seule classe, elle reprenait la main sur l'or à
    * partir de 1000 px. Mesuré au banc avant correction : `getComputedStyle`
@@ -399,14 +450,21 @@ const aDuCorps = aVideo || Boolean(credit) || doree;
    * couleur de repli, et un navigateur sans `background-clip: text` n'aurait vu
    * aucun palmarès en desktop. Toutes les règles de ce bloc qui se disputent une
    * propriété avec `.prof-hero__accroche` portent donc la double classe.
+   *
+   * Le fragment, lui, n'a pas ce souci : c'est un enfant du paragraphe, et une
+   * couleur posée sur l'élément l'emporte toujours sur une couleur héritée,
+   * quelle que soit la spécificité de la règle dont elle vient.
    */
-  .prof-hero__accroche.prof-hero__accroche--or {
+  .prof-hero__accroche.prof-hero__accroche--or-plein,
+  .prof-hero__accroche .prof-hero__or {
     color: var(--or);
     font-weight: 600;
   }
 
   /* Le tiret de palmarès. Un filet, pas un caractère : rien à faire prononcer à
-     un lecteur d'écran, et il ne dépend pas de la police. */
+     un lecteur d'écran, et il ne dépend pas de la police. Il tient à la case
+     cochée, pas au marquage : une accroche dorée par fragment ouvre sur le même
+     ornement qu'une accroche dorée en entier. */
   .prof-hero__accroche--or::before {
     content: '';
     display: inline-block;
@@ -418,17 +476,23 @@ const aDuCorps = aVideo || Boolean(credit) || doree;
   }
 
   @supports ((background-clip: text) or (-webkit-background-clip: text)) {
-    .prof-hero__accroche.prof-hero__accroche--or {
-      /* Le fond est peint sur la boîte, pas sur les glyphes : sans
-         `fit-content`, la moitié du dégradé tomberait dans le blanc à droite
-         de cette ligne courte, et le reflet ne traverserait jamais le texte. */
-      width: fit-content;
+    .prof-hero__accroche.prof-hero__accroche--or-plein,
+    .prof-hero__accroche .prof-hero__or {
+      /*
+       * Le cœur du reflet est `--or-clair` **doublé d'un `--or-eclat`** sur les
+       * quatre pour cent centraux : le passage gagne en brillance sans que la
+       * bande s'élargisse, donc sans que l'accroche paraisse blanchir. Les
+       * bornes du dégradé restent `--or` des deux côtés — le repos, lui, ne
+       * change pas d'un pixel.
+       */
       background-image: linear-gradient(
         100deg,
         var(--or) 0%,
-        var(--or) 38%,
-        var(--or-clair) 50%,
-        var(--or) 62%,
+        var(--or) 36%,
+        var(--or-clair) 46%,
+        var(--or-eclat) 50%,
+        var(--or-clair) 54%,
+        var(--or) 64%,
         var(--or) 100%
       );
       background-repeat: no-repeat;
@@ -441,9 +505,18 @@ const aDuCorps = aVideo || Boolean(credit) || doree;
       animation: prof-or-balayage 1500ms cubic-bezier(0.32, 0, 0.24, 1) 480ms 1 forwards;
     }
 
+    /* Le fond est peint sur la boîte, pas sur les glyphes : sans `fit-content`,
+       la moitié du dégradé tomberait dans le blanc à droite de cette ligne
+       courte, et le reflet ne traverserait jamais le texte. Un fragment en ligne,
+       lui, a déjà pour boîte la chasse exacte de son texte : rien à corriger. */
+    .prof-hero__accroche.prof-hero__accroche--or-plein {
+      width: fit-content;
+    }
+
     /* Rejouée au survol : changer de nom d'animation la relance depuis le
        début, sans une ligne de JavaScript. */
-    .prof-hero__titre:hover .prof-hero__accroche--or {
+    .prof-hero__titre:hover .prof-hero__accroche--or-plein,
+    .prof-hero__titre:hover .prof-hero__or {
       animation-name: prof-or-balayage-bis;
       animation-delay: 0ms;
     }
@@ -483,8 +556,10 @@ const aDuCorps = aVideo || Boolean(credit) || doree;
     /* Double classe ici aussi : la règle du `@supports` ci-dessus la porte, et
        sans elle ce `background-position` perdrait la comparaison — le dégradé
        se figerait sur la position de départ (or plat) au lieu du reflet centré. */
-    .prof-hero__accroche.prof-hero__accroche--or,
-    .prof-hero__titre:hover .prof-hero__accroche--or {
+    .prof-hero__accroche.prof-hero__accroche--or-plein,
+    .prof-hero__titre:hover .prof-hero__accroche--or-plein,
+    .prof-hero__accroche .prof-hero__or,
+    .prof-hero__titre:hover .prof-hero__or {
       animation: none !important;
       background-position: 50% 0;
     }

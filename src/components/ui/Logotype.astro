@@ -4,9 +4,12 @@
  *
  * Quatre occurrences, une seule structure (design-spec §9.2). La coloration ne
  * varie jamais : `De` en `$parch` w500, **`Feu` en `$feu`**, `et d'` en `$parch`
- * w300 italique, **`Acier` en `$acier`**. Ce sont les deux seuls emplois de
- * `$feu` et `$acier` de tout le site — les réutiliser ailleurs détruirait ce
- * qui fait la signature de la marque.
+ * w300 italique, **`Acier` en métal** — un dégradé de `$acier` vers `$acier-clair`,
+ * un blanc froid. Ce sont les deux seuls emplois de `$feu` et `$acier` de tout
+ * le site — les réutiliser ailleurs détruirait ce qui fait la signature de la
+ * marque. Le mot « Feu » ne prend aucun dégradé : la flamme est une couleur
+ * pleine, le métal une surface qui prend la lumière ; leur donner le même
+ * traitement effacerait ce qui les oppose.
  *
  * Deux dispositions :
  *   - `empile` — deux lignes centrées (`De Feu` / `et d'Acier`), c'est le hero ;
@@ -21,7 +24,7 @@
  * d'une constante : c'est ce qui permet de le corriger sans toucher au code.
  *
  * Exemples :
- *   <Logotype marque={identite.marque} taille="hero" balise="h1" />
+ *   <Logotype marque={identite.marque} taille="hero" balise="h1" reflet />
  *   <Logotype marque={identite.marque} taille="footer" disposition="inline" />
  */
 import { typographieFr } from '../../lib/typographie';
@@ -42,6 +45,28 @@ interface Props {
   disposition?: 'empile' | 'inline';
   /** Élément rendu. `h1` sur le hero d'accueil, `p` partout ailleurs. */
   balise?: 'h1' | 'h2' | 'p' | 'div' | 'span';
+  /**
+   * Fait passer **une** lueur sur le mot « Acier » au chargement. Jamais de
+   * boucle, et neutralisé par `prefers-reduced-motion`.
+   *
+   * Réservé au hero de l'accueil, et le choix se défend occurrence par
+   * occurrence :
+   *
+   *   - **hero** — le logotype y fait 62 à 96 px, il est le premier objet de la
+   *     page et il est à l'écran au moment où elle s'ouvre : c'est le seul
+   *     endroit où la passe est effectivement vue, et le seul où elle dit
+   *     quelque chose (une lame qu'on tourne dans la lumière) ;
+   *   - **pied de page** — 34 à 115 px, mais tout en bas. Une animation lancée
+   *     au chargement y serait terminée depuis longtemps quand on y arrive :
+   *     elle ne serait jamais vue, ou il faudrait un observateur de défilement
+   *     pour la déclencher — c'est-à-dire du JavaScript et un grand mouvement
+   *     là où la page doit se poser. Le métal y est donc **fixe**, sa lueur
+   *     arrêtée au milieu du mot ;
+   *   - **barre du haut et menu mobile** — 20 px, et ce n'est qu'un repli
+   *     (les deux affichent le blason quand il existe). Fixe également : à
+   *     cette taille, une lueur qui passe n'est plus qu'un scintillement.
+   */
+  reflet?: boolean;
   class?: string;
   [attribut: `data-${string}`]: string | number | boolean | undefined;
 }
@@ -51,6 +76,7 @@ const {
   taille = 'hero',
   disposition = 'empile',
   balise = 'p',
+  reflet = false,
   class: classe,
   ...reste
 } = Astro.props;
@@ -71,7 +97,16 @@ const nomComplet = `${[debut, feu, connecteur].filter(Boolean).join(' ')}${soude
 const Balise = balise;
 ---
 
-<Balise class:list={['logotype', `logotype--${taille}`, `logotype--${disposition}`, classe]} {...reste}>
+<Balise
+  class:list={[
+    'logotype',
+    `logotype--${taille}`,
+    `logotype--${disposition}`,
+    { 'logotype--reflet': reflet },
+    classe,
+  ]}
+  {...reste}
+>
   <span class="logotype__nom">{nomComplet}</span>
   <span class="logotype__ligne logotype__ligne--1" aria-hidden="true"
     ><span class="logotype__mot logotype__mot--parch">{debut}</span><span
@@ -155,9 +190,98 @@ const Balise = balise;
     font-style: italic;
   }
 
+  /* ── « Acier » ──────────────────────────────────────────────────────────── */
+
+  /*
+   * Le mot est du métal, pas une couleur. Trois couches, de la plus robuste à
+   * la plus ornementale — chacune est le repli de la suivante, comme l'or de
+   * palmarès de `ProfHero` :
+   *
+   *   1. `color: var(--acier)` — l'acier plein, c'est-à-dire **exactement le
+   *      logotype d'avant**. C'est ce que voit un navigateur sans
+   *      `background-clip: text` (11,10:1 sur $ink, cf. tokens.css) ;
+   *   2. le dégradé `--acier` → `--acier-clair` en `background-clip: text` ;
+   *   3. au hero seulement, UNE passe de lumière au chargement.
+   *
+   * La borne sombre du dégradé est `--acier` : le pire pixel du mot ne peut
+   * donc pas être plus sombre qu'aujourd'hui, à aucun instant de l'animation.
+   * C'est la propriété qui rend ce changement sûr sans nouvelle campagne de
+   * mesures — et elle vaut aussi sur le hero, où le mot se pose sur une photo
+   * voilée à 67-72 % et non sur $ink.
+   */
   .logotype__mot--acier {
     color: var(--acier);
     font-weight: 500;
+  }
+
+  @supports ((background-clip: text) or (-webkit-background-clip: text)) {
+    /*
+     * Au repos, la lueur est **arrêtée au milieu du mot** (`50%`) : un dégradé
+     * de 4 × la chasse dont la bande claire occupe le quart central donne un
+     * poli de lame sur les lettres du milieu, et l'acier plein aux extrémités.
+     * C'est le repos de **toutes** les occurrences, hero compris — le hero n'y
+     * arrive qu'après sa passe. Même arbitrage que l'or de palmarès sous
+     * `prefers-reduced-motion` : sans mouvement, une couleur uniforme ne dirait
+     * plus le métal.
+     */
+    .logotype__mot--acier {
+      background-image: linear-gradient(
+        100deg,
+        var(--acier) 0%,
+        var(--acier) 36%,
+        var(--acier-clair) 50%,
+        var(--acier) 64%,
+        var(--acier) 100%
+      );
+      background-repeat: no-repeat;
+      background-size: 400% 100%;
+      background-position: 50% 0;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /*
+     * Le hero : la lueur entre par la gauche et **vient se poser au milieu du
+     * mot**. Une passe, `forwards`, jamais de boucle. Le délai de 520 ms laisse
+     * la page finir d'apparaître : la lueur arrive une fois que le nom est lu,
+     * pas pendant qu'on le lit.
+     *
+     * ⚠️ L'état d'arrivée est `50%`, c'est-à-dire **exactement le repos des
+     * autres occurrences** — et exactement ce que rend `prefers-reduced-motion`.
+     * Une passe qui sortirait du mot (`0%`) le laisserait en acier plein : le
+     * hero, seul de tout le site, ne serait plus du métal une fois la lueur
+     * partie, et le mot changerait d'aspect selon qu'on anime ou non. Mesuré :
+     * à `0%` comme à `100%`, la fenêtre visible ne montre que la borne `--acier`
+     * du dégradé — un aplat, pas une lame.
+     */
+    .logotype--reflet .logotype__mot--acier {
+      background-position: 100% 0;
+      animation: logotype-acier 1700ms cubic-bezier(0.32, 0, 0.24, 1) 520ms 1 forwards;
+    }
+  }
+
+  @keyframes logotype-acier {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: 50% 0;
+    }
+  }
+
+  /*
+   * Moins d'animations : le hero rejoint les autres occurrences — lueur posée au
+   * milieu du mot, immobile. `!important` parce que la règle globale de
+   * global.css écrase les durées : sans lui, la passe se jouerait en 0,01 ms,
+   * ce qui est un clignotement, pas une absence d'animation.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .logotype--reflet .logotype__mot--acier {
+      animation: none !important;
+      background-position: 50% 0;
+    }
   }
 
   /* Le nom lisible : hors écran, mais bien dans l'arbre d'accessibilité. */

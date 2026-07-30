@@ -20,6 +20,7 @@ import {
   auteurCourt,
   plancheVedetteResolue,
 } from '../components/sources/traites';
+import { texteSansMarqueurs } from '../components/ui/titre';
 import type { TypeRenvoi } from '../cms/widgets';
 import type { EcoleConfig } from '../config/ecoles';
 import type { Article, Discipline, Prof, Traite } from './contenu';
@@ -170,7 +171,11 @@ export function indexRenvois({
       slug: prof.slug,
       href: lienProf(ecole, prof.slug),
       titre: typographieFr(prof.entry.nom),
-      sousTitre: typographieFr(prof.entry.accroche),
+      // L'accroche peut porter le marqueur `*…*` du fragment doré (composants
+      // ui/titre.ts) : une carte de renvoi n'a pas de palmarès à peindre, elle
+      // n'en garde que le texte. `texteSansMarqueurs` normalise la typographie
+      // au passage, comme `typographieFr` le faisait ici.
+      sousTitre: texteSansMarqueurs(prof.entry.accroche),
       eyebrow: 'Les profs',
       image: resoudrePhoto(prof.entry.portrait?.fichier),
       alt: prof.entry.portrait?.alt ?? '',
