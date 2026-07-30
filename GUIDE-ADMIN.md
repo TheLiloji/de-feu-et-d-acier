@@ -739,31 +739,23 @@ la partie intéressante.
 Chaque clic sur **Enregistrer** enregistre votre travail. Le site public, lui,
 est reconstruit à partir de ce contenu, et cette reconstruction prend un moment.
 
-**Aujourd'hui, la reconstruction est manuelle.** Votre modification est bien
-enregistrée, mais elle n'apparaît sur le site public que lorsque Zaccharie lance
-la mise en ligne. Prévenez-le quand vous avez publié quelque chose qui doit
-partir vite, une séance annulée par exemple.
-
-**À terme** (prévu, pas encore branché) : la reconstruction se
-déclenchera toute seule à chaque enregistrement, et il faudra compter **deux à
-trois minutes** entre votre clic sur « Enregistrer » et l'affichage sur le site.
+**La reconstruction se déclenche toute seule** à chaque enregistrement, depuis
+le 31 juillet 2026. Vous n'avez personne à prévenir : enregistrez, c'est tout.
+Comptez **un quart d'heure, parfois moins,** entre votre clic sur
+« Enregistrer » et l'affichage sur le site — le temps que le site soit
+revérifié et reconstruit en entier.
 
 Si votre modification n'apparaît pas :
 
-**Aujourd'hui**, aucune attente ne sert à rien. Tant que la mise en ligne n'a pas
-été lancée à la main, la modification n'apparaîtra pas, même au bout d'une heure.
-Un seul réflexe est utile : **rechargez la page en vidant le cache** (`Ctrl` +
-`Maj` + `R` sur Windows et Linux, `Cmd` + `Maj` + `R` sur Mac) une fois que
-Zaccharie vous a dit avoir publié : le navigateur garde souvent l'ancienne
-version en mémoire, et c'est la cause la plus fréquente du « pourtant j'ai bien
-enregistré ». Si c'est urgent, ne guettez pas le site : prévenez-le tout de
-suite.
-
-**À terme**, quand la reconstruction se déclenchera toute seule :
-
-1. Attendez trois minutes.
-2. Rechargez la page en vidant le cache.
-3. Si rien ne change au bout de dix minutes, prévenez Zaccharie.
+1. Attendez un quart d'heure. Plusieurs enregistrements rapprochés partent dans
+   la même fournée : inutile d'enregistrer à nouveau pour « pousser ».
+2. **Rechargez la page en vidant le cache** (`Ctrl` + `Maj` + `R` sur Windows
+   et Linux, `Cmd` + `Maj` + `R` sur Mac) : le navigateur garde souvent
+   l'ancienne version en mémoire, et c'est la cause la plus fréquente du
+   « pourtant j'ai bien enregistré ».
+3. Si rien ne change au bout d'**une demi-heure**, prévenez Zaccharie : la
+   reconstruction a probablement été refusée par un garde-fou (section 13) et
+   le message d'erreur n'est visible que de son côté.
 
 ---
 
@@ -778,7 +770,9 @@ sur place, avec la correction attendue.
 **À la publication** : des garde-fous relisent l'ensemble du contenu avant de
 reconstruire le site. S'ils trouvent un problème, la publication s'arrête et le
 site public garde sa version précédente. Rien n'est cassé en ligne, mais votre
-modification attend d'être corrigée.
+modification attend d'être corrigée. Ce refus s'écrit dans le journal de
+reconstruction, que seul Zaccharie voit : si votre changement n'apparaît pas au
+bout d'une demi-heure, prévenez-le, et il vous lira le message.
 
 **Ce message est écrit en clair, en français.** Il dit trois choses : ce qui
 cloche, où, et quoi faire. Par exemple :
