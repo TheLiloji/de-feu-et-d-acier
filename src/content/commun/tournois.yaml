@@ -2,11 +2,11 @@ eyebrow: Tournois & saison
 titreLigne1: Saison
 titreLigne2: de compétition.
 photo:
-  fichier: /src/assets/photos/commun/tournois-en-garde-3x4.jpg
+  fichier: /src/assets/photos/commun/tournois-podium.jpg
   alt: >-
-    Escrimeur en garde face à l'objectif, gambison rouge et blanc et masque
-    grillagé, épée tenue à la verticale, dans un gymnase.
-  cadrage: centre
+    Un membre du club sourit en tenant son trophée et son épée longue, devant
+    le drapeau du tournoi Lyon AMHE.
+  cadrage: haut
   credit: ''
 overlayEyebrow: Compétiteurs
 overlayTitre: >-
