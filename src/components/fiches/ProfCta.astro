@@ -34,6 +34,15 @@ export interface Props {
   bouton?: LienCta | null;
   /** Lien externe du prof, rendu en mobile seulement. */
   lienExterne?: LienCta | null;
+  /**
+   * « Accroche dorée (palmarès) » du CMS.
+   *
+   * Dore le bouton du lien externe, comme `ProfHero` le fait de sa copie
+   * desktop. Les deux copies se relaient à 1000 px : elles doivent porter le
+   * même aspect, sans quoi le bouton changerait de couleur au seul
+   * redimensionnement de la fenêtre.
+   */
+  doree?: boolean;
   /** `id` du titre, pour l'`aria-labelledby` de la bande. */
   idTitre?: string;
   class?: string;
@@ -44,6 +53,7 @@ const {
   sousTitre,
   bouton = null,
   lienExterne = null,
+  doree = false,
   idTitre = 'fiche-prof-cta',
   class: classe,
 } = Astro.props;
@@ -68,7 +78,7 @@ const aContenu = Boolean(titre || sousTitre) || aBouton || aLienExterne;
         {(aBouton || aLienExterne) && (
           <div class="cta-prof__boutons">
             {aLienExterne && (
-              <div class="cta-prof__externe">
+              <div class:list={['cta-prof__externe', { 'cta-prof__externe--or': doree }]}>
                 <Button
                   variante="contour"
                   libelle={libelleLienExterne}
@@ -141,6 +151,20 @@ const aContenu = Boolean(titre || sousTitre) || aBouton || aLienExterne;
   .cta-prof__principal > :global(.bouton) {
     display: flex;
     width: 100%;
+  }
+
+  /* Copie mobile du bouton de palmarès — mêmes règles que `.prof-hero__hema--or`
+     (ProfHero.astro), au caractère près. */
+  .cta-prof__externe--or > :global(.bouton) {
+    border-color: var(--or);
+    color: var(--or);
+  }
+
+  .cta-prof__externe--or > :global(.bouton:hover),
+  .cta-prof__externe--or > :global(.bouton:focus-visible) {
+    border-color: var(--or);
+    background: var(--or);
+    color: var(--ink);
   }
 
   /* Au-dessus de 1000 px le lien externe est déjà sous le portrait : la copie

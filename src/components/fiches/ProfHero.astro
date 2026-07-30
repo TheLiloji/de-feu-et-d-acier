@@ -70,6 +70,15 @@ export interface Props {
   armes?: string;
   /** Accroche d'une ligne. */
   accroche?: string;
+  /**
+   * « Accroche dorée (palmarès) » du CMS.
+   *
+   * Passe l'accroche en lettres d'or (dégradé métallique balayé une fois) et
+   * dore les trois ornements du hero : le tiret de l'accroche, le filet, la
+   * ligne d'armes. Rien d'autre ne change — et sur une fiche décochée, pas une
+   * règle de ce fichier ne s'applique.
+   */
+  doree?: boolean;
   portrait?: ImageMetadata | null;
   portraitAlt?: string;
   /** `object-position` issu du cadrage CMS (`cadrageCss()`). */
@@ -96,6 +105,7 @@ const {
   nom,
   armes,
   accroche,
+  doree = false,
   portrait = null,
   portraitAlt,
   portraitPosition = '50% 20%',
@@ -120,8 +130,12 @@ const aVideo = Boolean(video?.url || video?.vignette);
  * Le filet ne se pose que s'il sépare deux choses. Depuis que la biographie est
  * sortie du hero, une fiche sans vidéo ni crédit de portrait n'a plus rien sous
  * l'accroche : le filet y flotterait seul au milieu de la colonne.
+ *
+ * Une accroche dorée fait exception, et c'est la seule : le filet n'y sépare
+ * plus, il **ferme** — c'est l'ornement d'or que le client a demandé sous la
+ * ligne de palmarès. Une fiche décochée retrouve exactement la règle d'avant.
  */
-const aDuCorps = aVideo || Boolean(credit);
+const aDuCorps = aVideo || Boolean(credit) || doree;
 ---
 
 <div
@@ -157,7 +171,7 @@ const aDuCorps = aVideo || Boolean(credit);
 
     {
       aLienExterne && (
-        <div class="prof-hero__hema">
+        <div class:list={['prof-hero__hema', { 'prof-hero__hema--or': doree }]}>
           <Button
             variante="contour"
             libelle={libelleLienExterne}
@@ -170,13 +184,21 @@ const aDuCorps = aVideo || Boolean(credit);
   </div>
 
   <div class="prof-hero__titre">
-    {armes && <p class="prof-hero__armes">{armes}</p>}
+    {armes && <p class:list={['prof-hero__armes', { 'prof-hero__armes--or': doree }]}>{armes}</p>}
     <h1 class="prof-hero__nom" id={idTitre}>{nom}</h1>
-    {accroche && <p class="prof-hero__accroche">{accroche}</p>}
+    {
+      accroche && (
+        <p class:list={['prof-hero__accroche', { 'prof-hero__accroche--or': doree }]}>{accroche}</p>
+      )
+    }
   </div>
 
   <div class="prof-hero__corps">
-    {aDuCorps && <span class="prof-hero__filet" aria-hidden="true"></span>}
+    {
+      aDuCorps && (
+        <span class:list={['prof-hero__filet', { 'prof-hero__filet--or': doree }]} aria-hidden="true" />
+      )
+    }
 
     {
       aVideo && (
@@ -315,6 +337,12 @@ const aDuCorps = aVideo || Boolean(credit);
     color: var(--ember);
   }
 
+  /* L'or prend la place de l'ember sur la ligne d'armes, il ne s'y ajoute pas :
+     deux accents côte à côte, c'est déjà un de trop. */
+  .prof-hero__armes--or {
+    color: var(--or);
+  }
+
   .prof-hero__nom {
     /* 36 px à 390, 80 px à 1440 — la fiche arme monte à 90, le prof s'arrête
        à 80 (design-spec §6.1). */
@@ -333,6 +361,135 @@ const aDuCorps = aVideo || Boolean(credit);
     color: var(--parch-soft);
   }
 
+  /* ── L'accroche dorée ───────────────────────────────────────────────────── */
+
+  /*
+   * Trois couches, de la plus robuste à la plus ornementale — chacune est le
+   * repli de la suivante :
+   *
+   *   1. `color: var(--or)` — l'or plein. C'est ce que voit un navigateur sans
+   *      `background-clip: text` (10,39:1 sur $ink, cf. tokens.css) ;
+   *   2. le dégradé métallique en `background-clip: text` ;
+   *   3. le balayage : UNE passe de gauche à droite au chargement, rejouée au
+   *      survol du bloc de titre. Jamais de boucle.
+   *
+   * Le dégradé fait 4 × la largeur du bloc et sa bande claire occupe le quart
+   * central : la fenêtre visible (25 % de l'image) est donc **entièrement en
+   * `--or`** aux positions 100 % (départ) comme 0 % (arrivée), et ne montre le
+   * reflet qu'entre les deux. Le reflet entre par la gauche, traverse toute la
+   * ligne et sort par la droite ; au repos, l'accroche est un or plein et
+   * uniforme — le plus lisible des états (10,39:1 partout), et le plus sobre.
+   *
+   * **Les deux extrémités du balayage sont la même image**, et ce n'est pas un
+   * détail de goût : le survol relance l'animation en changeant son nom, et
+   * quitter le survol la relance une seconde fois, puisque le nom revient à sa
+   * valeur d'origine. Avec un repos à mi-parcours, ce retour ferait disparaître
+   * le reflet d'un coup pendant le délai avant de le refaire passer — un
+   * clignotement à chaque fois que la souris s'éloigne du nom (mesuré au
+   * banc : 480 ms d'or plat). Départ et arrivée identiques, ce retour ne se
+   * voit plus : il ne reste qu'une passe de plus, sans le moindre saut.
+   *
+   * ⚠️ Deux classes dans le sélecteur, et ce n'est pas du zèle. Plus bas dans ce
+   * fichier, `@media (min-width: 1000px) { .prof-hero__accroche { color:
+   * var(--parch) } }` (design-spec §6.3) a exactement la même spécificité et
+   * vient après : avec une seule classe, elle reprenait la main sur l'or à
+   * partir de 1000 px. Mesuré au banc avant correction : `getComputedStyle`
+   * rendait `rgb(236, 232, 222)` à 1440 px, soit du parchemin — invisible tant
+   * que `background-clip: text` peint les glyphes, mais c'était exactement la
+   * couleur de repli, et un navigateur sans `background-clip: text` n'aurait vu
+   * aucun palmarès en desktop. Toutes les règles de ce bloc qui se disputent une
+   * propriété avec `.prof-hero__accroche` portent donc la double classe.
+   */
+  .prof-hero__accroche.prof-hero__accroche--or {
+    color: var(--or);
+    font-weight: 600;
+  }
+
+  /* Le tiret de palmarès. Un filet, pas un caractère : rien à faire prononcer à
+     un lecteur d'écran, et il ne dépend pas de la police. */
+  .prof-hero__accroche--or::before {
+    content: '';
+    display: inline-block;
+    width: clamp(15px, 1.4vw, 22px);
+    height: 1px;
+    margin-inline-end: 10px;
+    vertical-align: middle;
+    background: var(--or);
+  }
+
+  @supports ((background-clip: text) or (-webkit-background-clip: text)) {
+    .prof-hero__accroche.prof-hero__accroche--or {
+      /* Le fond est peint sur la boîte, pas sur les glyphes : sans
+         `fit-content`, la moitié du dégradé tomberait dans le blanc à droite
+         de cette ligne courte, et le reflet ne traverserait jamais le texte. */
+      width: fit-content;
+      background-image: linear-gradient(
+        100deg,
+        var(--or) 0%,
+        var(--or) 38%,
+        var(--or-clair) 50%,
+        var(--or) 62%,
+        var(--or) 100%
+      );
+      background-repeat: no-repeat;
+      background-size: 400% 100%;
+      background-position: 100% 0;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      animation: prof-or-balayage 1500ms cubic-bezier(0.32, 0, 0.24, 1) 480ms 1 forwards;
+    }
+
+    /* Rejouée au survol : changer de nom d'animation la relance depuis le
+       début, sans une ligne de JavaScript. */
+    .prof-hero__titre:hover .prof-hero__accroche--or {
+      animation-name: prof-or-balayage-bis;
+      animation-delay: 0ms;
+    }
+  }
+
+  /* Deux noms, un seul dessin : le second n'existe que pour donner au survol un
+     nom d'animation différent, seul moyen en CSS pur de rejouer une passe. */
+  @keyframes prof-or-balayage {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: 0 0;
+    }
+  }
+
+  @keyframes prof-or-balayage-bis {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: 0 0;
+    }
+  }
+
+  /*
+   * Moins d'animations : plus de balayage du tout, et le dégradé se fige sur sa
+   * position centrale — le reflet est posé au milieu de la ligne, immobile. Ce
+   * n'est pas la même image que le repos animé (or plein) et c'est voulu : sans
+   * balayage, un or uniforme perdrait le métal que la case promet. Le client
+   * demandait un dégradé statique, en voici un.
+   *
+   * La règle globale de global.css écrase les durées avec `!important` : il en
+   * faut donc un ici pour couper l'animation plutôt que de la jouer en 0,01 ms.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    /* Double classe ici aussi : la règle du `@supports` ci-dessus la porte, et
+       sans elle ce `background-position` perdrait la comparaison — le dégradé
+       se figerait sur la position de départ (or plat) au lieu du reflet centré. */
+    .prof-hero__accroche.prof-hero__accroche--or,
+    .prof-hero__titre:hover .prof-hero__accroche--or {
+      animation: none !important;
+      background-position: 50% 0;
+    }
+  }
+
   /* ── Le corps ───────────────────────────────────────────────────────────── */
 
   /* Le filet de 56 px sous l'accroche n'existe qu'en desktop : en mobile, ce
@@ -342,6 +499,13 @@ const aDuCorps = aVideo || Boolean(credit);
     width: 56px;
     height: 1px;
     background: var(--parch-line);
+  }
+
+  /* Un filet d'or plein ferait barre de séparation ; il s'éteint donc vers la
+     droite, comme le trait sous un nom gravé. */
+  .prof-hero__filet--or {
+    width: 72px;
+    background: linear-gradient(90deg, var(--or) 0%, var(--or) 34%, transparent 100%);
   }
 
   .prof-hero__video {
@@ -483,5 +647,28 @@ const aDuCorps = aVideo || Boolean(credit);
     .prof-hero__hema > :global(.bouton) {
       height: 48px;
     }
+  }
+
+  /*
+   * Le bouton du palmarès. Sur une fiche à rang, le lien HEMA Ratings n'est plus
+   * un lien externe parmi d'autres : c'est la pièce justificative de l'accroche
+   * dorée. Il prend donc le filet et les lettres d'or, et se remplit d'or au
+   * survol (encre sur or : 10,39:1). La contrepartie ember du bouton `contour`
+   * est neutralisée ici, sinon les deux accents se disputeraient le même geste.
+   *
+   * ⚠️ `ProfCta` porte la **copie mobile** de ce bouton et doit recevoir le même
+   * traitement : les deux se relaient à 1000 px (`BASCULE_NAV`), et une seule
+   * des deux dorée ferait changer le bouton d'aspect au redimensionnement.
+   */
+  .prof-hero__hema--or > :global(.bouton) {
+    border-color: var(--or);
+    color: var(--or);
+  }
+
+  .prof-hero__hema--or > :global(.bouton:hover),
+  .prof-hero__hema--or > :global(.bouton:focus-visible) {
+    border-color: var(--or);
+    background: var(--or);
+    color: var(--ink);
   }
 </style>

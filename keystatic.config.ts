@@ -206,6 +206,11 @@ function collectionsEcole(e: EcoleConfig) {
           description: 'Une ligne, sous le nom. Ex. « Rapière française & italienne · bolonaise ».',
           validation: { length: { max: 90 } },
         }),
+        accrocheDoree: fields.checkbox({
+          label: 'Accroche dorée (palmarès)',
+          description: 'Lettres d’or et reflet : réservée à un titre ou un rang réel.',
+          defaultValue: false,
+        }),
         bio: corpsLibre('Biographie', dossierPhotos, cibles),
         lienExterne: lien('Lien externe (facultatif)', 'Profil HEMA Ratings, site personnel…'),
         interview: fields.array(
@@ -231,6 +236,12 @@ function collectionsEcole(e: EcoleConfig) {
             vignette: imageEditoriale('Vignette', dossierPhotos),
             sousTitres: champsVideo.sousTitres,
             affiche: champsVideo.affiche,
+            enHaut: fields.checkbox({
+              label: 'Vidéo en haut de la fiche',
+              description:
+                'Pour un extrait de combat ou un highlight. Décochée, la vidéo reste plus bas, à l’emplacement pensé pour une interview.',
+              defaultValue: false,
+            }),
           },
           {
             label: 'Vidéo (facultatif)',

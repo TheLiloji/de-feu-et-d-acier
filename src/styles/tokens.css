@@ -77,6 +77,26 @@
   --btn-border: #ece8de47; /* 28 % — bordure de tous les boutons secondaires */
   --line-logo: #ece8de52; /* 32 % — filet décoratif sous le logotype du hero */
 
+  /*
+   * Or de palmarès — n'entre sur une page que si l'admin coche « Accroche
+   * dorée (palmarès) » sur une fiche d'encadrant. Champagne, pas jaune : un
+   * jaune franc (#ffd700) vire au néon sur $ink et se cogne à $ember, qui reste
+   * l'accent du site. L'or ne le remplace jamais ailleurs.
+   *
+   * Contrastes CALCULÉS (WCAG 2.1, sRGB ; ces deux couleurs sont opaques, donc
+   * aucune composition alpha n'entre en jeu — contrairement à --parch-mute) :
+   *
+   *              sur $ink     sur $coal    sur $char
+   *   --or        10,39:1      9,75:1       8,94:1
+   *   --or-clair  16,67:1     15,64:1      14,35:1
+   *
+   * `--or` est la borne SOMBRE du dégradé métallique de l'accroche : le pire
+   * pixel de texte doré du site est donc à 10,39:1, très au-dessus des 4,5:1 de
+   * WCAG AA pour du petit texte. Rien n'est réservé au grand texte.
+   */
+  --or: #d8b779;
+  --or-clair: #f6ead0;
+
   /* Teintes ember */
   --ember-tint-3: #e0552c08; /* fond de l'item FAQ ouvert */
   --ember-tint-5: #e0552c0d; /* fond de la carte prof mise en avant */

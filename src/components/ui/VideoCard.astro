@@ -71,10 +71,35 @@ export interface Props {
   titre?: string;
   /** Sous-libellé en capitales, ex. « BASES · POSTURE & DISTANCES ». */
   sousTitre?: string;
-  /** 46 px (mobile) · 54 px (mini-cours desktop) · 64 px (interview desktop). */
-  taille?: 's' | 'm' | 'l';
+  /**
+   * 46 px (mobile) · 54 px (mini-cours desktop) · 64 px (interview desktop) ·
+   * `xl` = 84 px, la vidéo en pièce maîtresse d'une fiche prof (pleine colonne).
+   */
+  taille?: 's' | 'm' | 'l' | 'xl';
   ratio?: string;
   rayon?: 0 | 1 | 2 | 3;
+  /**
+   * **Ouverture en douceur** — pour un lecteur natif seulement.
+   *
+   * Sans elle, un `<video controls poster>` s'affiche d'emblée avec le chrome du
+   * navigateur : barre de commandes grise, gros bouton `play` maison, et une
+   * affiche cadrée en `contain` (donc bordée de noir dès que la vignette n'est
+   * pas au ratio de la vidéo). Sur un mini-cours de 320 px c'est sans
+   * conséquence ; sur une vidéo en pièce maîtresse, c'est la première chose
+   * qu'on voit de la page.
+   *
+   * Avec elle, la vignette **de la charte** — image cadrée en `cover`, voile
+   * 40 %, pastille `play`, badge de durée — recouvre le lecteur jusqu'au premier
+   * clic, puis s'efface dessus en fondu ; les commandes natives ne paraissent
+   * qu'à ce moment-là, avec le clavier et le plein écran qui vont avec.
+   *
+   * **Amélioration progressive stricte** : le HTML servi reste celui
+   * d'aujourd'hui — `controls` présent, affiche posée. C'est le script qui
+   * retire les commandes et démasque la vignette, donc sans JavaScript la page
+   * se comporte exactement comme avant. Le fondu passe par une transition, que
+   * `prefers-reduced-motion` neutralise comme partout ailleurs.
+   */
+  vitrine?: boolean;
   /** `false` pour rendre un emplacement vide au lieu de disparaître. */
   masquerSiVide?: boolean;
   /** Texte de l'emplacement vide. */
@@ -101,6 +126,7 @@ const {
   taille = 'm',
   ratio = '16 / 9',
   rayon = 3,
+  vitrine = false,
   masquerSiVide = true,
   texteVide = 'Vidéo à venir',
   charge = 'lazy',
@@ -149,6 +175,11 @@ const enLecteur = Boolean(mime);
 const enLienSortant = aVideo && !enLecteur;
 const hote = enLienSortant ? hebergeur(url as string) : null;
 
+// Vignette de charte par-dessus le lecteur : seulement là où il y a un lecteur
+// natif ET une image à poser dessus. Sans vignette, la couche n'aurait qu'un
+// aplat à montrer — autant laisser l'affiche du lecteur.
+const enVitrine = vitrine && enLecteur && aVignette;
+
 // Politique de largeurs commune (src/lib/images.ts) : vignette vidéo de 640 px
 // au plus (photos.md §5.4).
 const largeursFinales = largeursSrcset(image, { largeurs, rendMax });
@@ -160,9 +191,18 @@ const largeursFinales = largeursSrcset(image, { largeurs, rendMax });
 // avec `poster=""`, que le navigateur résout vers… la page elle-même
 // (bug vu le 30/07/2026). On normalise donc avant de choisir.
 const afficheUrl = affiche?.trim() || null;
+/*
+ * L'affiche n'est pas responsive : le navigateur la télécharge en entier, à
+ * n'importe quelle largeur d'écran. En vitrine elle n'est plus que le repli
+ * sans JavaScript — la couche du dessus, elle, a un `srcset` — donc la tirer à
+ * 2 400 px reviendrait à télécharger deux fois la même photo pour n'en montrer
+ * qu'une. On la plafonne à 1 080 px : nette pour le repli, sans peser sur le
+ * cas courant.
+ */
+const largeurPoster = image ? Math.min(image.width, enVitrine ? 1080 : rendMax * 2) : 0;
 const posterOptimise =
   enLecteur && !afficheUrl && image
-    ? (await getImage({ src: image, width: Math.min(image.width, rendMax * 2), format: 'webp' })).src
+    ? (await getImage({ src: image, width: largeurPoster, format: 'webp' })).src
     : null;
 const poster = enLecteur ? (afficheUrl ?? posterOptimise ?? undefined) : undefined;
 
@@ -183,6 +223,68 @@ const libelleAccessible = [
   .join(' ');
 
 const libelleLecteur = titre ? `Vidéo : ${titre}` : 'Vidéo';
+
+const libelleOuverture = [titre ? `Lire la vidéo : ${titre}` : 'Lire la vidéo', duree ? `(${duree})` : '']
+  .filter(Boolean)
+  .join(' ');
+
+/*
+ * La durée sous le lecteur, en texte : sous un lecteur natif nu, elle ne peut
+ * pas être un badge — elle tomberait sur la barre de commandes du navigateur.
+ * En vitrine, la vignette porte de nouveau le badge de la charte, et l'écrire
+ * deux fois à 30 px d'écart n'apprendrait rien à personne : c'est le badge qui
+ * gagne, puis les commandes natives prennent le relais après le premier clic.
+ */
+const dureeSousLecteur = Boolean(enLecteur && duree && !enVitrine);
+
+/**
+ * Le script de la vitrine, posé **en clair** et seulement là où une vitrine est
+ * rendue (`set:html`, comme le JSON-LD de `Base.astro`).
+ *
+ * Un `<script>` ordinaire serait hissé par Astro au niveau de la page : toutes
+ * les fiches d'encadrant importent `VideoCard`, y compris celles qui n'ont
+ * aucune vidéo, et leur HTML gagnerait un module pour rien. Ici, une fiche sans
+ * vitrine ne reçoit pas un octet.
+ *
+ * Idempotent (`data-pret`) : deux vitrines sur la même page posent deux fois le
+ * même script sans que la seconde passe ne refasse le travail de la première.
+ */
+const SCRIPT_VITRINE = `
+(() => {
+  const cadres = document.querySelectorAll('[data-video-vitrine]');
+  for (const cadre of cadres) {
+    if (cadre.dataset.pret) continue;
+    const video = cadre.querySelector('video');
+    const bouton = cadre.querySelector('[data-video-ouverture]');
+    if (!video || !bouton) continue;
+    cadre.dataset.pret = '1';
+
+    // Les commandes natives ne partent qu'une fois la relève assurée : si ce
+    // script n'arrive jamais, le lecteur reste complet.
+    video.removeAttribute('controls');
+    bouton.hidden = false;
+
+    bouton.addEventListener('click', () => {
+      video.setAttribute('controls', '');
+      bouton.classList.add('est-parti');
+      const retirer = () => { bouton.hidden = true; };
+      bouton.addEventListener('transitionend', retirer, { once: true });
+      // Filet : pas de transitionend si les animations sont neutralisées.
+      setTimeout(retirer, 600);
+      video.focus({ preventScroll: true });
+      const lecture = video.play();
+      if (lecture && typeof lecture.catch === 'function') {
+        lecture.catch(() => {
+          // Lecture refusée : on rend la main à la vignette plutôt que de
+          // laisser un lecteur muet derrière une couche partie.
+          bouton.classList.remove('est-parti');
+          bouton.hidden = false;
+        });
+      }
+    });
+  }
+})();
+`;
 ---
 
 {
@@ -194,7 +296,7 @@ const libelleLecteur = titre ? `Vidéo : ${titre}` : 'Vidéo';
       style={`--video-ratio:${ratio};--video-rayon:${rayon}px;--video-position:${objectPosition}`}
     >
       {enLecteur ? (
-        <div class="video-card__cadre">
+        <div class="video-card__cadre" data-video-vitrine={enVitrine ? '' : undefined}>
           {/* `controls` sans `autoplay` : rien ne démarre sans un geste, et les
               commandes natives assurent le clavier et le plein écran.
               `preload="none"` — trois vignettes par fiche, aucune raison de
@@ -215,6 +317,43 @@ const libelleLecteur = titre ? `Vidéo : ${titre}` : 'Vidéo';
               Votre navigateur ne sait pas lire cette vidéo. <a href={url as string} download>Télécharger le fichier</a>.
             </p>
           </video>
+
+          {/* Démasquée par le script, jamais avant : sans JavaScript, le lecteur
+              natif reste seul et entier. */}
+          {enVitrine && (
+            <button
+              type="button"
+              class="video-card__ouverture"
+              data-video-ouverture
+              hidden
+              aria-label={libelleOuverture}
+            >
+              <span class="video-card__media" aria-hidden="true">
+                {image ? (
+                  <Picture
+                    src={image}
+                    alt=""
+                    formats={['avif', 'webp']}
+                    widths={largeursFinales}
+                    sizes={sizes}
+                    loading={charge}
+                    decoding="async"
+                  />
+                ) : (
+                  <img src={src as string} alt="" loading={charge} decoding="async" />
+                )}
+              </span>
+              <span class="video-card__voile" aria-hidden="true" />
+              <span class="video-card__play" aria-hidden="true">
+                <Icon name="play" />
+              </span>
+              {duree && (
+                <span class="video-card__duree" aria-hidden="true">
+                  {duree}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       ) : (
         <Cadre class="video-card__cadre" {...attributsCadre} aria-label={enLienSortant ? libelleAccessible : undefined}>
@@ -258,20 +397,18 @@ const libelleLecteur = titre ? `Vidéo : ${titre}` : 'Vidéo';
         </Cadre>
       )}
 
-      {(titre || sousTitre || (enLecteur && duree)) && (
+      {(titre || sousTitre || dureeSousLecteur) && (
         <figcaption class="video-card__legende">
           {titre && <span class="video-card__titre">{titre}</span>}
-          {(sousTitre || (enLecteur && duree)) && (
+          {(sousTitre || dureeSousLecteur) && (
             <span class="video-card__soustitre">
               {sousTitre && <span>{sousTitre}</span>}
-              {/* Sous le lecteur natif, la durée ne peut pas être un badge :
-                  elle tomberait sur la barre de commandes du navigateur. */}
-              {enLecteur && duree && sousTitre && (
+              {dureeSousLecteur && sousTitre && (
                 <span class="video-card__separateur" aria-hidden="true">
                   ·
                 </span>
               )}
-              {enLecteur && duree && <span class="video-card__duree-texte">{duree}</span>}
+              {dureeSousLecteur && <span class="video-card__duree-texte">{duree}</span>}
             </span>
           )}
         </figcaption>
@@ -279,6 +416,8 @@ const libelleLecteur = titre ? `Vidéo : ${titre}` : 'Vidéo';
     </figure>
   )
 }
+
+{enVitrine && <script is:inline set:html={SCRIPT_VITRINE} />}
 
 <style>
   .video-card {
@@ -331,6 +470,54 @@ const libelleLecteur = titre ? `Vidéo : ${titre}` : 'Vidéo';
     padding: var(--esp-item);
     font-size: var(--fs-body-s);
     color: var(--parch-soft);
+  }
+
+  /* ── Vitrine : la vignette de charte posée sur le lecteur ───────────────── */
+
+  /*
+   * Un vrai `<button>`, donc au clavier et dans l'arbre d'accessibilité tant
+   * qu'il est là — et hors des deux dès qu'il est parti (`hidden`). L'image y
+   * est cadrée en `cover` comme toutes les vignettes du site : c'est ce qui
+   * rattrape l'affiche du lecteur natif, bordée de noir dès que la photo n'est
+   * pas au ratio de la vidéo (ici une vignette 3/2 sur une vidéo 16/9).
+   */
+  .video-card__ouverture {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    background: var(--char);
+    cursor: pointer;
+    transition: opacity 380ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* `hidden` doit l'emporter sur le `display: block` ci-dessus. */
+  .video-card__ouverture[hidden] {
+    display: none;
+  }
+
+  .video-card__ouverture.est-parti {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .video-card__ouverture:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: -3px;
+  }
+
+  .video-card__ouverture:hover .video-card__play,
+  .video-card__ouverture:focus-visible .video-card__play {
+    background: var(--ember-hot);
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+
+  .video-card__ouverture:hover .video-card__media :global(img) {
+    transform: scale(1.03);
   }
 
   /* ── Vignette (lien sortant, ou emplacement vide) ───────────────────────── */
@@ -407,6 +594,18 @@ const libelleLecteur = titre ? `Vidéo : ${titre}` : 'Vidéo';
   .video-card[data-taille='l'] {
     --video-play: clamp(46px, 2rem + 2.4vw, 64px);
     --video-play-icone: clamp(17px, 0.7rem + 0.9vw, 24px);
+  }
+
+  /* Pièce maîtresse : la vidéo occupe toute la colonne de contenu, la pastille
+     suit l'échelle plutôt que de rester un bouton de vignette perdu au milieu
+     d'un cadre de 1 200 px. */
+  .video-card[data-taille='xl'] {
+    --video-play: clamp(52px, 2rem + 3.6vw, 84px);
+    --video-play-icone: clamp(19px, 0.7rem + 1.3vw, 31px);
+  }
+
+  .video-card[data-taille='xl'] .video-card__titre {
+    font-size: var(--fs-body-lede);
   }
 
   /* Pastille d'hébergeur : même dessin que le tag de fiche (design-spec §9.10). */
@@ -527,16 +726,20 @@ const libelleLecteur = titre ? `Vidéo : ${titre}` : 'Vidéo';
 
   @media (prefers-reduced-motion: reduce) {
     .video-card__play,
-    .video-card__media :global(img) {
+    .video-card__media :global(img),
+    .video-card__ouverture {
       transition: none;
     }
 
     a.video-card__cadre:hover .video-card__play,
-    a.video-card__cadre:focus-visible .video-card__play {
+    a.video-card__cadre:focus-visible .video-card__play,
+    .video-card__ouverture:hover .video-card__play,
+    .video-card__ouverture:focus-visible .video-card__play {
       transform: translate(-50%, -50%);
     }
 
-    a.video-card__cadre:hover .video-card__media :global(img) {
+    a.video-card__cadre:hover .video-card__media :global(img),
+    .video-card__ouverture:hover .video-card__media :global(img) {
       transform: none;
     }
   }
