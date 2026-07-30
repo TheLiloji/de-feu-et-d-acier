@@ -321,6 +321,12 @@ const aQuoiMontrer = Boolean(nomLieu || adresse || email || telephone);
      l'association depuis son téléphone sans recopier douze chiffres. La
      typographie reprend celle de `FactRow` (valeur principale / secondaire). */
   .lieu-contact__lien {
+    /* Cible tactile de 24 px minimum (WCAG 2.5.8) sans toucher au rendu :
+       le padding étend la zone cliquable, les marges négatives rendent
+       l'espace au flux — même recette que les pastilles du carrousel. */
+    display: inline-block;
+    padding-block: 5px;
+    margin-block: -5px;
     color: var(--parch);
     font-size: clamp(14.5px, 14.129px + 0.0952vw, 15.5px);
     font-weight: 500;
