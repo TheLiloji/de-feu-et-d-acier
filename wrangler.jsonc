@@ -38,6 +38,14 @@
   // Aucun binding KV : les sessions Astro sont neutralisées côté astro.config.mjs
   // (driver mémoire). Ne pas réintroduire de binding SESSION sans besoin réel.
 
+  // Domaines personnalisés — À ACTIVER dès que la zone dfda-amhe.fr est
+  // active sur le compte (serveurs de noms basculés) : décommenter puis
+  // `npm run deploy`. Chaque entrée crée son DNS et son certificat.
+  // "routes": [
+  //   { "pattern": "dfda-amhe.fr", "custom_domain": true },
+  //   { "pattern": "www.dfda-amhe.fr", "custom_domain": true }
+  // ],
+
   "observability": {
     "enabled": true
   }
