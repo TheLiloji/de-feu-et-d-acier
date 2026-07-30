@@ -190,10 +190,21 @@ liste, citation, image.
 Deux niveaux de titre sont disponibles. Pour un article, servez-vous du premier
 pour les parties, du second seulement si une partie doit être redécoupée.
 
-Écrivez **normalement**, sans vous soucier de la typographie : le site ajoute
-tout seul les apostrophes courbes (l'), les espaces fines devant les `?`, `!`
-et `;`, et l'espace insécable devant les `:`. Vous tapez au kilomètre, la mise
-en forme se fait à la publication.
+Écrivez **normalement**. Le site s'occupe de trois choses à la publication :
+
+- les **apostrophes** droites deviennent des apostrophes courbes (`l'` → « l’ ») ;
+- l'**espace que vous tapez** devant un `?`, un `!` ou un `;` devient une espace
+  fine insécable, et celle devant un `:` une espace insécable — de sorte que la
+  ponctuation ne se retrouve jamais seule en début de ligne ;
+- les espaces à l'intérieur des guillemets `« »` sont réglées de la même façon.
+
+Deux choses qu'il ne fait **pas**, et qui vous restent :
+
+- il n'**ajoute** pas d'espace là où vous n'en avez pas mis. « Vraiment? » reste
+  « Vraiment? » ; tapez l'espace comme d'habitude, « Vraiment ? » ;
+- il ne **fabrique pas** les guillemets français. Un `"` reste un `"`. Saisissez
+  directement `«` et `»` (sur Linux : `AltGr` + `w` / `AltGr` + `x` ; sur Mac :
+  `Alt` + `7` / `Alt` + `Maj` + `7`), ou demandez à Zaccharie.
 
 ---
 
@@ -217,7 +228,7 @@ Bouton « + », puis :
 | **Biographie** | Le texte de la fiche. Gras, italique, liens et listes disponibles. |
 | **Lien externe (facultatif)** | Profil HEMA Ratings, site personnel… |
 | **Interview** | Une série de *Question* / *Réponse*. Le bloc reste invisible sur le site tant qu'aucune question n'est saisie. |
-| **Vidéo d'interview (facultatif)** | *Adresse du fichier vidéo*, *Durée*, *Vignette*, *Sous-titres*, *Image d'attente*. Invisible tant que l'adresse est vide. La vidéo est lue **sur la page**, pas dans un lecteur YouTube — c'est pourquoi on donne l'adresse du fichier `.mp4` déposé sur le stockage du club, et non un lien YouTube. Les **sous-titres** (fichier `.vtt`) sont à fournir dès qu'une vidéo est publiée : sans eux, personne ne peut suivre sans le son. |
+| **Vidéo d'interview (facultatif)** | *Adresse du fichier vidéo*, *Durée*, *Vignette*, *Sous-titres*, *Image d'attente*. Invisible tant que l'adresse est vide. La vidéo est lue **sur la page**, pas dans un lecteur YouTube — c'est pourquoi on donne l'adresse du fichier `.mp4` déposé sur le stockage du club, et non un lien YouTube. Les **sous-titres** (fichier `.vtt`) sont à fournir dès qu'une vidéo est publiée : sans eux, personne ne peut suivre sans le son. Attention, ce fichier-là ne se dépose **pas** au même endroit que la vidéo : le champ attend un chemin qui commence par « / » (`/videos/interview-marie.fr.vtt`), pas une adresse complète. Envoyez le `.vtt` à Zaccharie, qui le met en place. Une adresse `https://…` serait acceptée par le formulaire mais les sous-titres ne s'afficheraient jamais, sans le moindre message. |
 | **Ordre d'affichage** | Le plus petit s'affiche en premier. Utilisez 10, 20, 30… pour pouvoir intercaler quelqu'un plus tard sans tout renuméroter. |
 
 L'interview et la vidéo ne sont pas obligatoires. Une fiche sans elles est une
@@ -271,6 +282,13 @@ remplissez les champs qui l'accompagnent :
   ajouté automatiquement. Écrivez « Alexandre Vergne — L'IMAGINARIUM », pas
   « © Alexandre Vergne ».
 
+> **Une exception, une seule** : les planches de traités numérisées par une
+> bibliothèque. Leur champ ne s'appelle pas « Crédit photo » mais **« Ligne de
+> crédit de la bibliothèque »** (planches des fiches de la rubrique *Les
+> sources*, et planche de l'écran *Accueil · La rigueur*). Celle-là se recopie
+> mot pour mot, telle que la bibliothèque l'exige : **aucun « © » n'y est
+> ajouté**, aucune ponctuation n'est retouchée. Voir le § 10.
+
 ### Toujours remplir « Description de l'image »
 
 C'est la seule chose vraiment obligatoire, et pour deux raisons.
@@ -314,11 +332,11 @@ publication.
 
 Un texte écrit ainsi dans l'administration :
 
-> « L'adhésion est de {tarif} pour la saison {saison}, et les deux premières
-> séances sont {essai}. On s'entraîne {creneaux} au {lieu}. »
+> « L'adhésion est de {tarif} pour la saison {saison}. Les {essai} premières
+> séances sont gratuites. On s'entraîne {creneaux} au {lieu}. »
 
-s'affiche sur le site avec le tarif, la saison, les horaires et le nom du
-gymnase, en toutes lettres.
+s'affiche sur le site avec le tarif, la saison, le nombre de séances d'essai,
+les horaires et le nom du gymnase, en toutes lettres.
 
 **Conséquence pratique : le jour où le tarif change, vous le changez une seule
 fois, ici.** La foire aux questions, l'accueil et les mentions légales se mettent
@@ -329,6 +347,19 @@ Les raccourcis disponibles :
 
 `{email}` `{telephone}` `{lieu}` `{adresse}` `{ville}` `{tarif}` `{saison}`
 `{creneaux}` `{creneaux_court}` `{essai}` `{nb_armes}` `{nb_profs}`
+
+Quatre d'entre eux ne rendent pas ce qu'on imagine — ils s'écrivent **en toutes
+lettres**, pour se glisser au milieu d'une phrase :
+
+| Raccourci | S'affiche aujourd'hui |
+| --- | --- |
+| `{essai}` | deux *(un nombre en lettres, pas « gratuites »)* |
+| `{nb_armes}` / `{nb_profs}` | quatre / trois *(un nombre en lettres, recompté à chaque publication)* |
+| `{tarif}` | 85 € *(le « € » est ajouté)* |
+| `{creneaux_court}` | Mar · Jeu *(les heures ne s'ajoutent que si tous les cours ont le même horaire)* |
+
+D'où la forme de l'exemple ci-dessus : on écrit « Les {essai} premières séances
+sont gratuites », jamais « les deux premières séances sont {essai} ».
 
 Deux de plus, réservés aux textes des fiches (*Textes des fiches arme & prof*) :
 `{arme}` et `{prof}`, remplacés par le nom de l'arme et le prénom de l'encadrant
@@ -353,8 +384,12 @@ aux visiteurs — d'où la vérification.
 | **Début** / **Fin** | Au format `18:00`. Deux chiffres, deux points, deux chiffres. |
 | **Armes travaillées** | À choisir dans la liste des armes. |
 | **Intitulé libre** | Ex. « Pratique libre ». S'affiche **à la place** de la liste d'armes. |
-| **Niveau** | *Tous niveaux*, *Débutants*, *Confirmés* ou *Sans encadrant*. |
-| **Séance encadrée** | Cochée par défaut. Décocher pour une pratique libre. |
+| **Niveau** | *Tous niveaux*, *Débutants*, *Confirmés* ou *Sans encadrant*. C'est le **libellé affiché** dans la colonne « Niveau » du tableau des créneaux, rien de plus. Il ne remplace pas la case ci-dessous. |
+| **Séance encadrée** | **La case qui compte.** Cochée par défaut ; décochée, le créneau est annoncé comme pratique libre partout ailleurs sur le site — la phrase des horaires sur l'accueil, dans la foire aux questions et dans les mentions légales, et le rappel court du bandeau d'accueil. |
+
+Pour une pratique libre, **décochez toujours les deux ensemble** : *Niveau →
+Sans encadrant* **et** *Séance encadrée* décochée. Avec l'un sans l'autre, le
+tableau et le reste du site se contredisent.
 
 Les lignes se réordonnent en les faisant glisser par la poignée à gauche.
 Pour supprimer un créneau qui n'existe plus, la petite croix à droite de la
@@ -418,9 +453,16 @@ C'est la partie « mini-bibliothèque » du site : les traités d'escrime ancien
 lesquels le club travaille, avec leurs planches gravées, leur bibliothèque de
 conservation et leur licence.
 
-### ⚠️ Ne jamais modifier une ligne de crédit
+### ⚠️ Ne jamais modifier une ligne de crédit, où qu'elle soit
 
-Chaque planche porte un champ **Crédit de la planche**. C'est une ligne du genre :
+Ces lignes se trouvent à **deux** endroits, et la règle y est la même :
+
+- le champ **Crédit de la planche** de chaque planche d'une fiche de traité ;
+- le champ **Ligne de crédit de la bibliothèque** de la planche de l'écran
+  **L'école → Accueil du site → La rigueur**, qui s'affiche sur la page
+  d'accueil et n'appartient à aucune fiche de traité.
+
+C'est une ligne du genre :
 
 > Hans Talhoffer, Fechtbuch von 1467, fol. 2r — Munich, Bayerische
 > Staatsbibliothek, Cod.icon. 394 a (urn:nbn:de:bvb:12-bsb00020451-7).
@@ -434,8 +476,8 @@ deux fois. La cote, le folio, ce code `urn:` illisible : tout y est utile.
 **Ne la raccourcissez pas, ne la reformulez pas, n'en retirez aucun mot.**
 
 Certaines mentions ont particulièrement l'air superflues et ne le sont pas. Sur
-la fiche de Marozzo (*Opera Nova*), le crédit se termine par « digitalisiert von
-Google » : cette mention est **imposée** par la bibliothèque de Munich pour les
+la fiche de Marozzo (*Opera Nova*), le crédit contient la mention « digitalisiert
+von Google » : elle est **imposée** par la bibliothèque de Munich pour les
 volumes numérisés avec Google, et la retirer met le club en faute. Sur la fiche
 du manuscrit **I.33**, le crédit doit conserver son lien vers la licence CC BY
 4.0 **et** sa mention des modifications apportées à l'image — c'est la licence
@@ -444,6 +486,26 @@ elle-même qui l'exige.
 Si une ligne de crédit vous paraît fausse ou mal orthographiée, ne la corrigez
 pas : **signalez-le à Zaccharie**. Elle est peut-être exacte, simplement écrite
 dans la langue de la bibliothèque.
+
+### ⚠️ Réutiliser une planche ailleurs que sur le site
+
+Quatre des huit traités **interdisent l'usage commercial** de leurs planches :
+Marozzo (*Opera Nova*, statut « No Copyright – Non-Commercial Use Only » de
+Munich) et les trois numérisations de la BnF — Sainct-Didier, Fabris, La noble
+science —, dont les conditions de Gallica ne libèrent que la réutilisation non
+commerciale.
+
+Sur le site du club, aucun problème : c'est exactement l'usage prévu. **En
+dehors** — support imprimé vendu, tee-shirt, affiche, flyer d'un stage payant,
+publication sponsorisée —, **demandez avant**.
+
+Talhoffer, Lecküchner et Paulus Kal (Public Domain Mark 1.0) et I.33 (CC BY 4.0)
+n'ont pas cette limite : les trois premiers sont libres de toute restriction, le
+quatrième demande seulement de garder le crédit, le lien vers la licence et la
+mention des modifications.
+
+Le doute se lève en dix secondes : ouvrez la fiche du traité sur le site, le
+bloc « Licence » dit ce qui est permis.
 
 Le site refuse de publier une planche sans description **ou** sans crédit. Ce
 n'est pas négociable, et c'est volontaire : le seul moyen fiable de ne jamais
@@ -462,25 +524,35 @@ Tout le reste, et notamment :
 - **Description de la planche** — la description lue à voix haute par les
   lecteurs d'écran, comme pour les photos.
 - **Armes concernées** — les disciplines qui travaillent ce traité. La fiche du
-  traité remonte alors automatiquement sur la fiche de chacune de ces armes.
-  L'épée-bocle est sélectionnable même si elle n'a pas de carte sur l'accueil.
+  traité remonte alors automatiquement sur la fiche de chacune de ces armes
+  **qui a une fiche publique**. L'épée-bocle est sélectionnable pour documenter
+  le rattachement, mais elle n'a pas de fiche : le traité n'y remonte nulle part.
 - **Planche majestueuse** — la case à cocher sur la plus belle planche du
   traité : c'est celle qui sera affichée en grand.
-- **Ordre d'affichage** — même principe que pour les encadrants.
+- **Ordre d'affichage** — même principe que pour les encadrants. Attention, ce
+  champ fait deux choses : il range les cartes de la bibliothèque, **et** il
+  désigne le traité mis en avant sur les fiches arme — c'est celui qui porte le
+  plus petit numéro parmi les traités rattachés à cette arme.
 
 ### Une planche déposée ici s'affiche à plusieurs endroits
 
-C'est le point à retenir avant de changer une image : **la planche majestueuse
-d'un traité ressort toute seule sur la fiche de chaque arme concernée**, dans
-l'encadré « La source », avec sa description et sa ligne de crédit. Vous n'avez
-donc rien à déposer dans la fiche de l'arme — le champ image n'y existe plus,
-volontairement. Une image et son crédit ne se séparent jamais : si l'on pouvait
-déposer une gravure quelconque à côté du crédit d'un traité, on afficherait une
-fausse attribution sans s'en apercevoir.
+C'est le point à retenir avant de changer une image. La fiche d'une arme montre
+**un seul** traité dans son encadré « La source » : celui qui porte le **plus
+petit Ordre d'affichage** parmi les traités rattachés à cette arme. Et c'est la
+planche majestueuse de **celui-là seulement** qui y ressort, avec sa description
+et sa ligne de crédit. Vous n'avez donc rien à déposer dans la fiche de l'arme —
+le champ image n'y existe plus, volontairement. Une image et son crédit ne se
+séparent jamais : si l'on pouvait déposer une gravure quelconque à côté du crédit
+d'un traité, on afficherait une fausse attribution sans s'en apercevoir.
 
-Conséquence pratique : **changer la planche majestueuse d'un traité change aussi
-l'image de la fiche arme.** C'est voulu, et c'est sans risque — le crédit suit
-l'image.
+Deux conséquences pratiques :
+
+- **Changer la planche majestueuse du traité mis en avant change aussi l'image
+  de la fiche arme.** C'est voulu, et c'est sans risque — le crédit suit l'image.
+- Sur les autres traités rattachés à la même arme, changer la planche majestueuse
+  ne touche à rien d'autre qu'à leur propre fiche et à leur carte dans la
+  bibliothèque. Pour changer l'image d'une fiche arme, c'est donc l'**Ordre
+  d'affichage** qu'il faut regarder d'abord.
 
 ### Les extraits de texte
 
@@ -525,13 +597,21 @@ partir vite, une séance annulée par exemple.
 déclenchera toute seule à chaque enregistrement, et il faudra compter **deux à
 trois minutes** entre votre clic sur « Enregistrer » et l'affichage sur le site.
 
-Dans les deux cas, si votre modification n'apparaît pas tout de suite :
+Si votre modification n'apparaît pas :
+
+**Aujourd'hui**, aucune attente ne sert à rien. Tant que la mise en ligne n'a pas
+été lancée à la main, la modification n'apparaîtra pas, même au bout d'une heure.
+Un seul réflexe est utile : **rechargez la page en vidant le cache** (`Ctrl` +
+`Maj` + `R` sur Windows et Linux, `Cmd` + `Maj` + `R` sur Mac) une fois que
+Zaccharie vous a dit avoir publié — le navigateur garde souvent l'ancienne
+version en mémoire, et c'est la cause la plus fréquente du « pourtant j'ai bien
+enregistré ». Si c'est urgent, ne guettez pas le site : prévenez-le tout de
+suite.
+
+**À terme**, quand la reconstruction se déclenchera toute seule :
 
 1. Attendez trois minutes.
-2. **Rechargez la page en vidant le cache** : `Ctrl` + `Maj` + `R` sur Windows
-   et Linux, `Cmd` + `Maj` + `R` sur Mac. Votre navigateur garde souvent
-   l'ancienne version en mémoire, et c'est la cause la plus fréquente du
-   « pourtant j'ai bien enregistré ».
+2. Rechargez la page en vidant le cache.
 3. Si rien ne change au bout de dix minutes, prévenez Zaccharie.
 
 ---
@@ -554,16 +634,17 @@ en français et il dit trois choses : ce qui cloche, où, et quoi faire. Par
 exemple :
 
 ```
-Image sans description alternative — articles_clermont › tournoi-de-lyon
+  1. Image sans description alternative — articles_clermont › tournoi-de-lyon › photos[2]
     Fichier : /src/assets/photos/clermont/podium.jpg
-    Remplir « Description de l'image » dans l'admin : elle est lue par
-    les lecteurs d'écran.
+    Remplir « Description de l'image » dans l'admin : elle est lue par les lecteurs d'écran.
 ```
 
 La marche à suivre, à chaque fois, est la même :
 
 1. **Lire le message en entier**, y compris les lignes en retrait.
-2. Repérer la fiche nommée (ici l'article « tournoi de Lyon »).
+2. Repérer la fiche nommée (ici l'article « tournoi de Lyon »). Le dernier
+   morceau après le « › » est le nom du champ — c'est lui qui vous dit *quelle*
+   photo : ici la deuxième de la galerie de l'article.
 3. Corriger ce qui est demandé (ici : remplir la description de la photo).
 4. Enregistrer à nouveau.
 
@@ -619,8 +700,9 @@ pour ça.
   contact : ils sont dans la fiche de l'école, et un raccourci les rappelle
   partout. Si vous vous surprenez à recopier un montant à la main, c'est le
   signe qu'il fallait un `{tarif}`.
-- **Tapez normalement.** Apostrophes, espaces avant les points d'interrogation,
-  guillemets : le site s'en occupe à la publication.
+- **Tapez normalement.** Apostrophes et espaces avant les `? ! ; :` : le site
+  s'en occupe à la publication. En revanche il ne fabrique pas les guillemets
+  français — saisissez `«` et `»` vous-même (§ 5).
 - **En cas de doute sur les droits d'une image ou d'un texte, ne publiez pas.**
   Demandez. Un jour d'attente ne coûte rien ; une image publiée sans droit, si.
 

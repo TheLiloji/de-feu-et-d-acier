@@ -163,6 +163,17 @@ const planchePatrimoniale = (label: string, dossier: string) =>
  *
  * D'où les libellés ci-dessous, et le champ de sous-titres — sans piste `.vtt`,
  * une vidéo publiée est inaccessible à qui ne l'entend pas (WCAG 1.2.2).
+ *
+ * ⚠️ **La vidéo va sur R2, les sous-titres restent sur le site.** Une piste de
+ * texte (`<track>`) est chargée avec l'état CORS de l'élément `<video>` : servie
+ * depuis une autre origine que la page, elle part en mode `no-cors`, la réponse
+ * est opaque, et le navigateur abandonne la piste **sans message d'erreur** — pas
+ * de bouton « sous-titres » dans les commandes, personne ne s'en aperçoit. Le
+ * remède théorique (`crossorigin="anonymous"` sur le `<video>`) est pire : sans
+ * en-tête `Access-Control-Allow-Origin` sur le bucket, il fait échouer le
+ * chargement de la **vidéo** elle-même. On demande donc un `.vtt` déposé dans
+ * `public/`, appelé par un chemin de site (`/videos/lecon-01.fr.vtt`) : même
+ * origine, aucun attribut, aucune règle CORS à maintenir.
  */
 const champsVideo = {
   url: fields.text({
@@ -173,7 +184,7 @@ const champsVideo = {
   sousTitres: fields.text({
     label: 'Sous-titres (fichier .vtt)',
     description:
-      'L’adresse du fichier de sous-titres français, déposé à côté de la vidéo. À remplir dès qu’une vidéo est publiée : sans lui, personne ne peut suivre sans le son. Sans effet sur une vidéo YouTube.',
+      'Le chemin du fichier de sous-titres français sur le site — il commence par « / », par exemple /videos/lecon-01.fr.vtt. Contrairement à la vidéo, ce fichier ne va PAS sur le stockage R2 : une adresse complète (https://…) ne fonctionnerait pas, le navigateur ignorerait les sous-titres sans rien dire. Confiez le .vtt à Zaccharie, qui le dépose sur le site. À remplir dès qu’une vidéo est publiée : sans lui, personne ne peut suivre sans le son. Sans effet sur une vidéo YouTube.',
   }),
   affiche: fields.text({
     label: 'Image d’attente (facultatif)',
@@ -190,7 +201,7 @@ const photoDecorative = (label: string, dossier: string, description?: string) =
       alt: fields.text({
         label: 'Description de l’image',
         description:
-          'Laisser vide si l’image est déjà décrite ailleurs sur la page — un lecteur d’écran ne doit pas entendre deux fois la même description.',
+          'Obligatoire, même si l’image est déjà décrite ailleurs sur la page : la publication est refusée sans elle (le garde-fou n° 3 du build ne fait aucune exception). Restez court, puisque la description détaillée est ailleurs.',
       }),
       cadrage,
     },

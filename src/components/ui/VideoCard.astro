@@ -51,8 +51,19 @@ export interface Props {
   alt?: string;
   objectPosition?: string;
   /**
-   * Piste de sous-titres `.vtt` en français. Toute vidéo publiée en a besoin :
-   * sans elle, la salle est bruyante et le geste reste muet (WCAG 1.2.2).
+   * Piste de sous-titres `.vtt` en français, **en chemin de site** (`/videos/…`).
+   * Toute vidéo publiée en a besoin : sans elle, la salle est bruyante et le
+   * geste reste muet (WCAG 1.2.2).
+   *
+   * ⚠️ **Même origine obligatoire.** Un `<track>` est chargé avec l'état CORS de
+   * l'élément média : sans attribut `crossorigin` sur le `<video>`, une piste
+   * servie depuis R2 part en `no-cors`, la réponse est opaque et le navigateur
+   * abandonne la piste *en silence* — aucun bouton de sous-titres, aucune erreur
+   * en console. Et poser `crossorigin="anonymous"` serait pire : sans
+   * `Access-Control-Allow-Origin` sur le bucket, c'est la **vidéo** qui cesse de
+   * se charger (`networkState === 3`). La vidéo va donc sur R2, le `.vtt` reste
+   * dans `public/` — zéro attribut, zéro règle CORS à maintenir. Le garde-fou
+   * n° 8 du build (`src/lib/validation.ts`) refuse une adresse absolue.
    */
   sousTitres?: string | null;
   /** Durée affichée, ex. « 04:12 ». Badge sur la vignette, mention sous le lecteur. */

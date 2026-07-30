@@ -1303,8 +1303,9 @@ mentions:
       texte: Clémence Sillac, présidente de section
     - titre: Contact
       texte: '{email} · {telephone}'
-  note: Les photographies et illustrations utilisées sont la propriété du club ou de
-    leurs auteurs respectifs.
+  note: Les photographies du club sont la propriété de leurs auteurs… Les 34 reproductions
+    de traités publiées dans « Les sources » n'appartiennent pas au club… (extrait ; la
+    note réelle nomme les trois bibliothèques et leurs licences, cf. legal.yaml)
 hebergeur:
   nom: Cloudflare, Inc.
   adresse: 101 Townsend St, San Francisco, CA 94107, USA
