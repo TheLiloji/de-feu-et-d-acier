@@ -1,0 +1,249 @@
+---
+/**
+ * Widget « Galerie de photos » — une série de photos du club posée dans le fil
+ * du texte, en grille ou en carrousel. Un clic ouvre la `Visionneuse` du site,
+ * à la bonne photo.
+ *
+ * Le dessin est celui du bloc « Photos » d'une fiche d'actualité (grille de
+ * cadres 3/2 à `--radius-2` sur fond `$char`), et la bande défilante est le
+ * `Carousel` du site, qui redevient une grille de trois colonnes au-dessus de
+ * 820 px. Aucun langage visuel nouveau.
+ *
+ * Deux régimes de crédit existent sur le site, et ils ne se mélangent jamais :
+ * ici c'est une **photographie**, dont le crédit a reçu son « © » par
+ * `creditAffiche()`. Une image de bibliothèque passe par « Planche seule »
+ * (`PlancheCorps.astro`), qui rend la ligne de crédit mot pour mot.
+ */
+import { Picture } from 'astro:assets';
+import Carousel from '../ui/Carousel.astro';
+import Icon from '../ui/Icon.astro';
+import Visionneuse from '../ui/Visionneuse.astro';
+import { largeursSrcset } from '../../lib/images';
+
+/** Une photo résolue par `CorpsLibre` — compatible avec `PhotoVisionneuse`. */
+export interface PhotoCorps {
+  source: ImageMetadata;
+  /** Texte alternatif : la description saisie, brute (convention du site). */
+  alt: string;
+  /** Même description, composée — c'est la légende de la visionneuse. */
+  legende: string;
+  /** Crédit déjà mis en forme par `creditAffiche()` (« © Nom »). */
+  credit: string;
+  objectPosition: string;
+}
+
+export interface Props {
+  photos: readonly PhotoCorps[];
+  /** Grille (défaut) ou bande défilante. */
+  mode?: 'grille' | 'carrousel';
+  /** `id` du dialogue de la visionneuse. Unique dans la page. */
+  id: string;
+  /** Nom accessible de la visionneuse et de la bande. */
+  titre?: string;
+  class?: string;
+}
+
+const { photos, mode = 'grille', id, titre = 'Photos', class: classe } = Astro.props;
+
+/**
+ * Largeurs du `srcset` : la tuile ne dépasse jamais ~430 px de rendu (trois
+ * colonnes dans la mesure du corps, une seule en mobile). Politique commune de
+ * `src/lib/images.ts` — les candidats plus grands que le master sont écartés.
+ */
+const LARGEURS = [280, 340, 500, 680, 900];
+const TAILLES = '(min-width: 820px) 30vw, 90vw';
+---
+
+{
+  photos.length > 0 && (
+    <div class:list={['galerie-corps', classe]} data-mode={mode}>
+      {mode === 'carrousel' ? (
+        /* La bande ne déborde pas de la gouttière : dans un corps de texte, elle
+           partirait sous la marge de la page au lieu de suivre la colonne. */
+        <Carousel
+          libelle={titre}
+          nombre={photos.length}
+          indice
+          grilleDesktop={3}
+          debordement={false}
+          largeurItem="clamp(220px, 68vw, 260px)"
+        >
+          {photos.map((photo, i) => (
+            <figure class="galerie-corps__tuile">
+              <button
+                type="button"
+                class="galerie-corps__cadre"
+                data-ouvrir-visionneuse
+                aria-controls={id}
+                aria-haspopup="dialog"
+                data-visionneuse-index={String(i)}
+              >
+                <Picture
+                  src={photo.source}
+                  alt={photo.alt}
+                  formats={['avif', 'webp']}
+                  widths={largeursSrcset(photo.source, { largeurs: LARGEURS })}
+                  sizes={TAILLES}
+                  loading="lazy"
+                  decoding="async"
+                  style={`object-position:${photo.objectPosition}`}
+                />
+                <span class="galerie-corps__loupe" aria-hidden="true">
+                  <Icon name="plus" size={12} />
+                </span>
+                <span class="visuellement-cache"> — agrandir la photo</span>
+              </button>
+              {photo.credit && (
+                <figcaption class="galerie-corps__credit">{photo.credit}</figcaption>
+              )}
+            </figure>
+          ))}
+        </Carousel>
+      ) : (
+        /* Même tuile, dans une liste : le balisage diffère parce que la piste du
+           carrousel dimensionne ses enfants directs, qui doivent être les tuiles
+           elles-mêmes. */
+        <ul class="galerie-corps__grille" role="list">
+          {photos.map((photo, i) => (
+            <li>
+              <figure class="galerie-corps__tuile">
+                <button
+                  type="button"
+                  class="galerie-corps__cadre"
+                  data-ouvrir-visionneuse
+                  aria-controls={id}
+                  aria-haspopup="dialog"
+                  data-visionneuse-index={String(i)}
+                >
+                  <Picture
+                    src={photo.source}
+                    alt={photo.alt}
+                    formats={['avif', 'webp']}
+                    widths={largeursSrcset(photo.source, { largeurs: LARGEURS })}
+                    sizes={TAILLES}
+                    loading="lazy"
+                    decoding="async"
+                    style={`object-position:${photo.objectPosition}`}
+                  />
+                  <span class="galerie-corps__loupe" aria-hidden="true">
+                    <Icon name="plus" size={12} />
+                  </span>
+                  <span class="visuellement-cache"> — agrandir la photo</span>
+                </button>
+                {photo.credit && (
+                  <figcaption class="galerie-corps__credit">{photo.credit}</figcaption>
+                )}
+              </figure>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Visionneuse id={id} titre={titre} photos={photos} />
+    </div>
+  )
+}
+
+<style>
+  /* ── Grille ─────────────────────────────────────────────────────────────── */
+  /* Le bloc « Photos » d'une fiche d'actualité, à l'identique : des cadres de
+     260 px au moins, 12 px de gouttière, et autant de colonnes que la mesure
+     du corps en laisse tenir. */
+  .galerie-corps__grille {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* ── La tuile ───────────────────────────────────────────────────────────── */
+
+  .galerie-corps__tuile {
+    margin: 0;
+  }
+
+  .galerie-corps__cadre {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    aspect-ratio: 3 / 2;
+    border: 0;
+    border-radius: var(--radius-2);
+    background: var(--char);
+    cursor: zoom-in;
+  }
+
+  /* `<Picture>` est un composant : ses nœuds échappent au scope, d'où :global. */
+  .galerie-corps__cadre :global(picture),
+  .galerie-corps__cadre :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .galerie-corps__cadre :global(img) {
+    object-fit: cover;
+    transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* Affordance d'agrandissement — un carré à filet, pas une pastille : le
+     langage du site n'a pas de rond. Opacité de repos non nulle, un écran
+     tactile n'ayant pas de survol. */
+  .galerie-corps__loupe {
+    --icone-cote: 12px;
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-1);
+    background: var(--veil-ink-80);
+    color: var(--parch);
+    opacity: 0.72;
+    transition:
+      opacity var(--transition),
+      border-color var(--transition);
+  }
+
+  .galerie-corps__cadre:hover .galerie-corps__loupe,
+  .galerie-corps__cadre:focus-visible .galerie-corps__loupe {
+    opacity: 1;
+    border-color: var(--ember-hot);
+  }
+
+  .galerie-corps__cadre:hover :global(img) {
+    transform: scale(1.03);
+  }
+
+  .galerie-corps__cadre:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 3px;
+  }
+
+  .galerie-corps__credit {
+    padding-block-start: 8px;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: var(--lh-body-tight);
+    color: var(--parch-mute);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .galerie-corps__cadre :global(img),
+    .galerie-corps__loupe {
+      transition: none;
+    }
+
+    .galerie-corps__cadre:hover :global(img) {
+      transform: none;
+    }
+  }
+</style>

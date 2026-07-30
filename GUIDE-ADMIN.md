@@ -22,15 +22,16 @@ intéresse ; le reste peut attendre.
 3. [Comment l'administration est rangée](#3-comment-ladministration-est-rangée)
 4. [Publier une annonce](#4-publier-une-annonce)
 5. [Écrire un article](#5-écrire-un-article)
-6. [Ajouter, masquer ou retirer un encadrant](#6-ajouter-masquer-ou-retirer-un-encadrant)
-7. [Changer une photo](#7-changer-une-photo)
-8. [Modifier les créneaux, le tarif, le lieu, le contact](#8-modifier-les-créneaux-le-tarif-le-lieu-le-contact)
-9. [Les photos du gymnase (à faire à la rentrée)](#9-les-photos-du-gymnase-à-faire-à-la-rentrée)
-10. [Les sources : traités et planches](#10-les-sources--traités-et-planches)
-11. [Quand la modification apparaît sur le site](#11-quand-la-modification-apparaît-sur-le-site)
-12. [Si une modification est refusée](#12-si-une-modification-est-refusée)
-13. [Qui appeler](#13-qui-appeler)
-14. [Petits réflexes qui font gagner du temps](#14-petits-réflexes-qui-font-gagner-du-temps)
+6. [Composer une page avec les blocs](#6-composer-une-page-avec-les-blocs)
+7. [Ajouter, masquer ou retirer un encadrant](#7-ajouter-masquer-ou-retirer-un-encadrant)
+8. [Changer une photo](#8-changer-une-photo)
+9. [Modifier les créneaux, le tarif, le lieu, le contact](#9-modifier-les-créneaux-le-tarif-le-lieu-le-contact)
+10. [Les photos du gymnase (à faire à la rentrée)](#10-les-photos-du-gymnase-à-faire-à-la-rentrée)
+11. [Les sources : traités et planches](#11-les-sources--traités-et-planches)
+12. [Quand la modification apparaît sur le site](#12-quand-la-modification-apparaît-sur-le-site)
+13. [Si une modification est refusée](#13-si-une-modification-est-refusée)
+14. [Qui appeler](#14-qui-appeler)
+15. [Petits réflexes qui font gagner du temps](#15-petits-réflexes-qui-font-gagner-du-temps)
 
 ---
 
@@ -173,11 +174,11 @@ quand il vous plaît.
 | **Date de publication** | La date du jour est déjà remplie. |
 | **Statut** | *Brouillon* tant que ce n'est pas prêt. |
 | **Chapô** | Deux ou trois lignes de résumé, 280 caractères maximum. C'est ce qu'on lit sur la carte de l'article, et c'est ce que Google affiche. Prenez-en soin. |
-| **Image de couverture** | Voir la section 7 sur les photos. La *Description de l'image* est obligatoire. |
+| **Image de couverture** | Voir la section 8 sur les photos. La *Description de l'image* est obligatoire. |
 | **Catégorie** | *Vie du club*, *Tournoi*, *Stage*, *Sources & technique* ou *Matériel*. |
 | **Écrit par** | Facultatif. La liste propose les encadrants du club. |
 | **Mettre à la une** | Remonte l'article en tête de la page « Actualités ». |
-| **Contenu** | Le corps de l'article. |
+| **Contenu** | Le corps de l'article : du texte, et les blocs du § 6 (galerie, vidéo, questions-réponses, renvoi, bouton, planche). |
 | **Photos de l'article** | Une galerie en fin d'article. Chaque photo a sa description. |
 | **Liens utiles** | *Texte* + *Adresse*, pour les liens de fin (résultats, page de l'organisateur…). |
 
@@ -189,6 +190,11 @@ liste, citation, image.
 
 Deux niveaux de titre sont disponibles. Pour un article, servez-vous du premier
 pour les parties, du second seulement si une partie doit être redécoupée.
+
+Le bouton **« + »** de cette barre d'outils insère des **blocs** au milieu du
+texte : une galerie de photos, une vidéo, une série de questions-réponses, une
+carte vers une autre page du site, un bouton, une planche de traité. C'est le
+sujet de la section suivante.
 
 Écrivez **normalement**. Le site s'occupe de trois choses à la publication :
 
@@ -208,7 +214,151 @@ Deux choses qu'il ne fait **pas**, et qui vous restent :
 
 ---
 
-## 6. Ajouter, masquer ou retirer un encadrant
+## 6. Composer une page avec les blocs
+
+Quatre textes du site se composent **librement** : vous écrivez vos paragraphes,
+et vous glissez entre eux des blocs tout prêts, dans l'ordre que vous voulez.
+Un peu de texte, une vidéo, une interview, encore du texte, une carte vers la
+page de l'épée longue, une galerie de photos pour finir : la page suit votre
+plan, pas l'inverse.
+
+| Où | Le champ concerné |
+| --- | --- |
+| **Publier → Articles (actualités)** | *Contenu* |
+| **L'école → Encadrants** | *Biographie* |
+| **Enseignement → Armes & disciplines** | *Description longue (fiche arme)* |
+| **Enseignement → Les sources (traités historiques)** | *Présentation* |
+
+Les six blocs sont les mêmes dans les quatre champs. Ailleurs (réponse de la
+foire aux questions, présentation d'un partenaire), le texte reste simple :
+ce sont des textes courts, affichés dans un cadre où un carrousel de photos
+n'aurait pas de sens.
+
+> **Un mot de vocabulaire.** Dans les messages techniques du site (et dans la
+> documentation de Zaccharie), ces blocs sont appelés des **widgets**. C'est le
+> même objet, sous deux noms.
+
+### Insérer un bloc
+
+1. Placez le curseur sur une **ligne vide**, à l'endroit exact où le bloc doit
+   apparaître.
+2. Cliquez sur le **« + »** de la barre d'outils, ou tapez simplement `/`.
+3. Choisissez le bloc dans la liste. Chaque entrée porte son nom et une phrase
+   d'explication.
+4. Le bloc s'installe dans un cadre, avec un bouton **« Edit »**. Cliquez
+   dessus, remplissez les champs, puis **« Done »**.
+
+Le cadre affiche ensuite un résumé de ce qu'il contient : « 6 photos ·
+grille », « La leçon de garde · 04:12 », « Arme · epee-longue ». C'est votre
+repère quand la page s'allonge.
+
+> **Trois mots sont restés en anglais** dans cette version de l'éditeur :
+> « Edit » (modifier), « Done » (terminé) et « Cancel » (annuler). Tout le
+> reste, les noms des blocs et de leurs champs, est en français.
+
+### Déplacer ou supprimer un bloc
+
+L'éditeur n'a pas de poignée pour tirer un bloc à la souris. Cliquez sur son
+cadre pour le sélectionner, puis :
+
+- **le déplacer** : `Ctrl` + `X` pour le couper, placez le curseur sur une ligne
+  vide ailleurs, `Ctrl` + `V` pour le coller. Il arrive complet, avec tout ce
+  que vous aviez saisi ;
+- **le supprimer** : la touche `Suppr` ou `Retour arrière`.
+
+Sur Mac, `Cmd` remplace `Ctrl`.
+
+### Les six blocs
+
+| Bloc | Ce qu'il fait | À savoir |
+| --- | --- | --- |
+| **Galerie de photos** | Une série de photos, en *Grille* (toutes visibles) ou en *Carrousel* (une bande qui défile). Un clic ouvre la photo en grand. | Chaque photo demande sa **description**, comme partout ailleurs sur le site. Le *Crédit photo* reçoit le « © » automatiquement : réservez-le aux photos du club. Au-delà de six photos, préférez le carrousel. |
+| **Vidéo** | Une vidéo lue directement sur la page, avec sa vignette et sa durée. | Mêmes champs que la vidéo d'une fiche d'encadrant. Une adresse YouTube ou Vimeo fonctionne, mais la vignette devient alors un simple lien qui fait quitter le site. Pensez au fichier de **sous-titres**. |
+| **Questions-réponses** | Une suite de questions et de réponses, présentée comme le bloc « interview » d'une fiche d'encadrant. | Laissez une ligne vide dans une réponse pour faire deux paragraphes. Le *Titre du bloc* est libre : « L'interview », « Trois questions à Marie ». |
+| **Renvoi vers une page du site** | Une carte cliquable vers une arme, un traité, un encadrant ou un article. | **Rien à déposer** : l'image, le titre et le sous-titre de la carte sont pris sur la page visée, et suivent ses modifications. Vous choisissez le type de page, puis son adresse dans une liste. Le *Titre de remplacement* est facultatif. |
+| **Bouton** | Un bouton d'action, vers une page du site ou vers l'extérieur. | *Plein* pour l'action principale, *Contour* pour une action secondaire. Écrivez le texte normalement : les capitales sont posées à l'affichage. |
+| **Planche seule** | Une image de traité, montrée entière, avec sa légende et sa ligne de crédit. | À ne pas confondre avec la galerie : voir l'avertissement plus bas. |
+
+Dans la liste du « + », les blocs sont rangés par ordre alphabétique :
+*Bouton*, *Galerie de photos*, *Planche seule*, *Questions-réponses*, *Renvoi
+vers une page du site*, *Vidéo*.
+
+### Un exemple complet
+
+Voici une fiche d'encadrant composée de bout en bout. Chaque ligne est soit du
+texte que vous tapez, soit un bloc que vous insérez :
+
+1. **du texte** : deux paragraphes de présentation ;
+2. un bloc **Vidéo** : l'extrait de son dernier tournoi ;
+3. un bloc **Questions-réponses** : « Pourquoi l'épée longue ? », « Un conseil
+   pour un débutant ? » ;
+4. **du texte** : ce qu'elle enseigne au club ;
+5. un bloc **Renvoi vers une page du site**, type *Une arme*, adresse
+   `epee-longue` : la carte de l'épée longue apparaît, avec sa photo ;
+6. un bloc **Renvoi vers une page du site**, type *Un traité de la
+   bibliothèque*, adresse `talhoffer-1467` : la carte du manuscrit qu'elle
+   travaille ;
+7. **du texte** : une phrase de transition ;
+8. un bloc **Galerie de photos** : huit photos de la salle, en carrousel.
+
+Rien ne vous oblige à suivre cet ordre, et rien ne vous oblige à tout utiliser.
+Une biographie de six lignes sans aucun bloc reste une biographie parfaitement
+valable.
+
+### Un bloc se pose entre deux paragraphes, jamais dedans
+
+Un bloc occupe toute la largeur du texte. Il se pose **seul**, sur sa propre
+ligne. L'éditeur vous laissera peut-être en glisser un à l'intérieur d'une
+citation ou d'une puce de liste : le site ne saurait pas l'afficher là, et la
+publication s'arrêtera en vous disant lequel. Sortez-le de son bloc (`Ctrl` +
+`X`, puis `Ctrl` + `V` sur une ligne vide) et tout rentre dans l'ordre.
+
+### ⚠️ Photo du club ou planche de bibliothèque : deux blocs, deux crédits
+
+C'est la distinction à ne pas manquer, et c'est pour cela qu'il y a deux blocs
+séparés plutôt qu'une case à cocher.
+
+- **Galerie de photos** sert aux photos **du club**. Son champ *Crédit photo*
+  attend le nom du photographe seul, et le site ajoute le « © » devant.
+- **Planche seule** sert aux images de **traités numérisés par une
+  bibliothèque**. Son champ s'appelle *Ligne de crédit de la bibliothèque*, et
+  ce que vous y écrivez est affiché **mot pour mot** : aucun « © » ajouté,
+  aucune ponctuation retouchée.
+
+Cette ligne de crédit est exigée par la bibliothèque qui a numérisé l'ouvrage.
+C'est elle qui donne au club le droit de publier l'image. Recopiez-la telle
+quelle depuis la fiche du traité, sans en retirer un mot, y compris les
+mentions qui semblent superflues comme « digitalisiert von Google ». Le § 11
+détaille pourquoi.
+
+Deux réflexes qui vous éviteront de vous tromper :
+
+- **une planche déjà présente dans une fiche de traité se cite avec le bloc
+  *Renvoi vers une page du site***, qui affiche la carte du traité et emmène le
+  lecteur sur sa fiche. Ne la redéposez pas ;
+- **dans le doute, appelez Zaccharie** avant de publier. Une ligne de crédit
+  approximative met le club en faute.
+
+### Ce que la publication refuse
+
+Les blocs sont relus avant chaque mise en ligne. La publication s'arrête, en
+nommant la fiche et le bloc fautif, si :
+
+- une **photo de galerie** ou une **planche** n'a pas de description ;
+- une **planche** n'a pas sa ligne de crédit ;
+- un **renvoi** pointe vers une page qui n'existe pas, ou qui n'est pas publiée
+  (arme retirée de la grille, encadrant masqué, article encore en brouillon) ;
+- un **renvoi** n'a pas de page choisie ;
+- un **bouton** n'a ni texte ni adresse ;
+- un bloc est **imbriqué** dans une citation ou dans une liste.
+
+Le message nomme le fichier, le champ et le rang du bloc, par exemple « 4ᵉ bloc
+du texte ». Comptez depuis le haut du champ : un paragraphe, un titre, une
+citation, une image et un bloc comptent chacun pour un.
+
+---
+
+## 7. Ajouter, masquer ou retirer un encadrant
 
 **L'école → Encadrants**
 
@@ -225,7 +375,7 @@ Bouton « + », puis :
 | **Portrait** | La photo. *Description de l'image* obligatoire. |
 | **Armes enseignées** | À choisir dans la liste des armes du club. Affichées au-dessus du nom sur l'accueil. |
 | **Accroche** | Une ligne, 90 caractères maximum. Ex. « Rapière française & italienne · bolonaise ». |
-| **Biographie** | Le texte de la fiche. Gras, italique, liens et listes disponibles. |
+| **Biographie** | Le corps de la fiche, affiché en pleine largeur sous le portrait. C'est un texte **à composition libre** (section 6) : titres, gras, italique, liens, listes, et les six blocs — galerie, vidéo, questions-réponses, renvoi, bouton, planche. |
 | **Lien externe (facultatif)** | Profil HEMA Ratings, site personnel… |
 | **Interview** | Une série de *Question* / *Réponse*. Le bloc reste invisible sur le site tant qu'aucune question n'est saisie. |
 | **Vidéo d'interview (facultatif)** | *Adresse du fichier vidéo*, *Durée*, *Vignette*, *Sous-titres*, *Image d'attente*. Invisible tant que l'adresse est vide. La vidéo est lue **sur la page**, pas dans un lecteur YouTube : c'est pourquoi on donne l'adresse du fichier `.mp4` déposé sur le stockage du club, et non un lien YouTube. Les **sous-titres** (fichier `.vtt`) sont à fournir dès qu'une vidéo est publiée : sans eux, personne ne peut suivre sans le son. Attention, ce fichier-là ne se dépose **pas** au même endroit que la vidéo : le champ attend un chemin qui commence par « / » (`/videos/interview-marie.fr.vtt`), pas une adresse complète. Envoyez le `.vtt` à Zaccharie, qui le met en place. Une adresse `https://…` serait acceptée par le formulaire mais les sous-titres ne s'afficheraient jamais, sans le moindre message. |
@@ -250,7 +400,7 @@ Vous n'avez aucun compte à corriger nulle part.
 
 ---
 
-## 7. Changer une photo
+## 8. Changer une photo
 
 La règle est la même partout : portrait d'encadrant, couverture d'article, album,
 photo du lieu.
@@ -287,7 +437,7 @@ remplissez les champs qui l'accompagnent :
 > crédit de la bibliothèque »** (planches des fiches de la rubrique *Les
 > sources*, et planche de l'écran *Accueil · La rigueur*). Celle-là se recopie
 > mot pour mot, telle que la bibliothèque l'exige : **aucun « © » n'y est
-> ajouté**, aucune ponctuation n'est retouchée. Voir le § 10.
+> ajouté**, aucune ponctuation n'est retouchée. Voir le § 11.
 
 ### Toujours remplir « Description de l'image »
 
@@ -315,7 +465,7 @@ reste utilisable par tout le monde.
 
 ---
 
-## 8. Modifier les créneaux, le tarif, le lieu, le contact
+## 9. Modifier les créneaux, le tarif, le lieu, le contact
 
 **L'école → Lieu, contact, créneaux & tarifs**
 
@@ -414,7 +564,7 @@ sur le site, seulement son nom et sa fonction.
 
 ---
 
-## 9. Les photos du gymnase (à faire à la rentrée)
+## 10. Les photos du gymnase (à faire à la rentrée)
 
 Il n'y a pas de carte sur le site : pas de plan Google, pas de tuiles chargées
 depuis l'extérieur. C'est un choix, et c'est ce qui permet au site de ne poser
@@ -444,7 +594,7 @@ demander.
 
 ---
 
-## 10. Les sources : traités et planches
+## 11. Les sources : traités et planches
 
 **Enseignement → Les sources (traités historiques)**
 
@@ -582,7 +732,7 @@ la partie intéressante.
 
 ---
 
-## 11. Quand la modification apparaît sur le site
+## 12. Quand la modification apparaît sur le site
 
 Chaque clic sur **Enregistrer** enregistre votre travail. Le site public, lui,
 est reconstruit à partir de ce contenu, et cette reconstruction prend un moment.
@@ -615,7 +765,7 @@ suite.
 
 ---
 
-## 12. Si une modification est refusée
+## 13. Si une modification est refusée
 
 Le site sait se protéger, à deux moments.
 
@@ -646,6 +796,20 @@ La marche à suivre, à chaque fois, est la même :
 3. Corriger ce qui est demandé (ici : remplir la description de la photo).
 4. Enregistrer à nouveau.
 
+**Quand le message parle d'un bloc**, il nomme le fichier, le champ et le rang
+du bloc dans le texte :
+
+```
+  2. Renvoi cassé — src/content/commun/disciplines/epee-longue.mdoc › Description longue (fiche arme) › 4ᵉ bloc du texte
+    La carte pointe vers « talhofer-1467 », qui n'existe pas parmi les traités.
+    Pages disponibles : fabris-1606, i33, leckuchner-cgm582, …
+    Rouvrir le widget et choisir la page dans la liste déroulante.
+```
+
+Ouvrez la fiche nommée (ici l'arme « épée longue »), allez au champ nommé, et
+comptez les blocs depuis le haut : un paragraphe, un titre, une citation, une
+image et un bloc inséré comptent chacun pour un.
+
 Les refus les plus courants, et leur remède :
 
 | Le message parle de… | Ce qu'il faut faire |
@@ -655,13 +819,20 @@ Les refus les plus courants, et leur remède :
 | un raccourci inconnu ou mal orthographié | corriger l'orthographe entre les accolades (minuscules, sans espace) |
 | une image dans un format non pris en charge | réenregistrer la photo en JPEG et la redéposer |
 | une planche sans crédit, ou une licence sans adresse | ne pas improviser : appeler Zaccharie |
+| un renvoi cassé, ou vers une page non publiée | rouvrir le bloc et rechoisir la page, ou publier la page visée (§ 6) |
+| un renvoi sans destination | choisir une page dans la liste déroulante du bloc, ou le supprimer |
+| un bouton incomplet | remplir *Texte du bouton* et *Adresse*, ou supprimer le bloc |
+| un widget mal placé | sortir le bloc de la citation ou de la liste (`Ctrl` + `X`, puis `Ctrl` + `V` sur une ligne vide) |
+| un widget inconnu | appeler Zaccharie : le fichier a été modifié à la main |
+
+(« Widget » est l'autre nom d'un bloc, voir le § 6.)
 
 Rien n'est perdu pendant ce temps : votre texte est toujours là, dans le
 formulaire.
 
 ---
 
-## 13. Qui appeler
+## 14. Qui appeler
 
 **Zaccharie** s'occupe de la partie technique du site. Pour le joindre, passez
 par l'adresse de l'association, **amhe63.dfda@gmail.com**, ou par la messagerie
@@ -683,7 +854,7 @@ pour ça.
 
 ---
 
-## 14. Petits réflexes qui font gagner du temps
+## 15. Petits réflexes qui font gagner du temps
 
 - **Enregistrez souvent.** Un formulaire ouvert deux heures dans un onglet, c'est
   une déconnexion qui vous attend.
@@ -692,6 +863,9 @@ pour ça.
   fichier, toujours rempli. Vous n'aurez jamais d'erreur de publication.
 - **Décochez plutôt que supprimer.** *Affiché sur le site* pour les encadrants et
   les albums : vous gardez le travail d'écriture.
+- **Un bloc se pose sur une ligne vide**, jamais à l'intérieur d'une citation ou
+  d'une puce. Pour le déplacer : `Ctrl` + `X`, puis `Ctrl` + `V` là où il doit
+  aller (§ 6).
 - **Ordre d'affichage par dizaines** : 10, 20, 30. Pour intercaler quelqu'un
   plus tard sans tout renuméroter.
 - **N'écrivez jamais deux fois la même information.** Tarif, horaires, adresse,

@@ -1,0 +1,258 @@
+---
+/**
+ * Widget « Planche seule » — une image de bibliothèque posée dans un corps de
+ * texte, montrée **entière** dans un cadre à filet, avec sa légende et sa ligne
+ * de crédit.
+ *
+ * ⚠️ **Le crédit est rendu mot pour mot.** C'est la contrepartie du droit de
+ * publier l'image : la BnF exige « Source gallica.bnf.fr / Bibliothèque
+ * nationale de France », le MDZ « digitalisiert von Google », le Royal Armouries
+ * le lien de licence et la mention des modifications. Aucun « © » n'est ajouté
+ * — la plupart de ces planches sont sous *Public Domain Mark*, c'est-à-dire sans
+ * droit d'auteur —, aucune composition typographique n'est appliquée, et les
+ * adresses sont seulement rendues cliquables (`creditPlancheHtml()`). C'est la
+ * règle intransgressible d'ARCHITECTURE.md §6, et c'est pour la rendre
+ * impossible à confondre que la photo du club a son propre widget.
+ *
+ * Le crédit est repris **dans la visionneuse**, qui est un autre affichage de la
+ * même image : une reproduction plein écran sans sa mention de source ne serait
+ * pas en règle. D'où une visionneuse à une seule vue, qui est aussi ce qui rend
+ * une gravure lisible sur un téléphone.
+ *
+ * Le dessin est celui d'une rangée de `GaleriePlanches.astro`.
+ */
+import { Picture } from 'astro:assets';
+import Icon from '../ui/Icon.astro';
+import Visionneuse from '../ui/Visionneuse.astro';
+import { largeursSrcset } from '../../lib/images';
+import { creditPlancheHtml } from '../sources/traites';
+
+export interface Props {
+  source: ImageMetadata;
+  /** Description de l'image, brute (convention de tous les `alt` du site). */
+  alt: string;
+  /** Légende affichée, déjà composée par `typographieFr`. */
+  legende?: string;
+  /** Ligne de crédit de la bibliothèque, **verbatim**. */
+  credit?: string;
+  /** `id` du dialogue de la visionneuse. Unique dans la page. */
+  id: string;
+  class?: string;
+}
+
+const { source, alt, legende = '', credit = '', id, class: classe } = Astro.props;
+
+/** Politique de largeurs de `GaleriePlanches` : au-delà de 2080 px, rien ne sert. */
+const LARGEURS = [480, 800, 1240, 2080];
+
+const ratio = source.height > 0 ? source.width / source.height : 1;
+
+/**
+ * `sizes` : la plus petite des trois contraintes réelles — la mesure du corps,
+ * la largeur de la fenêtre moins ses gouttières, et la hauteur disponible
+ * convertie en largeur par les proportions du fichier. Sans ce dernier terme,
+ * une planche en portrait bridée par la hauteur téléchargeait un dérivé de
+ * 2080 px pour un rendu de 480.
+ */
+const parHauteur = `calc(72vh * ${ratio.toFixed(3)})`;
+const tailles = [
+  `(min-width: 1152px) min(720px, ${parHauteur})`,
+  `(min-width: 820px) min(calc(100vw - 72px), ${parHauteur})`,
+  `min(calc(100vw - 44px), ${parHauteur})`,
+].join(', ');
+
+const vues = [
+  {
+    source,
+    alt,
+    legende,
+    credit,
+  },
+];
+---
+
+<figure class:list={['planche-corps', classe]}>
+  <button
+    type="button"
+    class="planche-corps__cadre"
+    style={`--planche-ratio:${ratio.toFixed(4)}`}
+    data-ouvrir-visionneuse
+    aria-controls={id}
+    aria-haspopup="dialog"
+    data-visionneuse-index="0"
+  >
+    <Picture
+      src={source}
+      alt={alt}
+      formats={['avif', 'webp']}
+      widths={largeursSrcset(source, { largeurs: LARGEURS })}
+      sizes={tailles}
+      loading="lazy"
+      decoding="async"
+    />
+    <span class="planche-corps__loupe" aria-hidden="true">
+      <Icon name="plus" size={12} />
+    </span>
+    <span class="visuellement-cache"> — agrandir la planche</span>
+  </button>
+
+  {
+    (legende || credit) && (
+      <figcaption class="planche-corps__legende">
+        {legende && <p class="planche-corps__texte">{legende}</p>}
+        {credit && (
+          <p class="planche-corps__credit" set:html={creditPlancheHtml(credit)} />
+        )}
+      </figcaption>
+    )
+  }
+
+  <Visionneuse id={id} titre="Planche" photos={vues} />
+</figure>
+
+<style>
+  .planche-corps {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(14px, 12.5px + 0.38vw, 18px);
+    margin: 0;
+  }
+
+  /*
+   * Le cadre épouse la planche (`width: fit-content`) plutôt que la colonne :
+   * une gravure n'est jamais encadrée de deux bandes de `$char` vides. Les deux
+   * plafonds doivent s'accorder — borner la seule hauteur de l'image laisserait
+   * le cadre dimensionné sur la largeur *naturelle* du fichier, et une planche
+   * en portrait flotterait au milieu. D'où `--planche-ratio`, posé en ligne.
+   * La déclaration en `vh` précède celle en `svh` : sur un navigateur qui ignore
+   * les unités de fenêtre « petite », la première tient et rien ne déborde.
+   */
+  .planche-corps__cadre {
+    position: relative;
+    display: block;
+    width: fit-content;
+    max-width: min(100%, calc(72vh * var(--planche-ratio, 1)));
+    max-width: min(100%, calc(72svh * var(--planche-ratio, 1)));
+    padding: 0;
+    overflow: hidden;
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    background: var(--char);
+    cursor: zoom-in;
+    transition: border-color var(--transition);
+  }
+
+  /* `<Picture>` est un composant : ses nœuds échappent au scope, d'où :global. */
+  .planche-corps__cadre :global(picture) {
+    display: block;
+  }
+
+  .planche-corps__cadre :global(img) {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 72vh;
+    max-height: 72svh;
+    transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* Carré à filet, pas une pastille — le langage du site n'a pas de rond. */
+  .planche-corps__loupe {
+    --icone-cote: 12px;
+    position: absolute;
+    right: clamp(8px, 0.4rem + 0.4vw, 14px);
+    bottom: clamp(8px, 0.4rem + 0.4vw, 14px);
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-1);
+    background: var(--veil-ink-80);
+    color: var(--parch);
+    opacity: 0.72;
+    transition:
+      opacity var(--transition),
+      border-color var(--transition);
+  }
+
+  .planche-corps__cadre:hover,
+  .planche-corps__cadre:focus-visible {
+    border-color: var(--line-strong);
+  }
+
+  .planche-corps__cadre:hover .planche-corps__loupe,
+  .planche-corps__cadre:focus-visible .planche-corps__loupe {
+    opacity: 1;
+    border-color: var(--ember-hot);
+  }
+
+  .planche-corps__cadre:hover :global(img) {
+    transform: scale(1.02);
+  }
+
+  .planche-corps__cadre:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 4px;
+  }
+
+  /* ── Légende et crédit ──────────────────────────────────────────────────── */
+
+  .planche-corps__legende {
+    display: flex;
+    width: 100%;
+    max-width: 76ch;
+    flex-direction: column;
+    gap: clamp(8px, 6.514px + 0.381vw, 12px);
+  }
+
+  .planche-corps__texte {
+    margin: 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.65;
+    color: var(--parch-soft);
+  }
+
+  /*
+   * La ligne de crédit : détachée par un filet, en corps réduit. Ce n'est pas de
+   * la prose éditoriale mais une mention obligatoire, et elle se lit comme telle.
+   * `overflow-wrap: anywhere` parce qu'une URN du MDZ ou une adresse de licence
+   * est une chaîne sans espace, qui débordait la colonne en mobile.
+   */
+  .planche-corps__credit {
+    margin: 0;
+    padding-top: clamp(8px, 6.514px + 0.381vw, 12px);
+    border-top: var(--filet);
+    font-size: var(--fs-body-xxs);
+    line-height: 1.55;
+    color: var(--parch-mute);
+    overflow-wrap: anywhere;
+  }
+
+  /* Le crédit est injecté par `set:html` : les adresses échappent au scope. */
+  .planche-corps__credit :global(a) {
+    color: var(--parch-soft);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    text-underline-offset: 0.2em;
+    transition: color var(--transition);
+  }
+
+  .planche-corps__credit :global(a:hover),
+  .planche-corps__credit :global(a:focus-visible) {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .planche-corps__cadre :global(img),
+    .planche-corps__loupe {
+      transition: none;
+    }
+
+    .planche-corps__cadre:hover :global(img) {
+      transform: none;
+    }
+  }
+</style>

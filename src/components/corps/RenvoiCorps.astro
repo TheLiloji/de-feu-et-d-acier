@@ -1,0 +1,66 @@
+---
+/**
+ * Widget « Renvoi vers une page du site » — la carte de circulation.
+ *
+ * Tout est résolu **au build** depuis le contenu réel de la page visée
+ * (`src/lib/renvois.ts`) : le visuel, le titre, le sous-titre, le sur-titre et
+ * l'adresse. Renommer une arme renomme donc la carte qui y mène, et un slug qui
+ * ne correspond à aucune page publiée casse le build plutôt que de publier un
+ * lien mort (garde-fou n° 9, sous-règles 9a et 9b).
+ *
+ * Le seul écart autorisé au rédacteur est un titre de remplacement : ni le
+ * sous-titre ni le visuel ne se surchargent. Autoriser une image quelconque à
+ * côté du titre d'un traité rejouerait exactement la faute que l'encadré « La
+ * source » a corrigée (ARCHITECTURE.md §4).
+ *
+ * Aucun crédit d'image n'est affiché : c'est une vignette de navigation, et la
+ * page visée porte l'attribution complète — ce qu'autorise explicitement
+ * CC BY 4.0 §3.a.2 pour une planche de bibliothèque.
+ */
+import MediaCard from '../ui/MediaCard.astro';
+import type { CibleRenvoi } from '../../lib/renvois';
+
+export interface Props {
+  /** La page visée, résolue par `resoudreRenvoi()`. */
+  cible: CibleRenvoi;
+  /** Titre de remplacement, déjà passé par `resoudre()`. Vide = titre de la cible. */
+  libelle?: string;
+  class?: string;
+}
+
+const { cible, libelle = '', class: classe } = Astro.props;
+---
+
+<div class:list={['renvoi-corps', classe]}>
+  {/* `titreNiveau="p"` : une carte de renvoi n'est pas un titre de section, elle
+      n'entre pas dans le plan du document. `lien.href` n'est pas fourni, la
+      carte entière étant déjà cliquable — une ancre imbriquée serait invalide. */}
+  <MediaCard
+    image={cible.image}
+    alt={cible.alt}
+    href={cible.href}
+    ratio="16 / 10"
+    objectPosition={cible.objectPosition}
+    variante="carte"
+    voile="fort"
+    assise="standard"
+    rayon={2}
+    eyebrow={cible.eyebrow}
+    titre={libelle || cible.titre}
+    titreNiveau="p"
+    sousTitre={cible.sousTitre}
+    lien={{ libelle: cible.libelleLien }}
+    sizes="(min-width: 820px) 58ch, 92vw"
+    rendMax={760}
+  />
+</div>
+
+<style>
+  /* La carte ne prend pas toute la mesure du corps : une vignette de navigation
+     large comme un paragraphe se lit comme un bloc de contenu, ce qu'elle n'est
+     pas. `MediaCard` porte le reste du dessin. */
+  .renvoi-corps {
+    width: 100%;
+    max-width: 58ch;
+  }
+</style>
