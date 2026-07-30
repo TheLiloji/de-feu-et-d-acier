@@ -26,7 +26,8 @@ Bonjour,
 
 Je vous écris au nom de **De Feu et d'Acier**, section AMHE de l'USAM
 Clermont-Ferrand. Nous venons de mettre en ligne un nouveau site, qui comporte
-une rubrique consacrée aux traités sur lesquels nos pratiquants travaillent :
+une rubrique consacrée aux traités sur lesquels nos pratiquants travaillent
+(https://dfda-amhe.fr/sources/) :
 planches numérisées, notice de conservation, licence de la bibliothèque, et une
 courte présentation de chaque ouvrage. Pour *La noble science des joueurs
 d'espée* (Anvers, 1538), nous citons **quelques lignes** de la transcription
@@ -50,10 +51,9 @@ amhe63.dfda@gmail.com
 
 ## Avant d'envoyer : trois vérifications
 
-1. **La rubrique est en ligne.** Envoyer ce mail avant la mise en ligne publique
-   invite à aller voir une page qui n'existe pas encore. Ajouter l'adresse de la
-   page des sources dans le premier paragraphe une fois le domaine définitif
-   choisi.
+1. ~~**La rubrique est en ligne.**~~ Fait le 31/07/2026 : le domaine
+   `dfda-amhe.fr` est branché et la page https://dfda-amhe.fr/sources/ répond.
+   L'adresse figure désormais dans le premier paragraphe du mail.
 2. **La formulation sur PALAS.** Relire cette phrase et l'ajuster au vocabulaire
    exact de la fédération : mieux vaut rester général que se tromper sur le nom
    d'un outil dans un mail de remerciement.
