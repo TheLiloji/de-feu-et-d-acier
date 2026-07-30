@@ -24,7 +24,11 @@
   /* Texte parchemin */
   --parch: #ece8de; /* texte principal */
   --parch-soft: #ece8dec7; /* 78 % — texte secondaire, chapô, liens de nav */
-  --parch-mute: #ece8de85; /* 52 % — texte tertiaire, labels, mentions */
+  /* 59 % (et non les 52 % de la maquette) : à 52 %, le petit texte tombait à
+     4,32:1 sur les surfaces parcheminées des cartes — sous les 4,5:1 de
+     WCAG AA (mesure axe-core du 30/07/2026). L'accessibilité gagne sur la
+     valeur maquette ; l'écart est invisible à l'œil. */
+  --parch-mute: #ece8de96; /* texte tertiaire, labels, mentions */
   --parch-line: #ece8de1f; /* 12 % — filets, séparateurs, bordures */
 
   /* Accent */

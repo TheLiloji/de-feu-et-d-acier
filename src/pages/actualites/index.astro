@@ -22,6 +22,7 @@
 import { Picture } from 'astro:assets';
 import Base from '../../layouts/Base.astro';
 import Footer from '../../components/sections/Footer.astro';
+import FilArianeSources from '../../components/sources/FilArianeSources.astro';
 import Nav from '../../components/sections/Nav.astro';
 import Button from '../../components/ui/Button.astro';
 import Eyebrow from '../../components/ui/Eyebrow.astro';
@@ -166,20 +167,12 @@ const compte =
     identite={identite}
     fond="solide"
   />
-  <nav class="fil" aria-label="Fil d’Ariane">
-    <div class="gouttiere fil__rangee">
-      <a class="fil__retour" href={lien(ecole, '/')}>
-        <Icon name="arrow-left" size={16} />
-        <span>Retour</span>
-      </a>
-
-      <ol class="fil__chemin" role="list">
-        <li><a class="fil__lien" href={lien(ecole, '/')}>Accueil</a></li>
-        <li class="fil__oblique" aria-hidden="true">/</li>
-        <li><span class="fil__courant" aria-current="page">{libelle}</span></li>
-      </ol>
-    </div>
-  </nav>
+  {/* Fil d'Ariane : le composant partagé de la bibliothèque — même rendu,
+      même rampe typographique, plus de copie locale (recette du 30/07/2026). */}
+  <FilArianeSources
+    retourHref={lien(ecole, '/')}
+    chemin={[{ libelle: 'Accueil', href: lien(ecole, '/') }, { libelle }]}
+  />
 
   <header class="tete">
     <div class="gouttiere tete__bloc">
@@ -195,7 +188,7 @@ const compte =
       {
         entrees.length > 0 ? (
           <ol class="liste__items" role="list">
-            {entrees.map((entree) => (
+            {entrees.map((entree, i) => (
               <li class="item">
                 <a class="carte" href={entree.href} data-sans-photo={entree.image ? undefined : ''}>
                   {entree.image && (
@@ -206,7 +199,8 @@ const compte =
                         formats={['avif', 'webp']}
                         widths={largeurs(entree.image)}
                         sizes="(min-width: 1440px) 340px, (min-width: 820px) calc(148px + 13.333vw), 92vw"
-                        loading="lazy"
+                        loading={i === 0 ? 'eager' : 'lazy'}
+                        fetchpriority={i === 0 ? 'high' : undefined}
                         decoding="async"
                         style={`object-position:${entree.cadrage}`}
                       />
@@ -261,71 +255,15 @@ const compte =
 <style>
   /* ── Fil d'Ariane (design-spec §5.3) ─────────────────────────────────────── */
 
-  .fil {
-    border-bottom: var(--filet);
-  }
 
-  .fil__rangee {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--esp-item);
-    padding-block: clamp(16px, 13.771px + 0.5714vw, 22px);
-  }
 
-  .fil__retour,
-  .fil__chemin {
-    display: flex;
-    align-items: center;
-    gap: clamp(8px, 6.514px + 0.381vw, 12px);
-    margin: 0;
-    padding: 0;
-    font-family: var(--font-eyebrow);
-    font-size: var(--fs-eyebrow-s);
-    font-weight: 600;
-    letter-spacing: 0.21em;
-    line-height: 1.2;
-    text-transform: uppercase;
-    list-style: none;
-  }
 
-  .fil__retour {
-    --icone-cote: 16px;
-    flex: none;
-    color: var(--parch);
-    text-decoration: none;
-    transition: color var(--transition);
-  }
 
-  .fil__retour:hover,
-  .fil__retour:focus-visible {
-    color: var(--ember-hot);
-  }
 
-  .fil__chemin {
-    min-width: 0;
-  }
 
-  .fil__lien,
-  .fil__oblique {
-    color: var(--parch-mute);
-    font-weight: 500;
-    text-decoration: none;
-  }
 
-  .fil__lien:hover,
-  .fil__lien:focus-visible {
-    color: var(--parch);
-  }
 
-  .fil__oblique {
-    font-family: var(--font-body);
-    letter-spacing: 0;
-  }
 
-  .fil__courant {
-    color: var(--parch);
-  }
 
   /* ── Tête de page ────────────────────────────────────────────────────────── */
 
