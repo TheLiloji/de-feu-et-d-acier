@@ -1,0 +1,182 @@
+---
+/**
+ * Encadré de fin de fiche — « Consulter la numérisation complète » + les droits.
+ *
+ * Le site ne publie qu'une poignée de planches par traité : la fiche doit donc
+ * mener au document entier, chez la bibliothèque qui l'a numérisé. C'est aussi
+ * là que se dit, en français simple, **ce que la licence autorise** — le champ
+ * « Ce que la licence autorise, en clair » du CMS —, doublé du lien vers le
+ * texte de la licence ou les conditions d'utilisation de l'institution.
+ *
+ * Ce lien-là n'est pas décoratif : pour la planche du Royal Armouries, la
+ * licence CC BY 4.0 **exige** que le lien vers la licence accompagne l'image ;
+ * pour Gallica, les conditions d'utilisation sont ce qui borne la réutilisation
+ * non commerciale dont le club se prévaut. Le garde-fou n° 6 du build
+ * (`src/lib/validation.ts`) fait échouer une fiche dont la licence n'a pas
+ * d'adresse — cet encadré est l'endroit où cette adresse est visible.
+ *
+ * Carte à fond `--surface-1` et filet 1 px, comme l'encadré « La source » d'une
+ * fiche arme : deux colonnes au-delà de 820 px, empilées en dessous.
+ */
+import Button from '../ui/Button.astro';
+import Eyebrow from '../ui/Eyebrow.astro';
+import TextLink from '../ui/TextLink.astro';
+import { estExterne } from '../../lib/liens';
+import { typographieFr } from '../../lib/typographie';
+
+export interface Props {
+  /** Adresse de la numérisation en ligne, chez la bibliothèque. */
+  urlNumerisation?: string | null;
+  /** Institution qui conserve l'exemplaire numérisé. */
+  bibliotheque?: string | null;
+  /** Cote du document dans cette institution. */
+  cote?: string | null;
+  /** « Ce que la licence autorise, en clair ». */
+  licenceResume?: string | null;
+  /** Adresse de la licence ou des conditions d'utilisation. */
+  licenceUrl?: string | null;
+  class?: string;
+}
+
+const {
+  urlNumerisation,
+  bibliotheque,
+  cote,
+  licenceResume,
+  licenceUrl,
+  class: classe,
+} = Astro.props;
+
+/** Sur-titre du bloc : il nomme la section et sert d'intitulé au lecteur d'écran. */
+const LIBELLE = 'Consulter la numérisation complète';
+
+const url = (urlNumerisation ?? '').trim();
+const institution = typographieFr(bibliotheque ?? '').trim();
+const coteTexte = typographieFr(cote ?? '').trim();
+const resume = typographieFr(licenceResume ?? '').trim();
+const licence = (licenceUrl ?? '').trim();
+
+const aDroits = Boolean(resume || licence);
+const afficher = Boolean(url || institution || aDroits);
+---
+
+{
+  afficher && (
+    <section class:list={['numerisation', classe]} aria-label={LIBELLE}>
+      <div class="gouttiere">
+        <div class="numerisation__carte">
+          <div class="numerisation__bloc">
+            <Eyebrow texte={LIBELLE} taille="petite" marque="tiret" />
+
+            {institution && <p class="numerisation__institution">{institution}</p>}
+            {coteTexte && <p class="numerisation__cote">{coteTexte}</p>}
+
+            {url && (
+              <div class="numerisation__bouton">
+                <Button
+                  variante="contour"
+                  libelle="Ouvrir la numérisation"
+                  href={url}
+                  externe={estExterne(url)}
+                />
+              </div>
+            )}
+          </div>
+
+          {aDroits && (
+            <div class="numerisation__droits">
+              <Eyebrow texte="Droits d’utilisation" taille="petite" ton="mute" />
+              {resume && <p class="numerisation__resume">{resume}</p>}
+              {licence && (
+                <p class="numerisation__licence">
+                  <TextLink
+                    libelle="Licence et conditions d’utilisation"
+                    href={licence}
+                    externe={estExterne(licence)}
+                    ton="soft"
+                  />
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .numerisation {
+    padding-block-end: clamp(40px, 25.886px + 3.619vw, 78px);
+  }
+
+  .numerisation__carte {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(24px, 16.571px + 1.9048vw, 44px);
+    padding: clamp(20px, 12.571px + 1.9048vw, 40px) clamp(18px, 9.086px + 2.286vw, 42px);
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    background: var(--surface-1);
+  }
+
+  .numerisation__bloc,
+  .numerisation__droits {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(8px, 6.514px + 0.381vw, 12px);
+  }
+
+  .numerisation__institution {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(19px, 15.4px + 0.92vw, 28px);
+    font-weight: 400;
+    line-height: 1.15;
+    color: var(--parch);
+  }
+
+  .numerisation__cote {
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  .numerisation__bouton {
+    margin-top: clamp(8px, 5.771px + 0.5714vw, 14px);
+  }
+
+  .numerisation__resume {
+    max-width: 62ch;
+    margin: 0;
+    font-size: var(--fs-body-xs);
+    line-height: 1.65;
+    color: var(--parch-soft);
+  }
+
+  .numerisation__licence {
+    margin-top: 2px;
+  }
+
+  /* Deux colonnes dès que la place existe : la numérisation à gauche, ce qu'elle
+     autorise à droite. Le filet vertical remplace l'espace, qui ne suffit pas à
+     séparer deux blocs de même graisse. */
+  @media (min-width: 820px) {
+    .numerisation__carte {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: clamp(32px, -4.7px + 4.48vw, 64px);
+    }
+
+    .numerisation__droits {
+      padding-left: clamp(32px, -4.7px + 4.48vw, 64px);
+      border-left: var(--filet);
+    }
+  }
+</style>

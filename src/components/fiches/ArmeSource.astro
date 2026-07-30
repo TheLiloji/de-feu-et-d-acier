@@ -2,97 +2,208 @@
 /**
  * Encadré « La source » de la fiche arme — design-spec §5.1 (bloc 4), §5.3, §5.4.
  *
- * Carte à fond très légèrement parchemin (`--surface-1`), filet 1 px, rayon 3 :
- * la planche du traité à gauche (170×200 en desktop, 64×80 en mobile), le texte
- * à droite — sur-titre ember, titre en Cormorant, paragraphe, lien fléché.
+ * Carte à fond très légèrement parchemin (`--surface-1`), filet 1 px, rayon 2 :
+ * la planche du traité à gauche, le texte à droite — sur-titre ember, titre en
+ * Cormorant, paragraphe, identité du traité, lien fléché.
  *
- * Deux écarts assumés :
- *   - la maquette mobile **supprime** le paragraphe de la carte ; la parité de
- *     contenu desktop/mobile est obligatoire (ARCHITECTURE.md §5), on le garde
- *     donc, simplement plus compact ;
- *   - le bloc entier est **masqué** si l'arme n'a ni titre, ni texte, ni
- *     planche (l'encadré est facultatif dans le CMS).
+ * **Ce que ce bloc montre a changé.** Il servait la même planche floue à toutes
+ * les fiches (`rigueur-traite.jpg`, 580 × 409) et son lien « Étudier la source »
+ * était vide, faute de page où aller. Il branche maintenant la collection
+ * « Les sources » : la fiche affiche le **premier traité réellement rattaché à
+ * l'arme** (champ « Armes concernées » d'un traité), sa planche mise en avant, et
+ * mène à la fiche de ce traité.
+ *
+ * **Une arme sans traité garde son bloc, sans les parties creuses.** Le combat
+ * viking, à qui le haut Moyen Âge n'a laissé aucun manuel d'escrime, porte dans
+ * l'admin une accroche écrite exprès pour ce cas — « Sans traité, mais pas sans
+ * méthode. » — et le paragraphe qui l'explique. Ce texte reste affiché : le
+ * supprimer aurait été une régression de contenu. Ce qui disparaît, c'est ce qui
+ * n'existe pas — la vignette, l'identité du document, le crédit, et surtout le
+ * lien « Étudier la source », qui pointait jusqu'ici vers le vide.
+ *
+ * Trois règles portées ici, et pas ailleurs :
+ *
+ *   1. **la planche et son crédit sont inséparables.** La ligne de crédit est
+ *      exigée par la bibliothèque qui a numérisé *cette* image ; l'afficher sous
+ *      une autre serait une fausse attribution. Le bloc ne connaît donc qu'une
+ *      planche, celle du traité, et son crédit voyage avec elle. C'est aussi
+ *      pourquoi les champs « Planche du traité » et « Description de la planche »
+ *      du groupe `source` (keystatic.config.ts) ne sont plus lus : ils
+ *      permettraient de déposer une image sans le crédit qui va avec.
+ *   2. **le crédit est rendu verbatim** — pas de « © » ajouté (`creditAffiche`
+ *      serait un contresens : ces planches sont pour la plupart sous *Public
+ *      Domain Mark*, donc sans droit d'auteur), pas de composition
+ *      typographique. Cf. `creditPlanche()` dans `../sources/traites.ts`.
+ *   3. **la planche n'est pas recadrée.** Un tiers du corpus est en paysage, deux
+ *      tiers en portrait : aucun cadre en `cover` ne les accueille tous sans
+ *      couper les escrimeurs en deux (démonstration dans
+ *      `../sources/CarteTraite.astro`). La vignette est donc un champ carré
+ *      `$char` où la planche tient entière.
+ *
+ * Deux écarts assumés à la maquette, inchangés : le paragraphe est **conservé**
+ * en mobile (parité de contenu, ARCHITECTURE.md §5), simplement plus compact ;
+ * et le bloc entier est masqué quand il n'a rien à montrer.
  */
 import { Picture } from 'astro:assets';
 import Reveal from '../ui/Reveal.astro';
 import TextLink from '../ui/TextLink.astro';
-import { largeursSrcset, resoudrePhoto } from '../../lib/images';
+import { largeursSrcset } from '../../lib/images';
 import { estExterne } from '../../lib/liens';
+import { creditPlancheHtml } from '../sources/traites';
 
+/** Le traité rattaché à l'arme, déjà résolu par la page. */
+export interface TraiteDeLArme {
+  /** Titre du traité, composé typographiquement. */
+  titre: string;
+  /** Auteur abrégé. */
+  auteur?: string;
+  /** Année abrégée. */
+  annee?: string;
+  /** Adresse de la fiche du traité, sous « /sources/ ». */
+  href: string;
+  /** Planche mise en avant. */
+  planche?: ImageMetadata | null;
+  /** Description de la planche, saisie au CMS. */
+  alt?: string;
+  /** Ligne de crédit de la planche, verbatim. */
+  credit?: string;
+}
+
+/** Le groupe « La source » de la fiche arme — la voix éditoriale du club. */
 export interface SourceArme {
   titre?: string | null;
   texte?: string | null;
   lien?: { libelle?: string | null; url?: string | null } | null;
-  /** Chemin CMS de la planche du traité. */
-  image?: string | null;
-  /** Description de la planche, saisie au CMS. Vide ⇒ description générique. */
-  imageAlt?: string | null;
 }
 
 export interface Props {
+  /** Traité rattaché. Absent ⇒ le bloc ne se rend pas. */
+  traite?: TraiteDeLArme | null;
+  /** Accroche et paragraphe saisis dans la fiche arme. */
   source?: SourceArme | null;
+  /** Nombre d'autres traités rattachés à la même arme. */
+  autres?: number;
+  /** Adresse de la bibliothèque, pour le lien « les autres traités ». */
+  hrefBibliotheque?: string;
   /** Sur-titre ember de la carte. */
   libelle?: string;
-  /**
-   * Repli de description, quand le CMS n'en porte pas. Générique à dessein :
-   * tant que les quatre fiches partagent la même planche, une description
-   * précise mentirait sur trois d'entre elles.
-   */
-  alt?: string;
+  class?: string;
 }
 
 const {
-  source,
+  traite = null,
+  source = null,
+  autres = 0,
+  hrefBibliotheque = '',
   libelle = 'La source',
-  alt = 'Planche du traité étudié en salle',
+  class: classe,
 } = Astro.props;
 
-const titre = source?.titre ?? '';
-const texte = source?.texte ?? '';
-const lienUrl = source?.lien?.url ?? '';
-const lienLibelle = source?.lien?.libelle || 'Étudier la source';
-const image = resoudrePhoto(source?.image);
-// Le rédacteur décrit sa planche quand il en dépose une ; sinon, la formule
-// neutre, vraie pour n'importe quelle gravure de traité.
-const texteAlt = source?.imageAlt?.trim() || alt;
+// L'accroche du CMS si elle existe, sinon le titre du traité lui-même : la carte
+// n'est jamais sans titre.
+const titre = source?.titre?.trim() || traite?.titre || '';
+const texte = source?.texte?.trim() || '';
 
-const afficher = Boolean(titre || texte || image);
+// Le bloc se rend dès qu'il a quelque chose à dire : un traité rattaché, ou le
+// texte que le club a écrit pour cette arme. Il ne disparaît que si les deux
+// manquent — auquel cas un encadré « La source » serait une promesse vide.
+const afficher = Boolean(traite || titre || texte);
 
-// La planche est une vignette : 170 px en desktop, 64 px en mobile. Politique
-// de largeurs commune (src/lib/images.ts).
-const largeurs = largeursSrcset(image, { rendMax: 170 });
+// Un lien explicitement saisi dans l'admin l'emporte — c'est le seul cas où le
+// club veut envoyer ailleurs que sur la fiche du traité (une transcription, un
+// article). Vide, ce qui est le cas partout aujourd'hui, on va à la fiche du
+// traité ; sans traité **ni** lien saisi, il n'y a pas de lien du tout, et c'est
+// la fin de l'ancre morte que ce bloc affichait sur les cinq fiches.
+const lienUrl = source?.lien?.url?.trim() || traite?.href || '';
+const lienLibelle = source?.lien?.libelle?.trim() || 'Étudier la source';
+
+// « Fechtbuch von 1467 · Hans Talhoffer · 1467 » — l'identité du document, sous
+// l'accroche. Le titre du traité n'y est pas répété s'il tient déjà le titre de
+// la carte.
+const identite = [
+  titre === traite?.titre ? '' : traite?.titre,
+  traite?.auteur,
+  traite?.annee,
+]
+  .map((morceau) => (morceau ?? '').trim())
+  .filter(Boolean)
+  .join(' · ');
+
+const credit = traite?.credit?.trim() ?? '';
+
+/**
+ * Le compte est une information, le lien est une action, et les deux sont
+ * séparés : la bibliothèque n'a pas de vue filtrée par arme, si bien que
+ * « 2 autres traités pour cette arme » **cliquable** aurait promis un filtre qui
+ * n'existe pas. On énonce donc le fait, puis on propose la bibliothèque entière.
+ */
+const autresPhrase =
+  autres === 1 ? 'Une autre source travaille cette arme.' : `${autres} autres sources travaillent cette arme.`;
+
+// La vignette fait au plus 190 px de côté ; en densité 2, 380 px suffisent.
+// Politique de largeurs commune (src/lib/images.ts).
+const largeurs = largeursSrcset(traite?.planche ?? null, { largeurs: [190, 280, 380] });
 ---
 
 {
   afficher && (
-    <section class="source-arme">
+    <section class:list={['source-arme', classe]} aria-label={libelle}>
       <div class="gouttiere">
         <Reveal>
           <div class="source-arme__carte">
-            {image && (
-              <div class="source-arme__planche">
-                <Picture
-                  src={image}
-                  alt={texteAlt}
-                  formats={['avif', 'webp']}
-                  widths={largeurs}
-                  sizes="(min-width: 1000px) 170px, 128px"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-            )}
-
-            <div class="source-arme__texte">
-              <p class="source-arme__label">{libelle}</p>
-              {titre && <h2 class="source-arme__titre">{titre}</h2>}
-              {texte && <p class="source-arme__para">{texte}</p>}
-              {lienUrl && (
-                <p class="source-arme__lien">
-                  <TextLink libelle={lienLibelle} href={lienUrl} externe={estExterne(lienUrl)} />
-                </p>
+            <div class="source-arme__haut">
+              {traite?.planche && (
+                <div class="source-arme__planche">
+                  <Picture
+                    src={traite.planche}
+                    alt={traite.alt ?? ''}
+                    formats={['avif', 'webp']}
+                    widths={largeurs}
+                    sizes="(min-width: 1000px) 190px, 128px"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
               )}
+
+              <div class="source-arme__texte">
+                <p class="source-arme__label">{libelle}</p>
+                {titre && <h2 class="source-arme__titre">{titre}</h2>}
+                {texte && <p class="source-arme__para">{texte}</p>}
+                {identite && <p class="source-arme__identite">{identite}</p>}
+
+                {lienUrl && (
+                  <p class="source-arme__lien">
+                    <TextLink
+                      libelle={lienLibelle}
+                      href={lienUrl}
+                      externe={estExterne(lienUrl)}
+                    />
+                  </p>
+                )}
+
+                {autres > 0 && hrefBibliotheque && (
+                  <p class="source-arme__autres">
+                    <span class="source-arme__compte">{autresPhrase}</span>
+                    <TextLink
+                      libelle="Voir la bibliothèque"
+                      href={hrefBibliotheque}
+                      ton="mute"
+                      taille="petite"
+                    />
+                  </p>
+                )}
+              </div>
             </div>
+
+            {/*
+              Le crédit prend toute la largeur de la carte, sous un filet : c'est
+              une mention obligatoire, pas une légende, et deux lignes d'URN dans
+              une colonne de 190 px seraient illisibles.
+            */}
+            {credit && (
+              <p class="source-arme__credit" set:html={creditPlancheHtml(credit)} />
+            )}
           </div>
         </Reveal>
       </div>
@@ -107,32 +218,58 @@ const largeurs = largeursSrcset(image, { rendMax: 170 });
 
   .source-arme__carte {
     display: flex;
-    align-items: center;
-    gap: clamp(16px, 4.114px + 3.048vw, 48px);
+    flex-direction: column;
+    gap: clamp(16px, 13.029px + 0.7619vw, 24px);
     padding: clamp(16px, 8.571px + 1.905vw, 36px) clamp(16px, 7.086px + 2.286vw, 40px);
     border: var(--filet);
     border-radius: var(--radius-2);
     background: var(--surface-1);
   }
 
+  .source-arme__haut {
+    display: flex;
+    align-items: center;
+    gap: clamp(16px, 4.114px + 3.048vw, 48px);
+  }
+
+  /*
+   * Champ carré, planche entière : voir la note d'en-tête. Le carré est le
+   * compromis du corpus — une planche en paysage y occupe 72 % de la hauteur,
+   * une planche en portrait 69 % de la largeur.
+   */
   .source-arme__planche {
+    display: block;
     flex: none;
-    width: clamp(64px, 24.63px + 10.1vw, 170px);
-    aspect-ratio: 170 / 200;
+    width: clamp(84px, 25.9px + 14.9vw, 190px);
+    aspect-ratio: 1 / 1;
+    padding: clamp(6px, 3px + 0.76vw, 14px);
     overflow: hidden;
+    border: var(--filet);
     border-radius: var(--radius-1);
     background: var(--char);
   }
 
-  /* `<Picture>` est un composant : ses nœuds échappent au scope, d'où :global. */
-  .source-arme__planche :global(picture),
-  .source-arme__planche :global(img) {
+  /*
+   * `<Picture>` est un composant : ses nœuds échappent au scope, d'où :global.
+   * Le `picture` remplit la boîte de contenu et centre la planche — un
+   * `max-height: 100 %` posé directement sur l'image se résoudrait contre un
+   * parent dimensionné par son contenu, donc jamais (cf. la même note dans
+   * `../sources/CarteTraite.astro`).
+   */
+  .source-arme__planche :global(picture) {
+    display: flex;
     width: 100%;
     height: 100%;
+    align-items: center;
+    justify-content: center;
   }
 
   .source-arme__planche :global(img) {
-    object-fit: cover;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
   }
 
   .source-arme__texte {
@@ -169,8 +306,58 @@ const largeurs = largeursSrcset(image, { rendMax: 170 });
     color: var(--parch-mute);
   }
 
+  /* Identité du document : c'est du catalogue, pas de la prose — d'où le corps
+     réduit et la couleur tertiaire. */
+  .source-arme__identite {
+    max-width: 560px;
+    font-size: var(--fs-body-xxs);
+    line-height: var(--lh-body-tight);
+    color: var(--parch-soft);
+  }
+
   .source-arme__lien {
     margin-top: 2px;
+  }
+
+  .source-arme__autres {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+    margin-top: 2px;
+  }
+
+  .source-arme__compte {
+    font-size: var(--fs-body-xxs);
+    line-height: var(--lh-body-tight);
+    color: var(--parch-mute);
+  }
+
+  .source-arme__credit {
+    padding-top: clamp(10px, 8.514px + 0.381vw, 14px);
+    border-top: var(--filet);
+    font-size: var(--fs-body-xxs);
+    line-height: 1.55;
+    color: var(--parch-mute);
+    /* Un crédit MDZ contient une URN, un crédit du Royal Armouries une URL de
+       licence : deux chaînes sans espace, qui débordaient la carte en mobile. */
+    overflow-wrap: anywhere;
+  }
+
+  /* Le crédit est injecté par `set:html` (les adresses y sont cliquables, sans
+     qu'un caractère visible change) : son contenu échappe au scope. */
+  .source-arme__credit :global(a) {
+    color: var(--parch-soft);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    text-underline-offset: 0.2em;
+    transition: color var(--transition);
+  }
+
+  .source-arme__credit :global(a:hover),
+  .source-arme__credit :global(a:focus-visible) {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
   }
 
   /*
@@ -178,11 +365,11 @@ const largeurs = largeursSrcset(image, { rendMax: 170 });
    * aussi le paragraphe en mobile, si bien que les deux colonnes y font la même
    * hauteur. Le paragraphe étant conservé (parité de contenu, ARCHITECTURE §5),
    * la colonne texte est deux à trois fois plus haute que la vignette sous
-   * 1000 px : centrée, la planche flottait au milieu de deux trous. Elle se
-   * cale donc sur « LA SOURCE » tant qu'on n'est pas au gabarit desktop.
+   * 1000 px : centrée, la planche flottait au milieu de deux trous. Elle se cale
+   * donc en haut tant qu'on n'est pas au gabarit desktop.
    */
   @media (max-width: 999.98px) {
-    .source-arme__carte {
+    .source-arme__haut {
       align-items: flex-start;
     }
   }

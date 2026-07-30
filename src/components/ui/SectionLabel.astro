@@ -86,7 +86,10 @@ const rang =
     font-size: var(--fs-eyebrow);
     font-weight: 600;
     line-height: var(--lh-body-tight);
-    letter-spacing: var(--ls-eyebrow);
+    /* Rampe « label de section » : 12,5 px / ls 3,5 en desktop, 10,5 / ls 2,6 en
+       mobile (design-spec §9.1). L'interlettrage n'est pas un `em` constant
+       entre les deux paliers, d'où `--ls-eyebrow-label` (global.css). */
+    letter-spacing: var(--ls-eyebrow-label);
     text-transform: uppercase;
   }
 
@@ -112,19 +115,22 @@ const rang =
   .label-section__libelle {
     color: var(--parch-soft);
     /* On reprend la chasse ajoutée après la dernière lettre. */
-    margin-inline-end: calc(-1 * var(--ls-eyebrow));
+    margin-inline-end: calc(-1 * var(--ls-eyebrow-label));
   }
 
   /* Indicateur de geste : purement visuel, et seulement là où le carrousel
-     défile au doigt. Au-delà de 820 px la grille remplace le carrousel. */
+     défile au doigt. Au-delà de 820 px la grille remplace le carrousel.
+     La maquette ne le mesure donc qu'en mobile 390 — `GLISSER` y est le plus
+     petit sur-titre du site après la tab-bar : 9 px / w600 / ls 2 (§4.2, §4.5,
+     §4.7). Une taille fixe, puisque le nœud n'existe pas en desktop. */
   .label-section__glisser {
     display: flex;
     align-items: center;
     gap: 6px;
     flex: none;
     color: var(--parch-mute);
-    font-size: var(--fs-eyebrow-s);
-    letter-spacing: var(--ls-eyebrow-s);
+    font-size: 9px;
+    letter-spacing: 0.222em;
   }
 
   /* Le filet bas n'existe qu'en desktop : en mobile la maquette s'en passe,

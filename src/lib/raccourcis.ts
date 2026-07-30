@@ -165,36 +165,137 @@ export interface CreneauBrut {
   jour: string;
   heureDebut: string;
   heureFin: string;
+  /**
+   * Séance encadrée par un membre de l'équipe (case « Séance encadrée » du CMS).
+   * `false` = pratique libre : le créneau existe, mais ce n'est pas un cours.
+   * Absent, le créneau est traité comme un cours — c'est le défaut du CMS.
+   */
+  encadre?: boolean | null;
 }
 
+/** Une plage horaire d'un jour donné, bornes brutes (« 18:00 »). */
+interface Plage {
+  debut: string;
+  fin: string;
+}
+
+/** Un ou plusieurs jours qui partagent exactement les mêmes plages. */
+interface GroupeJours {
+  jours: string[];
+  plages: Plage[];
+}
+
+/** « a » · « a et b » · « a, b et c ». */
+function enumerer(morceaux: readonly string[]): string {
+  if (morceaux.length === 0) return '';
+  if (morceaux.length === 1) return morceaux[0]!;
+  return `${morceaux.slice(0, -1).join(', ')} et ${morceaux[morceaux.length - 1]}`;
+}
+
+/** Plages d'un même jour, triées puis fusionnées quand elles se touchent. */
+function fusionner(plages: readonly Plage[]): Plage[] {
+  const triees = [...plages].sort((a, b) => a.debut.localeCompare(b.debut));
+  const fusion: Plage[] = [];
+  for (const p of triees) {
+    const precedent = fusion[fusion.length - 1];
+    if (precedent && precedent.fin === p.debut) precedent.fin = p.fin;
+    else fusion.push({ ...p });
+  }
+  return fusion;
+}
+
+const signature = (plages: readonly Plage[]) => plages.map((p) => `${p.debut}→${p.fin}`).join('|');
+
 /**
- * Résume les créneaux en une phrase : « mardi 18h-20h et jeudi 18h-22h ».
- * Les plages contiguës d'un même jour sont fusionnées (jeudi 18h-20h puis
- * 20h-22h se lit « jeudi 18h-22h »).
+ * Range les créneaux par jour, dans l'ordre de la semaine, puis rassemble les
+ * jours voisins aux horaires identiques : « mardi et jeudi de 18h à 20h » plutôt
+ * que « mardi de 18h à 20h et jeudi de 18h à 20h ».
+ *
+ * ⚠️ À n'appeler que sur un ensemble homogène de créneaux (les cours d'un côté,
+ * la pratique libre de l'autre) : la fusion des plages contiguës d'un même jour
+ * n'a de sens qu'entre séances de même nature.
  */
-export function creneauxEnPhrase(creneaux: readonly CreneauBrut[]): string {
-  const parJour = new Map<string, { debut: string; fin: string }[]>();
+function groupesDeJours(creneaux: readonly CreneauBrut[]): GroupeJours[] {
+  const parJour = new Map<string, Plage[]>();
   for (const c of creneaux) {
     const liste = parJour.get(c.jour) ?? [];
     liste.push({ debut: c.heureDebut, fin: c.heureFin });
     parJour.set(c.jour, liste);
   }
 
-  const morceaux = ORDRE_JOURS.filter((j) => parJour.has(j)).map((jour) => {
-    const plages = [...parJour.get(jour)!].sort((a, b) => a.debut.localeCompare(b.debut));
-    const fusion: { debut: string; fin: string }[] = [];
-    for (const p of plages) {
-      const precedent = fusion[fusion.length - 1];
-      if (precedent && precedent.fin === p.debut) precedent.fin = p.fin;
-      else fusion.push({ ...p });
-    }
-    const heures = fusion.map((p) => `${heureLisible(p.debut)}-${heureLisible(p.fin)}`).join(' et ');
-    return `${JOURS[jour] ?? jour} ${heures}`;
-  });
+  // Un jour hors calendrier (saisie exotique) part en fin de semaine plutôt que
+  // de disparaître de la phrase.
+  const jours = [
+    ...ORDRE_JOURS.filter((j) => parJour.has(j)),
+    ...[...parJour.keys()].filter((j) => !ORDRE_JOURS.includes(j)),
+  ];
 
-  if (morceaux.length === 0) return '';
-  if (morceaux.length === 1) return morceaux[0]!;
-  return `${morceaux.slice(0, -1).join(', ')} et ${morceaux[morceaux.length - 1]}`;
+  const groupes: GroupeJours[] = [];
+  for (const jour of jours) {
+    const plages = fusionner(parJour.get(jour)!);
+    const precedent = groupes[groupes.length - 1];
+    if (precedent && signature(precedent.plages) === signature(plages)) precedent.jours.push(jour);
+    else groupes.push({ jours: [jour], plages });
+  }
+  return groupes;
+}
+
+/** « de 18h à 20h », ou « de 12h à 14h et de 18h à 20h » pour un jour coupé. */
+const heuresEnPhrase = (plages: readonly Plage[]) =>
+  plages.map((p) => `de ${heureLisible(p.debut)} à ${heureLisible(p.fin)}`).join(' et ');
+
+const nomDuJour = (jour: string) => JOURS[jour] ?? jour;
+
+/** « mardi de 18h à 20h et jeudi de 20h à 22h ». */
+const phraseDesGroupes = (groupes: readonly GroupeJours[]) =>
+  enumerer(groupes.map((g) => `${enumerer(g.jours.map(nomDuJour))} ${heuresEnPhrase(g.plages)}`));
+
+/** « le jeudi de 18h à 20h », « les mardi et jeudi de 12h à 14h ». */
+const phraseDesGroupesArticlee = (groupes: readonly GroupeJours[]) =>
+  enumerer(
+    groupes.map(
+      (g) =>
+        `${g.jours.length > 1 ? 'les' : 'le'} ${enumerer(g.jours.map(nomDuJour))} ` +
+        heuresEnPhrase(g.plages),
+    ),
+  );
+
+/** Un créneau encadré, donc un cours. Le défaut du CMS étant « encadré », seul `false` compte. */
+const estCours = (c: CreneauBrut) => c.encadre !== false;
+
+/**
+ * Résume les créneaux en une phrase — **les cours d'abord, la pratique libre à
+ * part** : « mardi de 18h à 20h et jeudi de 20h à 22h, plus la pratique libre le
+ * jeudi de 18h à 20h ».
+ *
+ * Pourquoi cette séparation : à Clermont, le jeudi porte deux créneaux qui se
+ * touchent — une pratique libre sans encadrant de 18h à 20h, puis le cours de
+ * 20h à 22h. Les fusionner en « jeudi 18h-22h », comme le faisait la première
+ * version, annonçait quatre heures de cours là où il y en a deux, et effaçait la
+ * seule information qu'un visiteur doit avoir avant de pousser la porte : à 18h,
+ * il n'y a personne pour l'accueillir. Une phrase de créneaux doit être *juste*
+ * avant d'être courte ; le raccourci compact, lui, est fait pour la brièveté.
+ *
+ * Les plages contiguës d'un même jour restent fusionnées **à l'intérieur** de
+ * chaque catégorie (deux cours qui s'enchaînent se lisent « de 18h à 22h »).
+ *
+ * Le libellé « pratique libre » est celui du site, pas celui du CMS : l'intitulé
+ * libre du créneau (« Pratique libre », « Salle ouverte »…) reste affiché tel
+ * quel par le tableau de « Nous rejoindre », qui, lui, détaille. Ici, une
+ * formule stable — et grammaticalement sûre — vaut mieux qu'un intitulé dont on
+ * ne connaît ni le genre ni le nombre.
+ */
+export function creneauxEnPhrase(creneaux: readonly CreneauBrut[]): string {
+  const cours = groupesDeJours(creneaux.filter(estCours));
+  const libres = groupesDeJours(creneaux.filter((c) => !estCours(c)));
+
+  if (cours.length === 0) {
+    // Aucun cours encadré : la pratique libre porte la phrase à elle seule.
+    const seule = phraseDesGroupes(libres);
+    return seule ? `${seule} en pratique libre` : '';
+  }
+  if (libres.length === 0) return phraseDesGroupes(cours);
+  return `${phraseDesGroupes(cours)}, plus la pratique libre ${phraseDesGroupesArticlee(libres)}`;
 }
 
 /** Abréviations de jours, pour la forme compacte. */
@@ -209,32 +310,45 @@ const JOURS_COURTS: Record<string, string> = {
 };
 
 /**
- * Forme compacte des créneaux : « Mar · Jeu 18h-22h ».
+ * Forme compacte des créneaux : « Mar · Jeu 18h-20h », ou « Mar · Jeu » quand
+ * les cours n'ont pas les mêmes horaires d'un jour à l'autre.
  *
- * `{creneaux}` rend la phrase complète (« mardi 18h-20h et jeudi 18h-22h »),
- * juste mais longue : dans le bandeau d'accroche du hero, en capitales avec
- * 0,24 em d'interlettrage, elle se replie sur trois lignes là où la maquette
- * (§3.1 et §4.1) pose **une** ligne. D'où ce second raccourci : les jours
- * abrégés, puis l'amplitude horaire de la semaine. Le détail exact reste porté
- * par le tableau des créneaux de « Nous rejoindre », qui, lui, est complet.
+ * `{creneaux}` rend la phrase complète, juste mais longue : dans le bandeau
+ * d'accroche du hero, en capitales avec 0,24 em d'interlettrage, elle se replie
+ * sur trois lignes là où la maquette (§3.1 et §4.1) pose **une** ligne. D'où ce
+ * second raccourci — les jours de cours abrégés, et l'horaire seulement s'il est
+ * le même partout.
+ *
+ * Deux partis pris, pour rester bref **sans mentir** :
+ *
+ *   - on ne compte que les **cours** : un jour où la salle n'est ouverte qu'en
+ *     pratique libre n'a rien à annoncer dans un bandeau qui invite à venir
+ *     essayer. (Sans aucun cours encadré, on retombe sur tous les créneaux :
+ *     mieux vaut une ligne approximative qu'une ligne vide.)
+ *   - l'amplitude « 18h-22h » de la première version additionnait le mardi de
+ *     18h à 20h et le jeudi de 20h à 22h : elle promettait quatre heures de
+ *     cours par soir. L'horaire n'apparaît donc que si tous les jours de cours
+ *     ont le même ; sinon, les jours suffisent.
+ *
+ * Le détail exact reste porté par le tableau des créneaux de « Nous rejoindre »,
+ * qui, lui, est complet.
  */
 export function creneauxCompact(creneaux: readonly CreneauBrut[]): string {
-  if (creneaux.length === 0) return '';
+  const cours = creneaux.filter(estCours);
+  const retenus = cours.length > 0 ? cours : creneaux;
+  if (retenus.length === 0) return '';
 
-  const jours = ORDRE_JOURS.filter((j) => creneaux.some((c) => c.jour === j)).map(
-    (j) => JOURS_COURTS[j] ?? j,
-  );
-  const inconnus = creneaux.filter((c) => !(c.jour in JOURS_COURTS)).map((c) => c.jour);
-  const tousLesJours = [...jours, ...new Set(inconnus)];
+  const groupes = groupesDeJours(retenus);
+  const jours = groupes.flatMap((g) => g.jours).map((j) => JOURS_COURTS[j] ?? j);
 
-  const debuts = creneaux.map((c) => c.heureDebut).filter(Boolean).sort();
-  const fins = creneaux.map((c) => c.heureFin).filter(Boolean).sort();
-  const amplitude =
-    debuts.length > 0 && fins.length > 0
-      ? `${heureLisible(debuts[0])}-${heureLisible(fins[fins.length - 1])}`
-      : '';
+  // Un seul groupe d'une seule plage : tous les jours retenus ont le même
+  // horaire, on peut le donner. Sinon, aucune abréviation ne serait honnête.
+  const uniforme = groupes.length === 1 && groupes[0]!.plages.length === 1;
+  const plage = groupes[0]?.plages[0];
+  const heures =
+    uniforme && plage ? `${heureLisible(plage.debut)}-${heureLisible(plage.fin)}` : '';
 
-  return [tousLesJours.join(' · '), amplitude].filter(Boolean).join(' ');
+  return [jours.join(' · '), heures].filter(Boolean).join(' ');
 }
 
 /** Forme minimale de fiche école attendue pour construire un contexte. */

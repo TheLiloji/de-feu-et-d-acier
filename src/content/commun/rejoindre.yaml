@@ -12,7 +12,10 @@ blocEssai:
       art martial ou que tu n'aies rien touché depuis des années — on
       t'accueille. Tu n'as besoin de rien apporter : on te prête le masque, et
       l'arme que tu veux tester (épée longue, sabre, dague, rapière…).
-    - Aucun engagement, aucun frais. Viens, ça nous fait plaisir.
+    - >-
+      Aucun engagement, aucun frais. Viens sur une séance encadrée — pas sur la
+      pratique libre, où il n'y a personne pour t'accueillir. Ça nous fait
+      plaisir.
   bouton:
     libelle: ''
     url: ''

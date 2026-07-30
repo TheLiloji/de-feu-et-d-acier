@@ -366,7 +366,10 @@ const style = [
     font-family: var(--font-eyebrow);
     font-size: clamp(9px, 8.4px + 0.15vw, 10.5px);
     font-weight: 600;
-    letter-spacing: 0.28em;
+    /* 2,9 px à 10,5 (design-spec §3.2), et non les 2,94 de `--ls-eyebrow` :
+       cette pastille est de la rampe « sur-titre secondaire », pas du label de
+       section. 2,9 / 10,5 = 0.276em. */
+    letter-spacing: 0.276em;
     line-height: 1.2;
     text-transform: uppercase;
     /* `--ember` sur une photo claire tombe à 1,8:1 — échec WCAG 1.4.3 mesuré
@@ -402,7 +405,10 @@ const style = [
     font-family: var(--font-eyebrow);
     font-size: clamp(9px, 8.6px + 0.1vw, 10px);
     font-weight: 600;
-    letter-spacing: 0.16em;
+    /* 1,6-1,8 px à 9-10 px (design-spec §9.10) : 0.178em, la même valeur que la
+       pastille d'époque d'`ArmeHero` et la pastille d'hébergeur de `VideoCard`.
+       0.16em ne donnait que 1,44 px au palier mobile. */
+    letter-spacing: 0.178em;
     line-height: 1.2;
     text-transform: uppercase;
     color: var(--parch);

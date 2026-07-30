@@ -365,18 +365,40 @@ const accueil = lien(ecole, '/');
   /* ── Bascule desktop ──────────────────────────────────────────────────── */
   /*
    * 1000 px, et non les 820 px du reste du site : la nav desktop est le seul
-   * bloc de la page dont la largeur ne se négocie pas — six libellés `nowrap`
+   * bloc de la page dont la largeur ne se négocie pas — des libellés `nowrap`
    * plus un bouton `flex: none`. À 820 px elle mesurait 1000 px et débordait de
    * 57 px, CTA coupé, burger déjà masqué : aucune issue.
    *
-   * Largeur minimale de la barre, à la largeur de bascule B :
-   *   2 × gouttière(B) + 2 × gap(B) + liens + 5 × gap-liste(B) + CTA + blason
-   * soit, mesuré sur le rendu (liens 456 px, CTA 178 px, blason 27 px) :
-   *   B = 1000 → 83,5 + 42,6 + 456 + 141 + 178 + 27 = 928 px  → 72 px de mou
-   *   B =  960 → 80,9 + 41,4 + 456 + 135 + 178 + 27 = 918 px  → 42 px de mou
-   * On prend 1000 : c'est la largeur de bascule des fiches (ArmeHero,
-   * ProfHero), et le mou couvre l'ajout d'une entrée courte au menu.
-   * Entre 820 et 1000, c'est le tiroir mobile qui porte la navigation.
+   * ⚠️ **Une addition de composants ne sait pas répondre à la question ; seule la
+   * mesure du rendu la tranche.** Un précédent calcul, qui sommait gouttières,
+   * gaps, liens et CTA, concluait que la barre mesurait déjà 928 px à 1000 et ne
+   * pouvait pas porter une 7ᵉ entrée. C'était faux : la marque est en
+   * `flex: none`, les liens sont centrés par une grille à trois colonnes, et
+   * l'espace libre ne se répartit pas comme la somme le suppose.
+   *
+   * Valeurs **mesurées** sur `npm run preview`, fenêtre de 1000 px, avec les
+   * **7 entrées** actuelles (Disciplines · Les profs · Le club · Nous rejoindre ·
+   * Les sources · Tournois · FAQ) :
+   *
+   *   liste de liens .......... 724 px, `scrollWidth == clientWidth`
+   *   gap liste → CTA ......... 21 px (le `gap` déclaré, honoré)
+   *   CTA ..................... 179 px, entièrement dans la fenêtre (809 → 987)
+   *   document ................ 1000 / 1000, aucun débordement
+   *   retour à la ligne ....... aucun (liste 26 px, hauteur d'un lien 26 px)
+   *
+   * **Marge restante : 24 px**, obtenue en allongeant un libellé caractère par
+   * caractère jusqu'au premier débordement (la liste casse à 749 px). Autrement
+   * dit : deux capitales de plus, pas davantage. Une **8ᵉ entrée ne tient pas**,
+   * et un libellé sensiblement plus long non plus. Le jour où il en faut une, ce
+   * n'est pas ce commentaire qu'il faut ajuster mais `BASCULE_NAV`, à relever
+   * vers ~1100 px (6 fichiers alignés, cf. src/lib/breakpoints.ts).
+   *
+   * Robustesse du repli de police vérifiée : requêtes woff/woff2 bloquées, la
+   * liste retombe à 708 px — la pile de secours est plus *étroite* qu'Inter, elle
+   * ne menace donc pas la marge.
+   *
+   * Entre 820 et 1000, c'est le tiroir mobile qui porte la navigation ; il reçoit
+   * la même liste, « Les sources » comprise.
    *
    * Ce chiffre est le seuil `BASCULE_NAV` de src/lib/breakpoints.ts : le tiroir
    * (`MenuMobile`), la barre d'onglets (`TabBar`), sa réserve de défilement

@@ -39,3 +39,6 @@ npm-debug.log*
 # conservés en local + sauvegarde. Cf. docs/refonte/ARCHITECTURE.md §7.
 nouvelles_photos/
 maquette-assets/
+
+# Masters des sources historiques moissonnées (planches de traités) — hors dépôt
+sources-masters/

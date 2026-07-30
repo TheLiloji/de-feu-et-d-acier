@@ -139,6 +139,8 @@ export const getStaticPaths = (async () => {
             url: entree.video?.url ?? '',
             duree: entree.video?.duree ?? '',
             vignette: resoudrePhoto(entree.video?.vignette),
+            sousTitres: entree.video?.sousTitres ?? '',
+            affiche: entree.video?.affiche ?? '',
           },
           entretien,
           rubrique: entetes.profs?.eyebrow || 'Les profs',

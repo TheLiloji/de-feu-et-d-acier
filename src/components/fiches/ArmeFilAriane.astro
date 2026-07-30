@@ -52,6 +52,11 @@ const { nom, retourHref, racine = 'Les armes' } = Astro.props;
     padding-block: 22px;
   }
 
+  /* Les quatre nœuds du bandeau sont à **10,5 px** dans la maquette (§5.3) —
+     `RETOUR` w600 `$parch`, `LES ARMES` w500 `$parch-mute`, `/` w400, le nom de
+     l'arme w600 `$parch` — tous à ls 2,2. Rampe « sur-titre secondaire », donc
+     `--fs-eyebrow-s` (9,5 → 10,5) : `--fs-eyebrow` monterait à 12,5, la rampe du
+     label numéroté de section. 2,2 / 10,5 = 0.21em. */
   .fil__retour,
   .fil__chemin {
     display: flex;
@@ -59,7 +64,7 @@ const { nom, retourHref, racine = 'Les armes' } = Astro.props;
     margin: 0;
     padding: 0;
     font-family: var(--font-eyebrow);
-    font-size: var(--fs-eyebrow);
+    font-size: var(--fs-eyebrow-s);
     font-weight: 600;
     letter-spacing: 0.21em;
     line-height: var(--lh-body-tight);

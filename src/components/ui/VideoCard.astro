@@ -6,29 +6,56 @@
  * « Interview ») : vignette en `cover`, voile 40 %, pastille `play` parfaitement
  * centrée, badge de durée en bas à droite, puis titre et sous-libellé.
  *
+ * **Trois rendus, choisis d'après l'URL** — l'appelant n'a rien à déclarer :
+ *
+ *   1. **fichier servi directement** (`.mp4`, `.webm`, `.ogv`… sur R2, S3 ou un
+ *      serveur maison) → vrai **lecteur `<video>` natif**, habillé à la charte.
+ *      `controls` sans `autoplay` : la vidéo ne part jamais toute seule, et les
+ *      commandes du navigateur donnent le clavier, le plein écran et les
+ *      sous-titres sans une ligne de JavaScript.
+ *   2. **URL de plateforme** (YouTube, Vimeo, PeerTube…) → la vignette reste un
+ *      **lien sortant**. Jamais d'`<iframe>` : un lecteur embarqué déposerait
+ *      des cookies tiers avant tout consentement, ce que la promesse RGPD du
+ *      site interdit (ARCHITECTURE.md §6). Le départ du site est annoncé à
+ *      l'écran (nom de l'hébergeur + `arrow-up-right`), pas seulement deviné.
+ *   3. **rien du tout** → le bloc disparaît (voir ci-dessous).
+ *
  * **Masquable.** Les blocs vidéo sont vides tant que le club n'a rien tourné
  * (ARCHITECTURE.md §1). Sans URL ni vignette, le composant ne rend rien —
  * la page n'a donc pas à tester quoi que ce soit avant de l'appeler. Pour
  * afficher un emplacement « à venir » (page de démonstration, aperçu CMS),
  * passer `masquerSiVide={false}`.
- *
- * Aucun lecteur embarqué : la vignette est un lien sortant. Zéro cookie tiers,
- * conforme à la promesse RGPD du site (ARCHITECTURE.md §6).
  */
-import { Picture } from 'astro:assets';
+import { Picture, getImage } from 'astro:assets';
 import Icon from './Icon.astro';
 import { largeursSrcset } from '../../lib/images';
 
 export interface Props {
-  /** URL de la vidéo (YouTube, PeerTube…). Vide = bloc masqué. */
+  /**
+   * URL de la vidéo.
+   *
+   * - fichier `.mp4` / `.webm` / `.ogv` (R2, S3, serveur maison) → lecteur natif ;
+   * - toute autre URL (YouTube, Vimeo, PeerTube…) → lien sortant ;
+   * - vide → bloc masqué (cf. `masquerSiVide`).
+   */
   url?: string | null;
-  /** Vignette importée (`astro:assets`). */
+  /** Vignette importée (`astro:assets`). Sert d'affiche au lecteur natif. */
   image?: ImageMetadata | null;
   /** Repli : URL d'une image du dossier `public/`. */
   src?: string | null;
+  /**
+   * Affiche du lecteur natif, si elle ne doit pas être `image` / `src`
+   * (ex. une image déjà déposée sur R2 à côté de la vidéo).
+   */
+  affiche?: string | null;
   alt?: string;
   objectPosition?: string;
-  /** Durée affichée dans le badge, ex. « 04:12 ». */
+  /**
+   * Piste de sous-titres `.vtt` en français. Toute vidéo publiée en a besoin :
+   * sans elle, la salle est bruyante et le geste reste muet (WCAG 1.2.2).
+   */
+  sousTitres?: string | null;
+  /** Durée affichée, ex. « 04:12 ». Badge sur la vignette, mention sous le lecteur. */
   duree?: string | null;
   titre?: string;
   /** Sous-libellé en capitales, ex. « BASES · POSTURE & DISTANCES ». */
@@ -53,8 +80,10 @@ const {
   url = null,
   image = null,
   src = null,
+  affiche = null,
   alt = '',
   objectPosition = '50% 50%',
+  sousTitres = null,
   duree = null,
   titre,
   sousTitre,
@@ -70,61 +99,165 @@ const {
   class: classe,
 } = Astro.props;
 
+/** Extensions qu'un `<video>` sait lire sans intermédiaire, et leur type MIME. */
+const TYPES_DIRECTS: Record<string, string> = {
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  webm: 'video/webm',
+  ogv: 'video/ogg',
+  ogg: 'video/ogg',
+};
+
+/**
+ * Type MIME si l'URL désigne un fichier vidéo servi directement, `null` si elle
+ * pointe vers une plateforme. Seul le chemin est examiné : une URL R2 signée
+ * (`…/lecon-01.mp4?X-Amz-Signature=…`) ou une ancre ne doit pas fausser le test.
+ */
+const typeDirect = (adresse: string): string | null => {
+  const chemin = adresse.split(/[?#]/)[0];
+  const extension = chemin.slice(chemin.lastIndexOf('.') + 1).toLowerCase();
+  return TYPES_DIRECTS[extension] ?? null;
+};
+
+/** Nom d'hôte lisible (« youtube.com ») ; `null` pour une URL relative. */
+const hebergeur = (adresse: string): string | null => {
+  try {
+    const { hostname } = new URL(adresse, 'https://relative.invalid');
+    return hostname === 'relative.invalid' ? null : hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+};
+
 const aVignette = Boolean(image || src);
 const aVideo = Boolean(url);
 const afficher = aVideo || aVignette || !masquerSiVide;
+
+const mime = url ? typeDirect(url) : null;
+const enLecteur = Boolean(mime);
+const enLienSortant = aVideo && !enLecteur;
+const hote = enLienSortant ? hebergeur(url as string) : null;
 
 // Politique de largeurs commune (src/lib/images.ts) : vignette vidéo de 640 px
 // au plus (photos.md §5.4).
 const largeursFinales = largeursSrcset(image, { largeurs, rendMax });
 
-// Le cadre est un lien quand la vidéo existe, un simple bloc sinon.
-const Cadre = aVideo ? 'a' : 'div';
-const attributsCadre = aVideo ? { href: url as string, target: '_blank', rel: 'noopener noreferrer' } : {};
+// `<video poster>` veut une URL, pas un `ImageMetadata` : on passe par le même
+// pipeline d'optimisation que `<Picture>` plutôt que de servir l'original.
+const posterOptimise =
+  enLecteur && !affiche && image
+    ? (await getImage({ src: image, width: Math.min(image.width, rendMax * 2), format: 'webp' })).src
+    : null;
+const poster = enLecteur ? (affiche ?? posterOptimise ?? src ?? undefined) : undefined;
 
-// Le libellé accessible du lien doit dire ce qu'on ouvre, pas « lire ».
-const libelleAccessible = [titre ? `Voir la vidéo : ${titre}` : 'Voir la vidéo', duree ? `(${duree})` : '']
+// Le cadre est un lien vers la plateforme, sinon un simple bloc.
+const Cadre = enLienSortant ? 'a' : 'div';
+const attributsCadre = enLienSortant
+  ? { href: url as string, target: '_blank', rel: 'noopener noreferrer' }
+  : {};
+
+// Le libellé accessible du lien doit dire ce qu'on ouvre, pas « lire », et
+// annoncer la sortie du site.
+const libelleAccessible = [
+  titre ? `Voir la vidéo : ${titre}` : 'Voir la vidéo',
+  duree ? `(${duree})` : '',
+  hote ? `— nouvelle fenêtre sur ${hote}` : '— nouvelle fenêtre',
+]
   .filter(Boolean)
   .join(' ');
+
+const libelleLecteur = titre ? `Vidéo : ${titre}` : 'Vidéo';
 ---
 
 {
   afficher && (
-    <figure class:list={['video-card', classe]} data-taille={taille} style={`--video-ratio:${ratio};--video-rayon:${rayon}px;--video-position:${objectPosition}`}>
-      <Cadre class="video-card__cadre" {...attributsCadre} aria-label={aVideo ? libelleAccessible : undefined}>
-        <div class="video-card__media">
-          {image ? (
-            <Picture
-              src={image}
-              alt={aVideo ? '' : alt}
-              formats={['avif', 'webp']}
-              widths={largeursFinales}
-              sizes={sizes}
-              loading={charge}
-              decoding="async"
-            />
-          ) : src ? (
-            <img src={src} alt={aVideo ? '' : alt} loading={charge} decoding="async" />
-          ) : (
-            <div class="video-card__vide" aria-hidden="true" />
-          )}
+    <figure
+      class:list={['video-card', classe]}
+      data-taille={taille}
+      data-rendu={enLecteur ? 'lecteur' : enLienSortant ? 'sortant' : 'vide'}
+      style={`--video-ratio:${ratio};--video-rayon:${rayon}px;--video-position:${objectPosition}`}
+    >
+      {enLecteur ? (
+        <div class="video-card__cadre">
+          {/* `controls` sans `autoplay` : rien ne démarre sans un geste, et les
+              commandes natives assurent le clavier et le plein écran.
+              `preload="none"` — trois vignettes par fiche, aucune raison de
+              télécharger le moindre octet avant le clic. */}
+          <video
+            class="video-card__video"
+            controls
+            preload="none"
+            playsinline
+            poster={poster}
+            aria-label={libelleLecteur}
+          >
+            <source src={url as string} type={mime as string} />
+            {sousTitres && (
+              <track kind="subtitles" src={sousTitres} srclang="fr" label="Français" default />
+            )}
+            <p class="video-card__repli">
+              Votre navigateur ne sait pas lire cette vidéo. <a href={url as string} download>Télécharger le fichier</a>.
+            </p>
+          </video>
         </div>
+      ) : (
+        <Cadre class="video-card__cadre" {...attributsCadre} aria-label={enLienSortant ? libelleAccessible : undefined}>
+          <div class="video-card__media">
+            {image ? (
+              <Picture
+                src={image}
+                alt={enLienSortant ? '' : alt}
+                formats={['avif', 'webp']}
+                widths={largeursFinales}
+                sizes={sizes}
+                loading={charge}
+                decoding="async"
+              />
+            ) : src ? (
+              <img src={src} alt={enLienSortant ? '' : alt} loading={charge} decoding="async" />
+            ) : (
+              <div class="video-card__vide" aria-hidden="true" />
+            )}
+          </div>
 
-        <div class="video-card__voile" aria-hidden="true" />
+          <div class="video-card__voile" aria-hidden="true" />
 
-        <span class="video-card__play" data-inactif={aVideo ? undefined : ''} aria-hidden="true">
-          <Icon name="play" />
-        </span>
+          <span class="video-card__play" data-inactif={enLienSortant ? undefined : ''} aria-hidden="true">
+            <Icon name="play" />
+          </span>
 
-        {duree && <span class="video-card__duree">{duree}</span>}
+          {/* Le départ du site se voit : le visiteur sait qu'il quitte le club
+              pour la plateforme, cookies tiers compris. Rien à annoncer quand
+              l'URL est relative — on ne quitte alors pas le site. */}
+          {enLienSortant && hote && (
+            <span class="video-card__sortant" aria-hidden="true">
+              <span class="video-card__hote">{hote}</span>
+              <Icon name="arrow-up-right" />
+            </span>
+          )}
 
-        {!aVideo && <span class="video-card__mention">{texteVide}</span>}
-      </Cadre>
+          {duree && <span class="video-card__duree">{duree}</span>}
 
-      {(titre || sousTitre) && (
+          {!aVideo && <span class="video-card__mention">{texteVide}</span>}
+        </Cadre>
+      )}
+
+      {(titre || sousTitre || (enLecteur && duree)) && (
         <figcaption class="video-card__legende">
           {titre && <span class="video-card__titre">{titre}</span>}
-          {sousTitre && <span class="video-card__soustitre">{sousTitre}</span>}
+          {(sousTitre || (enLecteur && duree)) && (
+            <span class="video-card__soustitre">
+              {sousTitre && <span>{sousTitre}</span>}
+              {/* Sous le lecteur natif, la durée ne peut pas être un badge :
+                  elle tomberait sur la barre de commandes du navigateur. */}
+              {enLecteur && duree && sousTitre && (
+                <span class="video-card__separateur" aria-hidden="true">
+                  ·
+                </span>
+              )}
+              {enLecteur && duree && <span class="video-card__duree-texte">{duree}</span>}
+            </span>
+          )}
         </figcaption>
       )}
     </figure>
@@ -149,6 +282,42 @@ const libelleAccessible = [titre ? `Voir la vidéo : ${titre}` : 'Voir la vidéo
     color: inherit;
     text-decoration: none;
   }
+
+  /* ── Lecteur natif ──────────────────────────────────────────────────────── */
+
+  /*
+   * Le cadre du lecteur est en `$coal` et non en `$char` : c'est le fond des
+   * sections alternées, donc le noir sur lequel les bandes noires d'une vidéo
+   * qui n'est pas exactement au ratio du cadre se fondent sans marche visible.
+   * `contain` et pas `cover` : on ne rogne jamais une vidéo — un geste coupé
+   * au bord du cadre est un geste qu'on n'apprend pas.
+   */
+  .video-card[data-rendu='lecteur'] .video-card__cadre {
+    background: var(--coal);
+  }
+
+  .video-card__video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--coal);
+    object-fit: contain;
+    object-position: var(--video-position);
+  }
+
+  .video-card__video:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: -3px;
+  }
+
+  .video-card__repli {
+    padding: var(--esp-item);
+    font-size: var(--fs-body-s);
+    color: var(--parch-soft);
+  }
+
+  /* ── Vignette (lien sortant, ou emplacement vide) ───────────────────────── */
 
   .video-card__media {
     position: absolute;
@@ -224,6 +393,35 @@ const libelleAccessible = [titre ? `Voir la vidéo : ${titre}` : 'Voir la vidéo
     --video-play-icone: clamp(17px, 0.7rem + 0.9vw, 24px);
   }
 
+  /* Pastille d'hébergeur : même dessin que le tag de fiche (design-spec §9.10). */
+  .video-card__sortant {
+    --icone-cote: 10px;
+    position: absolute;
+    top: clamp(10px, 0.5rem + 0.2vw, 12px);
+    left: clamp(10px, 0.5rem + 0.2vw, 12px);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: calc(100% - 2 * clamp(10px, 0.5rem + 0.2vw, 12px));
+    padding: 5px 9px;
+    border: var(--filet-fort);
+    border-radius: var(--radius-pill);
+    background: var(--veil-ink-65);
+    font-family: var(--font-eyebrow);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.178em;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--parch);
+  }
+
+  .video-card__hote {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .video-card__duree {
     position: absolute;
     right: clamp(12px, 0.6rem + 0.2vw, 14px);
@@ -267,6 +465,9 @@ const libelleAccessible = [titre ? `Voir la vidéo : ${titre}` : 'Voir la vidéo
   }
 
   .video-card__soustitre {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
     font-family: var(--font-eyebrow);
     font-size: clamp(8.5px, 8.1px + 0.1vw, 9.5px);
     font-weight: 600;
@@ -275,10 +476,28 @@ const libelleAccessible = [titre ? `Voir la vidéo : ${titre}` : 'Voir la vidéo
     color: var(--parch-mute);
   }
 
+  .video-card__duree-texte {
+    flex: none;
+    letter-spacing: 0.05em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .video-card__separateur {
+    flex: none;
+    letter-spacing: 0;
+    color: var(--parch-line);
+  }
+
   a.video-card__cadre:hover .video-card__play,
   a.video-card__cadre:focus-visible .video-card__play {
     background: var(--ember-hot);
     transform: translate(-50%, -50%) scale(1.06);
+  }
+
+  a.video-card__cadre:hover .video-card__sortant,
+  a.video-card__cadre:focus-visible .video-card__sortant {
+    border-color: var(--ember-hot);
+    color: var(--ember-hot);
   }
 
   a.video-card__cadre:hover .video-card__media :global(img) {

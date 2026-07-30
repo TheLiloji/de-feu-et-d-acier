@@ -15,6 +15,26 @@
  *
  * Le label numéroté de section a son propre composant : `SectionLabel.astro`.
  *
+ * **Deux rampes, à ne pas confondre** (design-spec §1.4 et §1.5) — c'est le
+ * piège le plus coûteux du passage de la maquette au code, 2 px d'écart en
+ * desktop :
+ *
+ *   - `taille="normale"` = rampe **« label de section »**, 12,5 px en desktop.
+ *     La maquette ne l'emploie que pour le trio `01 ◆ LES DISCIPLINES` qui ouvre
+ *     une section — c'est-à-dire, sur l'accueil, uniquement via `SectionLabel`.
+ *     Elle reste ici pour les pages hors maquette (mentions légales, 404,
+ *     actualités), dont l'en-tête joue le même rôle d'ouverture.
+ *   - `taille="petite"` = rampe **« sur-titre secondaire »**, 10,5 px en desktop.
+ *     C'est la rampe de tous les autres sur-titres du site : `PRATIQUE`,
+ *     `AFFILIATION`, `MÉDIÉVALE`, `LE MINI-COURS`, fil d'Ariane… Dans le doute,
+ *     c'est celle-là qu'il faut.
+ *
+ * L'interlettrage, lui, varie de 1,6 à 3,4 px d'un nœud à l'autre dans la
+ * maquette : les trois valeurs de `lettrage` en donnent une approximation en
+ * `em` (le rapport se conserve quand la rampe descend vers le mobile), pas la
+ * mesure exacte d'un nœud donné. Un sur-titre dont la maquette fixe précisément
+ * l'interlettrage se code dans son composant, pas ici.
+ *
  * Exemples :
  *   <Eyebrow texte="Pratique" lettrage="large" />
  *   <Eyebrow texte="Médiévale" marque="tiret" />
@@ -29,7 +49,11 @@ interface Props {
   ton?: 'ember' | 'parch' | 'soft' | 'mute';
   /** Ornement placé avant le texte. Défaut : aucun. */
   marque?: 'aucune' | 'tiret' | 'diamant';
-  /** `normale` = 10.5→12.5 px, `petite` = 9.5→10.5 px. Défaut `normale`. */
+  /**
+   * Rampe typographique. `normale` = celle du label de section (10.5 → 12.5 px) ;
+   * `petite` = celle des sur-titres secondaires (9.5 → 10.5 px), la plus
+   * fréquente. Défaut `normale`.
+   */
   taille?: 'normale' | 'petite';
   /** Interlettrage : `serre` 0.18em · `normal` 0.28em · `large` 0.35em. */
   lettrage?: 'serre' | 'normal' | 'large';

@@ -262,7 +262,10 @@ const aDates = Boolean(dates);
     padding: 0 var(--gouttiere) 30px;
   }
 
-  /* Époque : pastille en mobile, tiret + deux teintes en desktop. */
+  /* Époque : pastille en mobile, tiret + deux teintes en desktop.
+     Pastille (design-spec §5.4, frame `Époque`) : `MÉDIÉVALE · XIVᵉ — XVᵉ S.` en
+     un seul nœud, 9 px / w600 / **ls 1,6** / `$parch`, `pad 6/10`, rayon 99.
+     1,6 / 9 = 0.178em. */
   .fiche-hero__era {
     display: flex;
     align-items: center;
@@ -275,7 +278,7 @@ const aDates = Boolean(dates);
     font-family: var(--font-eyebrow);
     font-size: 9px;
     font-weight: 600;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.178em;
     line-height: 1;
     text-transform: uppercase;
     color: var(--parch);
@@ -438,7 +441,10 @@ const aDates = Boolean(dates);
     }
 
     /* L'époque redevient une ligne nue : tiret ember, nom en ember, siècles en
-       parchemin atténué (design-spec §5.3, bloc « Era »). */
+       parchemin atténué (design-spec §5.3, bloc « Era »). Les quatre nœuds y
+       sont à **10,5 px** — sur-titre secondaire, pas label de section : d'où
+       `--fs-eyebrow-s` et non `--fs-eyebrow`, qui monterait à 12,5.
+       `MÉDIÉVALE` : w600 / ls 2,9 / `$ember` → 2,9 / 10,5 = 0.276em. */
     .fiche-hero__era {
       gap: 10px;
       margin-bottom: 8px;
@@ -446,8 +452,8 @@ const aDates = Boolean(dates);
       border: 0;
       border-radius: 0;
       background: none;
-      font-size: var(--fs-eyebrow);
-      letter-spacing: 0.28em;
+      font-size: var(--fs-eyebrow-s);
+      letter-spacing: 0.276em;
       color: var(--parch-mute);
     }
 
@@ -465,7 +471,11 @@ const aDates = Boolean(dates);
       letter-spacing: 0;
     }
 
+    /* Les siècles sont un nœud `$body` **wnormal** ls 2, là où le nom d'époque
+       est un `$eyebrow` w600 : c'est ce contraste de graisse qui hiérarchise la
+       ligne (design-spec §5.3). 2 / 10,5 = 0.19em. */
     .fiche-hero__dates {
+      font-weight: 400;
       letter-spacing: 0.19em;
     }
 

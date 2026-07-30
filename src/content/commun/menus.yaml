@@ -7,6 +7,8 @@ menuPrincipal:
     lien: '#club'
   - libelle: Nous rejoindre
     lien: '#rejoindre'
+  - libelle: Les sources
+    lien: /sources/
   - libelle: Tournois
     lien: '#tournois'
   - libelle: FAQ
@@ -34,6 +36,8 @@ colonnes:
         url: /actualites/
       - libelle: La rigueur
         url: '#rigueur'
+      - libelle: Les sources
+        url: /sources/
       - libelle: Disciplines
         url: '#disciplines'
       - libelle: FAQ

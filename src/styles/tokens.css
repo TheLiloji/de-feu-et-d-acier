@@ -106,6 +106,11 @@
 
   --fs-eyebrow: clamp(10.5px, 9.757px + 0.1905vw, 12.5px);
   --fs-eyebrow-s: clamp(9.5px, 9.129px + 0.0952vw, 10.5px);
+  /* Plus petit palier de la rampe « sur-titre secondaire » : 10 px desktop,
+     w400. Seuls les en-têtes de colonnes du tableau des créneaux l'emploient
+     (`JOUR` / `HORAIRE` / `DISCIPLINE` / `NIVEAU`, design-spec §3.6) — aucun
+     autre jeton ne descend à 10, `--fs-eyebrow-s` valant 10,5. */
+  --fs-eyebrow-xs: clamp(9.5px, 9.314px + 0.0476vw, 10px);
 
   --lh-display: 1;
   --lh-display-tight: 0.9; /* logotypes */
@@ -115,6 +120,17 @@
   --ls-eyebrow: 0.28em; /* ≈ 3.5 px à 12.5 px */
   --ls-eyebrow-s: 0.18em;
   --ls-eyebrow-wide: 0.35em; /* sur-titre du hero */
+  /*
+   * Interlettrage du **label de section** — le trio « 01 ◆ LES DISCIPLINES ».
+   * Ce n'est pas un `em` constant : la maquette donne 3,5 px à 12,5 (0.28em)
+   * mais 2,6 px à 10,5 (0.248em). D'où une rampe en px, interpolée 390 → 1440
+   * comme les corps de texte. `--ls-eyebrow` ci-dessus, appliqué au palier
+   * mobile, donnerait 2,94 px — 0,34 px de trop.
+   *
+   * Employé par `.eyebrow` (global.css) et `SectionLabel.astro`, qui s'en sert
+   * aussi pour compenser la chasse du dernier caractère.
+   */
+  --ls-eyebrow-label: clamp(2.6px, 2.266px + 0.0857vw, 3.5px);
 
   /* ── 4. Formes, filets, espacements ───────────────────────────────────── */
 

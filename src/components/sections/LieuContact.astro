@@ -303,13 +303,16 @@ const aQuoiMontrer = Boolean(nomLieu || adresse || email || telephone);
   }
 
   /* Même sur-titre que celui de `ScheduleTable` : les deux blocs se suivent
-     dans la section « Nous rejoindre » et doivent s'aligner à l'œil. */
+     dans la section « Nous rejoindre » et doivent s'aligner à l'œil.
+     `PRATIQUE` : sur-titre secondaire — 10,5 px / w600 / ls 3,4 / `$ember`
+     (design-spec §3.6). `--fs-eyebrow` monterait à 12,5, la rampe du label
+     numéroté de section. 3,4 / 10,5 = 0.324em. */
   .lieu-contact__surtitre {
     margin: 0 0 18px;
     font-family: var(--font-eyebrow);
-    font-size: var(--fs-eyebrow);
+    font-size: var(--fs-eyebrow-s);
     font-weight: 600;
-    letter-spacing: 0.34em;
+    letter-spacing: 0.324em;
     text-transform: uppercase;
     color: var(--ember);
   }

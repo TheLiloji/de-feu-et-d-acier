@@ -119,6 +119,84 @@ const photo = (label: string, dossier: string) =>
     { label },
   );
 
+/**
+ * Planche de traité affichée **hors** de la section « Les sources » — la gravure
+ * de « La rigueur », sur l'accueil.
+ *
+ * Même forme qu'une photo (fichier, description, cadrage, crédit), mais la ligne
+ * de crédit y est rendue **mot pour mot**, sans « © » ajouté : ces planches sont
+ * des numérisations de bibliothèque, sous *Public Domain Mark* ou déclarées
+ * « domaine public » par Gallica. Un « © » y serait faux, et la mention de source
+ * est exigée telle quelle par l'institution qui a numérisé le document. D'où un
+ * groupe de champs à part, dont le libellé dit la vérité au prof qui le remplit
+ * (cf. `creditPlanche()`, src/components/sources/traites.ts).
+ */
+const planchePatrimoniale = (label: string, dossier: string) =>
+  fields.object(
+    {
+      fichier: imageEditoriale('Fichier', dossier),
+      alt: fields.text({
+        label: 'Description de l’image',
+        description:
+          'Lue à voix haute par les lecteurs d’écran. Décrire ce que la gravure montre. Ex. « Deux joueurs d’épée à deux mains, lames croisées ».',
+      }),
+      cadrage,
+      credit: fields.text({
+        label: 'Ligne de crédit de la bibliothèque',
+        multiline: true,
+        description:
+          'À recopier EXACTEMENT comme la bibliothèque la demande — c’est la contrepartie du droit de publier l’image. Rien n’est ajouté ni corrigé à l’affichage : ni « © », ni retouche de ponctuation. Ex. « … Rothschild 291, f. 1r. Source gallica.bnf.fr / Bibliothèque nationale de France. »',
+      }),
+    },
+    { label },
+  );
+
+/**
+ * Les trois champs d'une vidéo — adresse du fichier, sous-titres, affiche.
+ *
+ * Le site **n'embarque pas de lecteur de plateforme** : une `<iframe>` YouTube
+ * déposerait des cookies tiers avant tout consentement (ARCHITECTURE.md §6).
+ * Les vidéos du club sont donc déposées sur notre propre stockage R2 et lues par
+ * le lecteur natif du navigateur (`VideoCard.astro`). Une adresse de plateforme
+ * reste acceptée, mais la vignette n'est alors qu'un lien sortant : le visiteur
+ * quitte le site.
+ *
+ * D'où les libellés ci-dessous, et le champ de sous-titres — sans piste `.vtt`,
+ * une vidéo publiée est inaccessible à qui ne l'entend pas (WCAG 1.2.2).
+ */
+const champsVideo = {
+  url: fields.text({
+    label: 'Adresse du fichier vidéo',
+    description:
+      'L’adresse du fichier .mp4 déposé sur le stockage du club (R2) — il est alors lu directement sur la page. Une adresse YouTube ou Vimeo fonctionne aussi, mais la vignette devient un simple lien qui fait quitter le site.',
+  }),
+  sousTitres: fields.text({
+    label: 'Sous-titres (fichier .vtt)',
+    description:
+      'L’adresse du fichier de sous-titres français, déposé à côté de la vidéo. À remplir dès qu’une vidéo est publiée : sans lui, personne ne peut suivre sans le son. Sans effet sur une vidéo YouTube.',
+  }),
+  affiche: fields.text({
+    label: 'Image d’attente (facultatif)',
+    description:
+      'Seulement si l’image fixe affichée avant le départ de la vidéo ne doit pas être la vignette ci-dessous : l’adresse d’une image déposée à côté de la vidéo.',
+  }),
+};
+
+/** Photo purement décorative : pas de champ crédit, il ne serait pas affiché. */
+const photoDecorative = (label: string, dossier: string, description?: string) =>
+  fields.object(
+    {
+      fichier: imageEditoriale('Fichier', dossier),
+      alt: fields.text({
+        label: 'Description de l’image',
+        description:
+          'Laisser vide si l’image est déjà décrite ailleurs sur la page — un lecteur d’écran ne doit pas entendre deux fois la même description.',
+      }),
+      cadrage,
+    },
+    { label, description },
+  );
+
 /** Bouton / lien : libellé + destination. */
 const lien = (label: string, description?: string) =>
   fields.object(
@@ -276,13 +354,16 @@ function collectionsEcole(e: EcoleConfig) {
         ),
         video: fields.object(
           {
-            url: fields.text({ label: 'Lien de la vidéo (YouTube, Vimeo…)' }),
+            url: champsVideo.url,
             duree: fields.text({ label: 'Durée', description: 'Ex. 06:24' }),
             vignette: imageEditoriale('Vignette', dossierPhotos),
+            sousTitres: champsVideo.sousTitres,
+            affiche: champsVideo.affiche,
           },
           {
             label: 'Vidéo d’interview (facultatif)',
-            description: 'Le bloc reste masqué sur le site tant que le lien est vide.',
+            description:
+              'Le bloc reste masqué sur le site tant que l’adresse est vide. La vidéo est lue sur la page, sans lecteur YouTube.',
           },
         ),
         ordre,
@@ -739,8 +820,10 @@ const collectionsCommunes = {
             description: 'Ex. « Bases · posture & distances ».',
           }),
           duree: fields.text({ label: 'Durée', description: 'Ex. 04:12' }),
-          video: fields.text({ label: 'Lien de la vidéo' }),
+          video: champsVideo.url,
           vignette: imageEditoriale('Vignette', 'commun'),
+          sousTitres: champsVideo.sousTitres,
+          affiche: champsVideo.affiche,
         }),
         {
           label: 'Mini-cours (vidéos)',
@@ -748,23 +831,26 @@ const collectionsCommunes = {
           itemLabel: (p) => p.fields.titre.value || 'Leçon',
         },
       ),
+      // Plus de champ image ici : la planche, sa description et sa ligne de
+      // crédit viennent toutes les trois de la fiche du traité (« Les sources »),
+      // parce qu'elles sont inséparables — déposer une image quelconque à côté
+      // d'un crédit de bibliothèque serait une fausse attribution. Restent les
+      // trois champs de la voix du club : titre, texte, et une surcharge de lien
+      // pour les cas où l'on veut envoyer ailleurs que sur la fiche du traité.
       source: fields.object(
         {
           titre: fields.text({ label: 'Titre', defaultValue: 'Des traités aux assauts.' }),
           texte: fields.text({ label: 'Texte', multiline: true }),
-          lien: lien('Bouton « Étudier la source »'),
-          image: imageEditoriale('Planche du traité', 'commun'),
-          // Sans description saisie, la fiche retombe sur une formule neutre
-          // (« Planche du traité étudié en salle »), vraie pour n'importe quelle
-          // planche. Le jour où chaque arme a la sienne, c'est ici qu'on décrit
-          // ce qu'elle montre vraiment — la fiche ne peut pas le deviner.
-          imageAlt: fields.text({
-            label: 'Description de la planche (facultatif)',
-            description:
-              'Ce que la gravure montre. Ex. « Deux escrimeurs à l’épée longue, gravure du Fechtbuch de Talhoffer ». Laisser vide reprend une description générique.',
-          }),
+          lien: lien(
+            'Bouton « Étudier la source »',
+            'Facultatif. Laisser vide envoie sur la fiche du traité de cette arme, dans « Les sources » — c’est ce qu’on veut presque toujours.',
+          ),
         },
-        { label: 'Encadré « La source »' },
+        {
+          label: 'Encadré « La source »',
+          description:
+            'Le texte du club sur ce que la source apporte à l’arme. La planche, sa description et son crédit sont pris sur la fiche du traité : rien à déposer ici.',
+        },
       ),
       ordre,
     },
@@ -899,8 +985,15 @@ const collectionsCommunes = {
         }),
         {
           label: 'Planches',
+          // Seul endroit de l'admin qui nomme le guide : Keystatic 0.6.3 ne
+          // permet pas de description sur une collection ni sur un singleton
+          // (cf. le type `Collection` / `Singleton`), et `ui.brand.mark` ferait
+          // entrer React dans le bundle du Worker. Une description de champ est
+          // donc le seul support disponible — et c'est ici qu'elle est le plus
+          // utile, puisque c'est le seul écran où un prof peut mettre le club en
+          // faute vis-à-vis d'une bibliothèque.
           description:
-            'Les images du traité affichées sur le site. Chacune doit porter sa description et son crédit.',
+            'Les images du traité affichées sur le site. Chacune doit porter sa description et son crédit. Le mode d’emploi complet du site est le fichier GUIDE-ADMIN.md, à la racine du dépôt github.com/TheLiloji/de-feu-et-d-acier.',
           itemLabel: (p) => p.fields.folio.value || p.fields.alt.value || 'Planche',
         },
       ),
@@ -1073,6 +1166,14 @@ const singletonsCommuns = {
       galerie: enTete('La galerie'),
       faq: enTete('Questions fréquentes'),
       partenaires: enTete('Partenaires'),
+      // Seule rubrique qui ne titre pas une section de l'accueil mais une page à
+      // part entière, « La bibliothèque » (/sources/). Elle est ici parce que
+      // c'est là que le club vient chercher les titres du site, et que lui faire
+      // un singleton pour quatre chaînes serait une case de plus dans le menu.
+      sources: enTete(
+        'Les sources',
+        'Titres de la page « La bibliothèque » (/sources/), qui présente les traités étudiés au club.',
+      ),
     },
   }),
 
@@ -1120,13 +1221,22 @@ const singletonsCommuns = {
       titreLigne2: fields.text({ label: 'Titre — ligne 2' }),
       lede: fields.text({ label: 'Chapô', multiline: true }),
       texte: fields.text({ label: 'Texte', multiline: true }),
-      planche: photo('Planche de traité', 'commun'),
-      legendePlanche: fields.text({ label: 'Légende de la planche', multiline: true }),
+      planche: planchePatrimoniale('Planche de traité', 'commun'),
+      legendePlanche: fields.text({
+        label: 'Légende de la planche',
+        multiline: true,
+        description:
+          'Ce que le club dit de la planche. La ligne de crédit de la bibliothèque, elle, se saisit dans « Planche de traité » : elle s’affiche juste en dessous, détachée par un filet.',
+      }),
       manifesteMobile: fields.object(
         {
           citation: fields.text({ label: 'Citation', multiline: true }),
           sousTitre: fields.text({ label: 'Sous-titre' }),
-          photo: photo('Photo de fond', 'commun'),
+          photo: photoDecorative(
+            'Photo de fond',
+            'commun',
+            'Affichée derrière la citation, à 15 % de visibilité. C’est le plus souvent la planche ci-dessus : son crédit est alors celui du cadre, il n’est pas répété ici.',
+          ),
         },
         {
           label: 'Écran « Manifesto » (mobile)',

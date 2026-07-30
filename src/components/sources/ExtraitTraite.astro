@@ -1,0 +1,199 @@
+---
+/**
+ * Court extrait d'un traité, dans sa langue d'origine.
+ *
+ * Bloc **de droit d'abord, de style ensuite.** Ce qui est publié ici n'est pas
+ * le traité — qui est dans le domaine public — mais une **transcription
+ * moderne**, c'est-à-dire une œuvre protégée dont le club n'a pas les droits.
+ * La seule base légale est la courte citation, et elle a trois conditions, que
+ * ce composant matérialise :
+ *
+ *   1. **court** : quelques lignes, jamais un chapitre. La longueur se tient à
+ *      la saisie (l'aide du champ le dit) et le composant n'y peut rien — mais
+ *      il n'offre aucun « lire la suite », qui inviterait à en mettre plus ;
+ *   2. **crédité** : le nom de qui a établi le texte (« Transcription ARDAMHE,
+ *      hébergée par la FFAMHE ») ;
+ *   3. **relié à sa source** : un lien vers la page d'où l'extrait est repris.
+ *
+ * Le garde-fou n° 6 du build (`src/lib/validation.ts`) refuse un extrait sans
+ * crédit ou sans lien : le cas ne peut donc pas atteindre la production. Ce
+ * composant se contente d'être cohérent en dev — sans crédit **et** sans lien,
+ * il ne rend rien plutôt que de publier une citation nue.
+ *
+ * **Les guillemets ne sont pas ajoutés.** Le champ du CMS les porte déjà, à la
+ * place voulue par le transcripteur : « De la volee. — « Prenez du hault
+ * debout… » ». Un guillemet décoratif surimposé en ferait paraître deux, et
+ * déplacerait la frontière entre la rubrique du traité et le texte cité. Le
+ * bloc est donc signalé comme citation par sa composition — Cormorant italique,
+ * filet `$ember`, balise de citation — et non par une ponctuation de plus.
+ *
+ * Le texte, lui, passe par `typographieFr` : c'est précisément le cas pour
+ * lequel la règle existe — sans la fine insécable, les « » d'un moyen français
+ * composé en Cormorant italique à 28 px laissent un chevron orphelin en tête de
+ * ligne. Aucun mot n'est touché, seule la largeur des blancs déjà présents.
+ */
+import Icon from '../ui/Icon.astro';
+import TextLink from '../ui/TextLink.astro';
+import { estExterne } from '../../lib/liens';
+import { typographieFr } from '../../lib/typographie';
+
+export interface Props {
+  /** Champ « Court extrait du traité ». Vide ⇒ le bloc ne se rend pas. */
+  extrait?: string | null;
+  /** Qui a établi le texte cité. */
+  credit?: string | null;
+  /** Page d'où l'extrait est repris. */
+  url?: string | null;
+  /** Sur-titre du bloc. */
+  libelle?: string;
+  /** Précision affichée à droite du losange. */
+  precision?: string;
+  /** `id` du sur-titre, pour l'`aria-labelledby` de la section. */
+  idLibelle?: string;
+  class?: string;
+}
+
+const {
+  extrait,
+  credit,
+  url,
+  libelle = 'Le texte',
+  precision = 'Courte citation',
+  idLibelle = 'extrait-libelle',
+  class: classe,
+} = Astro.props;
+
+// Les paragraphes sont éditoriaux : le rédacteur sépare deux passages par une
+// ligne vide, on ne recompose pas ce découpage.
+const paragraphes = (extrait ?? '')
+  .split(/\n{2,}/)
+  .map((bloc) => typographieFr(bloc.replace(/\s*\n\s*/g, ' ').trim()))
+  .filter(Boolean);
+
+const creditTexte = typographieFr(credit ?? '').trim();
+const lien = (url ?? '').trim();
+
+// Une citation sans crédit **ni** lien n'est pas publiable : plutôt que
+// d'afficher un texte dont on ne dit pas d'où il vient, on n'affiche rien. Le
+// build, lui, aura déjà échoué (garde-fou n° 6).
+const publiable = paragraphes.length > 0 && Boolean(creditTexte || lien);
+---
+
+{
+  publiable && (
+    <section class:list={['extrait', classe]} aria-labelledby={idLibelle}>
+      <div class="gouttiere">
+        <div class="extrait__tete">
+          <span class="extrait__label" id={idLibelle}>
+            {libelle}
+          </span>
+          <Icon name="diamond" size={6} />
+          {precision && <span class="extrait__precision">{precision}</span>}
+        </div>
+
+        <figure class="extrait__figure">
+          <blockquote class="extrait__citation">
+            {paragraphes.map((bloc) => (
+              <p>{bloc}</p>
+            ))}
+          </blockquote>
+
+          <figcaption class="extrait__source">
+            {creditTexte && <span class="extrait__credit">{creditTexte}</span>}
+            {lien && (
+              <TextLink
+                libelle="Lire la transcription"
+                href={lien}
+                externe={estExterne(lien)}
+                ton="soft"
+              />
+            )}
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .extrait {
+    padding-block-end: clamp(40px, 25.886px + 3.619vw, 78px);
+  }
+
+  /* Tête du bloc : même dessin que « Les planches » et « Mini-cours », donc la
+     rampe « sur-titre secondaire » à 10,5 px — et non `--fs-eyebrow`, qui est
+     celle du label de section, 2 px plus haut. */
+  .extrait__tete {
+    display: flex;
+    align-items: center;
+    gap: clamp(10px, 7.771px + 0.5714vw, 16px);
+    padding-bottom: clamp(18px, 16.514px + 0.381vw, 22px);
+    border-bottom: var(--filet);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow);
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+  }
+
+  .extrait__label {
+    color: var(--ember);
+  }
+
+  .extrait__precision {
+    color: var(--parch-mute);
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+  }
+
+  .extrait__tete :global(svg) {
+    flex: none;
+    color: var(--ember);
+  }
+
+  .extrait__figure {
+    margin: 0;
+    padding-top: clamp(26px, 18.5px + 1.92vw, 46px);
+  }
+
+  /*
+   * Le filet `$ember` à gauche est la marque de citation du site
+   * (`ArmeCorps.astro` l'emploie pour les `blockquote` d'un corps riche) : on la
+   * reprend, en plus généreux — ce bloc est le seul endroit du site où l'on
+   * donne à lire du moyen français.
+   */
+  .extrait__citation {
+    max-width: 62ch;
+    margin: 0;
+    padding-left: clamp(18px, 12.8px + 1.33vw, 32px);
+    border-left: 1px solid var(--ember);
+    font-family: var(--font-display);
+    font-size: clamp(19px, 15.4px + 0.92vw, 28px);
+    font-style: italic;
+    line-height: 1.35;
+    color: var(--parch);
+  }
+
+  .extrait__citation p + p {
+    margin-top: 0.7em;
+  }
+
+  .extrait__source {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px clamp(14px, 11.029px + 0.7619vw, 22px);
+    max-width: 62ch;
+    margin-left: clamp(18px, 12.8px + 1.33vw, 32px);
+    margin-top: clamp(18px, 14.3px + 0.95vw, 28px);
+    font-size: var(--fs-body-xxs);
+    line-height: var(--lh-body-tight);
+    color: var(--parch-mute);
+  }
+
+  /* Le tiret cadratin annonce l'attribution, comme dans un livre. */
+  .extrait__credit::before {
+    content: '— ';
+  }
+</style>

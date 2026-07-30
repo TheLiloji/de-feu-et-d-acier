@@ -174,12 +174,16 @@ const largeurLogo = logo ? Math.min(logo.width, 480) : undefined;
     min-width: 0;
   }
 
+  /* `AFFILIATION`, `ÉQUIPEMENT` : sur-titre secondaire, pas label de section —
+     10,5 px / w600 / ls 2,9 / `$ember` (design-spec §3.10). D'où `--fs-eyebrow-s`
+     (9,5 → 10,5) et non `--fs-eyebrow`, qui monte à 12,5 et n'appartient qu'au
+     trio numéroté d'ouverture de section. 2,9 / 10,5 = 0.276em. */
   .partner-row__categorie {
     margin: 0;
     font-family: var(--font-eyebrow);
-    font-size: var(--fs-eyebrow);
+    font-size: var(--fs-eyebrow-s);
     font-weight: 600;
-    letter-spacing: 0.28em;
+    letter-spacing: 0.276em;
     text-transform: uppercase;
     color: var(--ember);
   }

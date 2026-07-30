@@ -418,19 +418,66 @@ const style = [
 
   /* ── Pastilles ──────────────────────────────────────────────────────────── */
 
+  /*
+   * WCAG 2.5.8 « Target Size (Minimum) » impose 24 × 24 px de cible pointeur.
+   * Le dessin de la maquette (§4.2 « Points ») est un rectangle de 7 × 3 px —
+   * 18 × 3 px pour l'actif — espacé de 6 px : trois fois trop petit. Le dessin
+   * ne change pas d'un pixel, il passe simplement dans un `::before` ; c'est la
+   * **boîte du bouton** qui devient la cible carrée de 24 px.
+   *
+   * Les marges latérales resserrent ensuite les cibles jusqu'à ramener
+   * l'espacement *visuel* entre deux pastilles à 10 px (contre 6 dans la
+   * maquette) : `(dessin − 14) / 2` de chaque côté, soit −3.5 px pour une
+   * pastille inactive et +2 px pour l'active. Deux cibles inactives voisines se
+   * chevauchent donc de 7 px, le frère de droite passant devant : la zone
+   * exclusive d'une pastille est de 17 × 24 px, 24 × 24 px pour la dernière.
+   * Un chevauchement nul demanderait 17 px d'espacement visuel.
+   *
+   * Ce chevauchement **ne met pas le critère en défaut**, et il n'oblige donc
+   * pas à s'appuyer sur l'exception « Equivalent » (celle d'une commande de
+   * 24 px offrant la même fonction ailleurs sur la page — les flèches de 36 px,
+   * que `Disciplines` désactive). L'exigence normative de 2.5.8 porte sur la
+   * *taille* de la cible : « at least 24 by 24 CSS pixels ». Elle est tenue, la
+   * boîte du bouton mesurant bien 24 × 24. Le non-recouvrement, lui, n'apparaît
+   * dans le critère que sous l'exception « Spacing », qui ne s'applique qu'aux
+   * cibles *sous-dimensionnées* — ce n'est pas notre cas. Le chevauchement reste
+   * une réserve d'ergonomie, pas une infraction : c'est pourquoi il est écrit
+   * ici plutôt que corrigé au prix du dessin de la maquette.
+   *
+   * Les marges verticales négatives empêchent la cible de peser sur le rythme :
+   * la rangée occupe 5 px comme avant, et la pastille reste à 16 px de la piste
+   * (`pad=16/0/0/0` de la maquette). La cible déborde de 8.5 px vers le haut —
+   * la piste est à 14 px, aucune carte n'est recouverte — et de 10.5 px vers le
+   * bas, dans le padding de fin de section.
+   */
   .carrousel__points {
     display: flex;
+    align-items: center;
     justify-content: center;
-    gap: 6px;
-    min-height: 3px;
-    padding-top: 2px;
+    gap: 0;
+    /* Hauteur que la rangée occupait avant l'agrandissement des cibles : elle
+       la garde même sans pastilles rendues côté serveur (`nombre` non passé,
+       pastilles construites au chargement par `synchroniserPoints`). */
+    min-height: 5px;
   }
 
   .carrousel__point {
-    width: 7px;
-    height: 3px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    margin: -8.5px -3.5px -10.5px;
     padding: 0;
     border: 0;
+    background: none;
+    transition: margin var(--transition);
+  }
+
+  .carrousel__point::before {
+    content: '';
+    display: block;
+    width: 7px;
+    height: 3px;
     border-radius: var(--radius-1);
     background: var(--line-strong);
     transition:
@@ -438,17 +485,15 @@ const style = [
       background-color var(--transition);
   }
 
+  /* Même shorthand que la règle de base, et non un `margin-inline` : mélanger
+     propriétés physiques et logiques sur la même boîte ne se lit plus. */
   .carrousel__point[aria-current='true'] {
-    width: 18px;
-    background: var(--ember);
+    margin: -8.5px 2px -10.5px;
   }
 
-  /* Cible tactile confortable sans grossir la pastille. */
-  .carrousel__point::after {
-    content: '';
-    display: block;
-    height: 24px;
-    margin-top: -10px;
+  .carrousel__point[aria-current='true']::before {
+    width: 18px;
+    background: var(--ember);
   }
 
   /* ── ≥ 820 px : bascule en grille ───────────────────────────────────────── */
@@ -475,6 +520,7 @@ const style = [
 
   @media (prefers-reduced-motion: reduce) {
     .carrousel__point,
+    .carrousel__point::before,
     .carrousel__fleche {
       transition: none;
     }
