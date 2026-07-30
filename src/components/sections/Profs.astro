@@ -113,6 +113,10 @@ const cartes = affiches.map((prof) => {
     prenom: entree.prenom || undefined,
     armes: libelleArmes(entree.armes, disciplines),
     accroche: entree.accroche || undefined,
+    // « Accroche dorée (palmarès) » : la carte porte le même or que la fiche,
+    // sur le même fragment `*…*`. Une carte décochée ne reçoit aucune règle
+    // dorée (cf. `ProfCard`).
+    doree: Boolean(entree.accrocheDoree),
     portrait: resoudrePhoto(entree.portrait?.fichier),
     alt: entree.portrait?.alt || undefined,
     position: cadrageCss(entree.portrait?.cadrage),
@@ -175,6 +179,7 @@ const cartes = affiches.map((prof) => {
                   prenom={carte.prenom}
                   discipline={carte.armes}
                   accroche={carte.accroche}
+                  doree={carte.doree}
                   portrait={carte.portrait}
                   alt={carte.alt}
                   objectPosition={carte.position}

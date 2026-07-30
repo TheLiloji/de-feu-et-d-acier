@@ -21,6 +21,13 @@
  * Rien d'autre n'est interprété : ni gras, ni liens, ni HTML. Un champ de titre
  * reste un titre.
  *
+ * **Le marqueur a débordé du titre**, et c'est voulu : l'accroche d'un encadrant
+ * l'emploie pour désigner la part de la ligne qui passe en or (`analyserLigne`,
+ * plus bas). Une deuxième convention pour dire la même chose — « ce morceau-ci
+ * est l'accent » — aurait été une convention de trop dans un CMS tenu par des
+ * bénévoles. C'est donc le même balisage, le même parseur et les mêmes règles
+ * d'échappement ; seule la peinture change d'un emploi à l'autre.
+ *
  * **Typographie** : chaque fragment passe par `typographieFr`. La plupart des
  * titres arrivent déjà normalisés — ils transitent par `resoudre()`, qui le fait
  * pour tout le texte du CMS — mais pas tous : un nom d'arme, un nom d'encadrant
@@ -109,4 +116,34 @@ export function normaliserLignes(entrees: EntreeLigne[]): LigneTitre[] {
 /** Texte brut d'un titre — pour un `aria-label`, un `<title>` ou un test. */
 export function texteBrut(lignes: LigneTitre[]): string {
   return lignes.map((ligne) => ligne.map((fragment) => fragment.texte).join('')).join(' ');
+}
+
+/**
+ * Fragments d'un champ tenant sur **une seule ligne** — l'accroche d'un
+ * encadrant, une ligne de punch.
+ *
+ * Même convention que les titres, et surtout **le même parseur** : `*…*` marque
+ * le fragment mis en valeur, `\*` écrit une astérisque littérale, une astérisque
+ * orpheline laisse la ligne intacte. Ce qui change n'est pas la syntaxe mais ce
+ * que l'appelant en fait — le titre de section peint son accent en ember
+ * italique, l'accroche de palmarès le peint en or.
+ *
+ * Un retour à la ligne saisi par erreur dans un champ d'une ligne ne coupe rien
+ * ici : les lignes sont recollées, puisque la destination est un `<p>` unique.
+ */
+export function analyserLigne(source: string | null | undefined): LigneTitre {
+  if (!source) return [];
+  return analyserTitre(source).flat();
+}
+
+/**
+ * Le texte d'un champ balisé, **marqueurs retirés**.
+ *
+ * Tout ce qui n'est pas le rendu visible d'un champ à fragments doit passer par
+ * là : `<title>`, meta description, sous-titre d'une carte de renvoi. Un
+ * `*` échappé au balisage se lirait sinon tel quel dans un résultat Google.
+ */
+export function texteSansMarqueurs(source: string | null | undefined): string {
+  if (!source) return '';
+  return texteBrut(analyserTitre(source));
 }

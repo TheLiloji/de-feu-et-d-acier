@@ -37,6 +37,25 @@
                            réservé aux états :hover / :focus-visible */
   --feu: #ec6a32; /* uniquement le mot « Feu » du logotype */
   --acier: #b8c3cc; /* uniquement le mot « Acier » du logotype */
+  /*
+   * Borne CLAIRE du métal d'« Acier » (Logotype.astro) — un blanc froid, jamais
+   * un blanc pur : le logotype est du Cormorant, et un #fff franc y fait de la
+   * lumière de néon plutôt que du poli de lame.
+   *
+   * `--acier` reste la borne SOMBRE du dégradé : le pire pixel du mot « Acier »
+   * est donc exactement la couleur d'aujourd'hui, et le métal ne peut
+   * qu'éclaircir. Contrastes calculés (WCAG 2.1, sRGB, couleurs opaques) :
+   *
+   *                 sur $ink     sur $coal    sur $char
+   *   --acier        11,10:1      10,41:1      9,55:1
+   *   --acier-clair  17,96:1      16,85:1      15,45:1
+   *
+   * Le logotype est du très grand texte (62→96 px au hero, 34→115 px au pied de
+   * page) : WCAG n'en demande que 3:1. On est quatre fois au-dessus, et au-dessus
+   * même des 4,5:1 du petit texte — le repli 20 px de la nav est donc couvert lui
+   * aussi.
+   */
+  --acier-clair: #eef4fa;
 
   /* Familles typographiques ($body et $eyebrow pointent tous deux vers Inter :
      deux noms sémantiques, une seule police chargée) */
@@ -83,19 +102,26 @@
    * jaune franc (#ffd700) vire au néon sur $ink et se cogne à $ember, qui reste
    * l'accent du site. L'or ne le remplace jamais ailleurs.
    *
-   * Contrastes CALCULÉS (WCAG 2.1, sRGB ; ces deux couleurs sont opaques, donc
+   * Contrastes CALCULÉS (WCAG 2.1, sRGB ; ces trois couleurs sont opaques, donc
    * aucune composition alpha n'entre en jeu — contrairement à --parch-mute) :
    *
    *              sur $ink     sur $coal    sur $char
    *   --or        10,39:1      9,75:1       8,94:1
    *   --or-clair  16,67:1     15,64:1      14,35:1
+   *   --or-eclat  18,84:1     17,68:1      16,22:1
    *
    * `--or` est la borne SOMBRE du dégradé métallique de l'accroche : le pire
    * pixel de texte doré du site est donc à 10,39:1, très au-dessus des 4,5:1 de
    * WCAG AA pour du petit texte. Rien n'est réservé au grand texte.
+   *
+   * `--or-eclat` est le cœur du reflet — un blanc chaud, tenu à l'intérieur du
+   * `--or-clair` plutôt qu'à sa place : le balayage monte donc d'un cran en
+   * brillance sur une bande étroite, sans que l'accroche au repos change d'un
+   * pixel (elle reste en `--or` plein).
    */
   --or: #d8b779;
   --or-clair: #f6ead0;
+  --or-eclat: #fff8ec;
 
   /* Teintes ember */
   --ember-tint-3: #e0552c08; /* fond de l'item FAQ ouvert */

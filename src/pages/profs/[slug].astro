@@ -55,6 +55,7 @@ import Nav from '../../components/sections/Nav.astro';
 import TabBar from '../../components/ui/TabBar.astro';
 import VideoCard from '../../components/ui/VideoCard.astro';
 import type { NomIcone } from '../../components/ui/icones';
+import { texteSansMarqueurs } from '../../components/ui/titre';
 import Base from '../../layouts/Base.astro';
 import {
   articlesDe,
@@ -150,8 +151,9 @@ export const getStaticPaths = (async () => {
           prenom,
           armes: libelleArmes(entree.armes, disciplines),
           accroche,
-          // « Accroche dorée (palmarès) » — lettres d'or et ornements dorés du
-          // hero. Rien d'autre ne change sur la fiche.
+          // « Accroche dorée (palmarès) » — lettres d'or sur le fragment `*…*`
+          // de l'accroche (toute l'accroche s'il n'y en a pas) et ornements
+          // dorés du hero. Rien d'autre ne change sur la fiche.
           accrocheDoree: Boolean(entree.accrocheDoree),
           portrait: resoudrePhoto(entree.portrait?.fichier),
           portraitAlt: entree.portrait?.alt ?? '',
@@ -302,7 +304,13 @@ const renvois = indexRenvois({ ecole, disciplines, traites, profs, articles });
 // son cru. On la complète donc par le début de la biographie — sa **prose**
 // seule : une description qui commencerait par le titre d'une vidéo ou la
 // légende d'une planche ne dirait pas de qui la page parle.
-const description = [accroche, resoudre(texteDuCorps(bio.node, 200, sourceBio), ctx, sourceBio)]
+//
+// `texteSansMarqueurs` retire le balisage `*…*` de l'accroche : les astérisques
+// qui désignent le fragment doré n'ont rien à faire dans un résultat Google.
+const description = [
+  texteSansMarqueurs(accroche),
+  resoudre(texteDuCorps(bio.node, 200, sourceBio), ctx, sourceBio),
+]
   .map((morceau) => morceau.trim())
   .filter(Boolean)
   .join(' — ')

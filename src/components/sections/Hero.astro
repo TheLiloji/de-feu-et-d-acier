@@ -159,7 +159,9 @@ const blason = logo ?? resoudrePhoto(CHEMIN_LOGO);
 
     {surTitre && <p class="hero__surtitre">{surTitre}</p>}
 
-    <Logotype class="hero__logotype" marque={fragments} taille="hero" balise="h1" />
+    {/* `reflet` : une passe de lumière sur « Acier » au chargement. Le hero est
+        la seule occurrence du logotype qui l'anime — cf. `Logotype.astro`. */}
+    <Logotype class="hero__logotype" marque={fragments} taille="hero" balise="h1" reflet />
 
     <Filet class="hero__filet" largeur="clamp(44px, 38.057px + 1.5238vw, 60px)" ton="logo" />
 
