@@ -7,6 +7,19 @@
  * masqués tant qu'ils sont vides (ARCHITECTURE.md §1), et la page reste
  * complète sans eux.
  *
+ * **La vidéo a deux emplacements, et c'est l'admin qui tranche.** Le bloc du
+ * hero a été dessiné pour une interview : une vignette de 640 px, sous
+ * l'accroche, dans la colonne de texte. Une vidéo qui n'est pas une interview —
+ * un extrait de combat, un highlight de tournoi — n'y est pas à sa place ; elle
+ * illustre l'encadrant, elle ne le raconte pas. La case « Vidéo en haut de la
+ * fiche » la fait alors monter **entre le hero et la biographie**, en pleine
+ * colonne de contenu, en pièce maîtresse. Le hero reprend exactement sa
+ * composition « sans vidéo », qu'il sait déjà faire. Case décochée : rien ne
+ * bouge, la vidéo reste où elle était.
+ *
+ * Deux emplacements, jamais les deux à la fois : `videoEnHaut` décide, et
+ * l'autre ne rend rien.
+ *
  * **La biographie a quitté le hero** (widgets.md §7.14) : c'est un corps libre,
  * où le rédacteur insère galeries, vidéos, questions-réponses et renvois vers
  * d'autres pages du site. Un corps qui porte tout cela n'a plus sa place dans
@@ -40,6 +53,7 @@ import { libelleArmes, prenomDe, profsAffiches } from '../../components/fiches/p
 import Footer from '../../components/sections/Footer.astro';
 import Nav from '../../components/sections/Nav.astro';
 import TabBar from '../../components/ui/TabBar.astro';
+import VideoCard from '../../components/ui/VideoCard.astro';
 import type { NomIcone } from '../../components/ui/icones';
 import Base from '../../layouts/Base.astro';
 import {
@@ -136,6 +150,9 @@ export const getStaticPaths = (async () => {
           prenom,
           armes: libelleArmes(entree.armes, disciplines),
           accroche,
+          // « Accroche dorée (palmarès) » — lettres d'or et ornements dorés du
+          // hero. Rien d'autre ne change sur la fiche.
+          accrocheDoree: Boolean(entree.accrocheDoree),
           portrait: resoudrePhoto(entree.portrait?.fichier),
           portraitAlt: entree.portrait?.alt ?? '',
           portraitPosition: cadrageCss(entree.portrait?.cadrage),
@@ -154,6 +171,12 @@ export const getStaticPaths = (async () => {
             sousTitres: entree.video?.sousTitres ?? '',
             affiche: entree.video?.affiche ?? '',
           },
+          // La case « Vidéo en haut de la fiche » ne vaut que s'il y a une
+          // vidéo : cochée sur un bloc vide, elle ouvrirait une section muette
+          // entre le hero et la biographie.
+          videoEnHaut:
+            Boolean(entree.video?.enHaut) &&
+            Boolean(entree.video?.url || entree.video?.vignette),
           entretien,
           rubrique: entetes.profs?.eyebrow || 'Les profs',
           retour: lien(ecole, '#profs'),
@@ -188,17 +211,60 @@ const {
   nom,
   armes,
   accroche,
+  accrocheDoree,
   portrait,
   portraitAlt,
   portraitPosition,
   credit,
   lienExterne,
   video,
+  videoEnHaut,
   entretien,
   rubrique,
   retour,
   cta,
 } = Astro.props as Props;
+
+/*
+ * Cadence d'apparition — l'un des raffinements de la fiche vitrine.
+ *
+ * Les blocs sous le hero montent de 14 px en s'opacifiant, comme les sections
+ * de l'accueil. La classe `.reveal` et son observateur existent déjà
+ * (global.css + Base.astro) : rien à importer, rien à instancier. Elle n'est
+ * posée que sur une fiche vitrine — sur les autres, pas un attribut ne change,
+ * ce qui est la condition de non-régression de cette page.
+ *
+ * Le hero n'en est pas : il est au-dessus de la ligne de flottaison, et faire
+ * apparaître un H1 en fondu retarde la première lecture pour rien.
+ */
+const estVitrine = videoEnHaut || accrocheDoree;
+/** `undefined` plutôt que `''` : l'attribut disparaît au lieu de rester vide. */
+const cadence = estVitrine ? 'reveal' : undefined;
+
+/**
+ * Sans JavaScript, l'observateur de `Base.astro` ne passe jamais et un bloc en
+ * `.reveal` resterait invisible pour toujours. Même filet que `Reveal.astro`,
+ * posé ici parce que la cadence est portée par les éléments eux-mêmes, sans
+ * enveloppe — et servi par `set:html` pour que la règle traverse le compilateur
+ * telle quelle, sans que ses accolades soient lues comme une expression.
+ */
+const NEUTRALISER_REVEAL =
+  '<style>.reveal{opacity:1!important;transform:none!important}</style>';
+
+/**
+ * Largeurs annoncées pour la vidéo en pièce maîtresse — trois paliers, tous
+ * majorants. Un `sizes` trop petit fait choisir un dérivé trop petit, et c'est
+ * alors la première image de la page qui est floue. 1 328 px = la colonne
+ * pleine à 1440 ; `100vw - 82px` = la colonne moins ses deux gouttières entre
+ * 1000 et 1440 ; `100vw` en dessous, majorant confortable. Le plafond en `svh`
+ * posé plus bas ne peut que réduire la largeur réelle : le laisser hors du
+ * calcul reste du bon côté.
+ *
+ * Nommé ici plutôt qu'écrit dans l'appel : un commentaire au milieu d'une liste
+ * d'attributs passe le compilateur Astro mais casse `astro check`.
+ */
+const SIZES_VIDEO_VITRINE =
+  '(min-width: 1440px) 1328px, (min-width: 1000px) calc(100vw - 82px), 100vw';
 
 // ── La biographie et les pages qu'elle peut viser ───────────────────────────
 //
@@ -259,11 +325,12 @@ const description = [accroche, resoudre(texteDuCorps(bio.node, 200, sourceBio), 
   <ProfFilAriane retour={retour} rubrique={rubrique} courant={nom} />
 
   <article class="fiche-prof" aria-labelledby="fiche-prof-titre">
-    <div class="fiche-prof__hero">
+    <div class:list={['fiche-prof__hero', { 'fiche-prof__hero--vitrine': videoEnHaut }]}>
       <ProfHero
         nom={nom}
         armes={armes}
         accroche={accroche}
+        doree={accrocheDoree}
         portrait={portrait}
         portraitAlt={portraitAlt}
         portraitPosition={portraitPosition}
@@ -271,14 +338,38 @@ const description = [accroche, resoudre(texteDuCorps(bio.node, 200, sourceBio), 
         lienExterne={lienExterne}
         retour={retour}
         libelleRetour={`Retour — ${rubrique}`}
-        video={video}
+        video={videoEnHaut ? null : video}
         idTitre="fiche-prof-titre"
       />
     </div>
 
     {
+      videoEnHaut && (
+        <section class:list={['fiche-prof__video', cadence]} aria-label={`Vidéo — ${nom}`}>
+          <div class="gouttiere">
+            <VideoCard
+              url={video.url}
+              image={video.vignette}
+              alt=""
+              sousTitres={video.sousTitres}
+              affiche={video.affiche}
+              duree={video.duree}
+              titre={video.titre?.trim() || 'En vidéo'}
+              taille="xl"
+              ratio="16 / 9"
+              rayon={3}
+              vitrine
+              sizes={SIZES_VIDEO_VITRINE}
+              rendMax={1328}
+            />
+          </div>
+        </section>
+      )
+    }
+
+    {
       aDeLaBio && (
-        <section class="fiche-prof__bio" aria-label={`Biographie de ${nom}`}>
+        <section class:list={['fiche-prof__bio', cadence]} aria-label={`Biographie de ${nom}`}>
           <div class="gouttiere">
             <CorpsLibre
               node={bio.node}
@@ -292,15 +383,20 @@ const description = [accroche, resoudre(texteDuCorps(bio.node, 200, sourceBio), 
       )
     }
 
-    <ProfInterview entretien={entretien} />
+    <ProfInterview entretien={entretien} class={cadence} />
 
     <ProfCta
       titre={cta.titre}
       sousTitre={cta.sousTitre}
       bouton={cta.bouton}
       lienExterne={lienExterne}
+      doree={accrocheDoree}
+      class={cadence}
     />
   </article>
+
+  {/* Le filet sans JavaScript de la cadence — cf. `NEUTRALISER_REVEAL`. */}
+  {estVitrine && <noscript set:html={NEUTRALISER_REVEAL} />}
 
   <Fragment slot="pied">
     <Footer ecole={ecole} identite={identite} menus={menus} />
@@ -330,7 +426,8 @@ const description = [accroche, resoudre(texteDuCorps(bio.node, 200, sourceBio), 
    * l'espacement de l'autre.
    */
   .fiche-prof__hero,
-  .fiche-prof__bio {
+  .fiche-prof__bio,
+  .fiche-prof__video {
     padding-block: 0 26px;
   }
 
@@ -339,8 +436,48 @@ const description = [accroche, resoudre(texteDuCorps(bio.node, 200, sourceBio), 
       padding-block: clamp(40px, 1rem + 3vw, 72px) clamp(48px, 1rem + 3.6vw, 88px);
     }
 
-    .fiche-prof__bio {
+    .fiche-prof__bio,
+    .fiche-prof__video {
       padding-block: 0 clamp(48px, 1rem + 3.6vw, 88px);
+    }
+  }
+
+  /*
+   * Quand la vidéo monte en tête, elle prolonge le hero au lieu d'ouvrir un
+   * chapitre : l'écart se resserre, pour que le portrait, le nom et la vidéo se
+   * lisent comme un seul bloc, et que la respiration pleine soit gardée pour
+   * l'entrée dans la biographie.
+   */
+  .fiche-prof__hero--vitrine {
+    padding-block-end: 16px;
+  }
+
+  @media (min-width: 1000px) {
+    .fiche-prof__hero--vitrine {
+      padding-block-end: clamp(26px, 1rem + 1.8vw, 46px);
+    }
+  }
+
+  /*
+   * Le grand lecteur ne dépasse jamais la fenêtre.
+   *
+   * En pleine colonne à 1440 px, un cadre 16/9 fait 1 328 × 747. Ajoutez la
+   * barre de navigation collante (76 px) et la légende (40 px) : il faut une
+   * fenêtre de 863 px de haut pour voir la vidéo ET la barre de commandes du
+   * lecteur. Sous cette taille, les commandes tombent sous le pli — et comme
+   * elles se masquent d'elles-mêmes pendant la lecture, on ne peut même plus
+   * les faire revenir au survol.
+   *
+   * On borne donc la largeur par la hauteur disponible. Les 168 px retranchés
+   * sont ces deux réserves plus un peu d'air : un écran 1080p en plein écran
+   * garde toute la colonne, un portable 1440 × 900 cale la vidéo vers 1 120 px.
+   * `svh` et non `vh` : sur mobile, `vh` compte la barre d'adresse rétractée et
+   * ment de 60 à 100 px. Le calage reste à gauche, comme tout le reste de la
+   * page — jamais un bloc centré au milieu d'une colonne alignée.
+   */
+  @media (min-width: 1000px) {
+    .fiche-prof__video :global(.video-card) {
+      max-width: calc((100svh - 168px) * 16 / 9);
     }
   }
 </style>
