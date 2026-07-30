@@ -103,7 +103,10 @@ const TONS = ['info', 'important', 'urgent'] as const;
  */
 function estAffichable(a: AnnonceCms): boolean {
   if (!a?.entry?.bandeau) return false;
-  if (!a.entry.message?.trim()) return false;
+  // Le message est facultatif : sans lui, le bandeau affiche le titre (champ
+  // obligatoire du schéma). Une annonce réelle sans message restait invisible
+  // sans un mot (constat du 31/07/2026, première annonce du club).
+  if (!a.entry.message?.trim() && !a.entry.titre?.trim()) return false;
   const fin = a.entry.dateFin;
   return !fin || fin >= aujourdhui;
 }
@@ -122,7 +125,9 @@ const ton = choisie && TONS.includes(choisie.entry.ton as (typeof TONS)[number])
 const libelleTon = LIBELLES_TON[ton] ?? LIBELLES_TON.info!;
 
 const source = choisie ? `l’annonce « ${choisie.entry.titre ?? choisie.slug ?? '?'} »` : 'une annonce';
-const message = choisie ? resoudre(choisie.entry.message, contexte, source) : '';
+const message = choisie
+  ? resoudre(choisie.entry.message?.trim() || choisie.entry.titre || '', contexte, source)
+  : '';
 
 const cible = choisie?.entry.lien?.url ?? '';
 const urlLien = cible ? lien(ecole, cible) : '';

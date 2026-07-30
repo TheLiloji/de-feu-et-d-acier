@@ -285,7 +285,9 @@ async function verifierAnnonces(aujourdhui: string): Promise<string[]> {
   for (const ecole of ECOLES) {
     const epinglees = (await annoncesDe(ecole)).filter((a) => {
       if (!a.entry.bandeau) return false;
-      if (!a.entry.message?.trim()) return false;
+      // Même prédicat que `estAffichable` (BandeauAnnonce.astro) : le message
+      // est facultatif, le titre fait foi en repli.
+      if (!a.entry.message?.trim() && !a.entry.titre?.trim()) return false;
       const fin = a.entry.dateFin;
       return !fin || fin >= aujourdhui;
     });
