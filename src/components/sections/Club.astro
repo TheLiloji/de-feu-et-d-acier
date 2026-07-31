@@ -30,6 +30,22 @@
  * La numérotation des piliers (`01`, `02`, `03`) est calculée sur la position
  * dans le tableau du CMS : plus de doublon « 01 · 01 · » comme dans la maquette
  * (design-spec §10.1, constat 4).
+ *
+ * Deux compositions, choisies au build selon le format de la photo
+ * ----------------------------------------------------------------
+ * Le split ci-dessus est taillé pour une photo « classique » (2:3 à 16:9) :
+ * son cadre `object-fit: cover` recadre ce qui dépasse. Une photo panoramique
+ * — celle du club au complet, 1920 × 690 — y perdrait 43 % de sa largeur en
+ * desktop, et l'assise du titre mobile ne tient pas sur un cadre si bas.
+ *
+ * `resoudrePhoto` donne les dimensions naturelles du fichier (`ImageMetadata`) :
+ * quand le ratio dépasse `SEUIL_RATIO_PANORAMA` (justifié sur la constante), la
+ * section bascule d'elle-même en composition « panorama » — titre et corps en
+ * tête (deux colonnes en desktop, pile en mobile), puis la photo **entière**,
+ * à son ratio naturel, sur toute la largeur utile de la section, crédit au ras.
+ * Le titre ne se pose jamais sur la photo dans cette variante, mobile compris.
+ * Rien à cocher dans l'admin : remplacer la photo suffit, la composition suit.
+ * Une photo classique reprend le split à l'identique, au pixel près.
  */
 import { Picture } from 'astro:assets';
 import SectionLabel from '../ui/SectionLabel.astro';
@@ -133,9 +149,40 @@ const altPhoto = donnees.photo?.alt ?? '';
 const credit = creditAffiche(donnees.photo?.credit);
 const cadrage = cadrageCss(donnees.photo?.cadrage);
 
-// 688 px de large en desktop, la gouttière moins 44 px en mobile (photos.md
-// §5.4). Politique de largeurs commune (src/lib/images.ts).
-const largeursPhoto = largeursSrcset(photo, { largeurs: [346, 520, 688, 1032, 1376] });
+/**
+ * Ratio largeur/hauteur au-delà duquel la photo passe en composition panorama.
+ *
+ * Le seuil est arbitré sur des rendus d'essai, pas dans l'abstrait. 16:9
+ * (1,78) — le format le plus large qui sorte d'un téléphone — reste net dans
+ * le split : cover écarte 10 % de la largeur en desktop (cadre 688/430),
+ * 22 % en mobile (cadre 346/250). Un recadrage d'essai à 2:1 pile tient
+ * encore aux cinq largeurs canoniques : le groupe reste lisible, l'assise du
+ * titre mobile aussi. Au-delà, la perte dépasse le cinquième en desktop et le
+ * tiers en mobile — sur une photo de groupe, des gens sortent du cadre — et
+ * elle atteint 43 % / 50 % pour le panorama du club (2,78:1) : mutilé.
+ * Une photo est donc « panoramique » STRICTEMENT au-delà de 2:1 : les formats
+ * courants (2:3, 3:4, 4:3, 3:2, 16:9) et le 2:1 pile gardent le split, les
+ * vrais panoramas (2,4:1 cinéma, 2,78:1 la photo du club) s'affichent entiers.
+ */
+const SEUIL_RATIO_PANORAMA = 2;
+const panorama = photo ? photo.width / photo.height > SEUIL_RATIO_PANORAMA : false;
+
+/**
+ * Largeur de rendu maximale de la photo panoramique : la largeur utile du
+ * gabarit — `--largeur-max` (1440) moins deux gouttières de 56 px (tokens.css).
+ */
+const LARGEUR_PANORAMA_MAX = 1328;
+
+// Split : 688 px de large en desktop, la gouttière moins 44 px en mobile
+// (photos.md §5.4). Panorama : pleine largeur utile, l'échelle commune
+// plafonnée à 2 × le rendu et à la largeur native (src/lib/images.ts).
+const largeursPhoto = panorama
+  ? largeursSrcset(photo, { rendMax: LARGEUR_PANORAMA_MAX })
+  : largeursSrcset(photo, { largeurs: [346, 520, 688, 1032, 1376] });
+
+const taillesPhoto = panorama
+  ? `(min-width: 1440px) ${LARGEUR_PANORAMA_MAX}px, calc(100vw - 44px)`
+  : '(min-width: 820px) 48vw, calc(100vw - 44px)';
 
 const idTitre = `${id}-titre`;
 ---
@@ -149,7 +196,7 @@ const idTitre = `${id}-titre`;
     <SectionLabel libelle={donnees.eyebrow || 'Le club'} numero={num ?? numero} />
 
     <Reveal>
-      <div class="club__split">
+      <div class:list={['club__split', { 'club__split--panorama': panorama }]}>
         <div class="club__titre">
           <SectionTitle lignes={lignesTitre} taille="xl" id={idTitre} />
         </div>
@@ -162,7 +209,7 @@ const idTitre = `${id}-titre`;
                 alt={altPhoto}
                 formats={['avif', 'webp']}
                 widths={largeursPhoto}
-                sizes="(min-width: 820px) 48vw, calc(100vw - 44px)"
+                sizes={taillesPhoto}
                 loading="lazy"
                 decoding="async"
               />
@@ -322,6 +369,51 @@ const idTitre = `${id}-titre`;
     font-size: var(--fs-body);
     line-height: var(--lh-body);
     color: var(--parch-mute);
+  }
+
+  /* ── Variante panorama : la photo entière, sous le bloc titre + texte ──── */
+  /*
+   * Choisie au build quand le ratio de la photo dépasse `SEUIL_RATIO_PANORAMA`
+   * (cf. frontmatter). Le titre quitte la photo — à toutes les largeurs — et
+   * la photo s'affiche à son ratio naturel, jamais recadrée, sur toute la
+   * largeur utile de la section. Chiffres et piliers ne bougent pas.
+   */
+  .club__split--panorama {
+    grid-template-areas:
+      'titre'
+      'corps'
+      'media'
+      'credit';
+  }
+
+  /* Plus de cadre imposé : le ratio naturel de la photo fait la hauteur. */
+  .club__split--panorama .club__media {
+    aspect-ratio: auto;
+    margin-block-start: var(--club-esp-tete);
+  }
+
+  /* Plus d'incrustation ⇒ plus de voile ni d'assise, à aucune largeur. */
+  .club__split--panorama .club__media::before,
+  .club__split--panorama .club__media::after {
+    content: none;
+  }
+
+  .club__split--panorama .club__media :global(picture),
+  .club__split--panorama .club__media :global(img) {
+    height: auto;
+  }
+
+  /* Le cadre épouse la photo : il n'y a plus rien à recadrer. */
+  .club__split--panorama .club__media :global(img) {
+    object-fit: contain;
+  }
+
+  /* Le titre reprend sa place dans le flux, sans l'habillage d'incrustation. */
+  .club__split--panorama .club__titre {
+    grid-area: titre;
+    z-index: auto;
+    align-self: start;
+    padding: 0;
   }
 
   /* ── Chiffres clés ──────────────────────────────────────────────────────── */
@@ -522,6 +614,31 @@ const idTitre = `${id}-titre`;
       border-left: var(--filet);
     }
 
+    /* Variante panorama : tête sur deux colonnes (titre | corps), puis la
+       photo sur toute la largeur, crédit au ras. Mêmes proportions de colonnes
+       que le split — la tête garde le rythme de la section. */
+    .club__split--panorama {
+      grid-template-columns: minmax(0, 540fr) minmax(0, 688fr);
+      grid-template-areas:
+        'titre corps'
+        'media media'
+        'credit credit';
+      grid-template-rows: auto auto auto;
+    }
+
+    .club__split--panorama .club__media {
+      align-self: auto;
+      aspect-ratio: auto;
+    }
+
+    /* Le corps s'assied sur la ligne de base du titre, comme la tête de la
+       galerie (bouton calé en bas) : les deux blocs se terminent ensemble,
+       juste au-dessus de la photo. */
+    .club__split--panorama .club__corps {
+      align-self: end;
+      margin-block-start: 0;
+    }
+
     .club__piliers {
       grid-auto-flow: column;
       grid-auto-columns: minmax(0, 1fr);
@@ -542,20 +659,24 @@ const idTitre = `${id}-titre`;
    * La maquette mobile fond les deux premières lignes en une seule et renvoie
    * la troisième dessous. Les nœuds visés appartiennent à `SectionTitle` : d'où
    * les `:global()`, portés par `.club__titre` qui, lui, est bien scopé.
+   *
+   * Réservé à la variante classique : ce réagencement n'existe que parce que
+   * le titre s'incruste dans la photo. En panorama, le titre est dans le flux
+   * et garde ses trois lignes en colonne, comme en desktop.
    */
   @media (max-width: 819.98px) {
-    .club__titre :global(.titre-section) {
+    .club__split:not(.club__split--panorama) .club__titre :global(.titre-section) {
       display: block;
       --titre-lh: 1.1;
     }
 
-    .club__titre :global(.titre-section__ligne) {
+    .club__split:not(.club__split--panorama) .club__titre :global(.titre-section__ligne) {
       display: inline;
       /* La chasse que le mode « colonne » n'a pas besoin de poser. */
       padding-inline-end: 0.22em;
     }
 
-    .club__titre :global(.titre-section__ligne:last-child) {
+    .club__split:not(.club__split--panorama) .club__titre :global(.titre-section__ligne:last-child) {
       display: block;
       padding-inline-end: 0;
     }
