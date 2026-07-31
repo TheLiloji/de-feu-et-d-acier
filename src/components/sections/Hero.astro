@@ -25,17 +25,54 @@
  * compris : la ligne d'accroche est en pratique « {creneaux} — {essai} séances
  * d'essai offertes ».
  *
+ * Deux cadrages de photo, un seul téléchargement
+ * ----------------------------------------------
+ * Le singleton porte deux photos de fond : le **paysage** (photo de référence)
+ * et le **portrait** (facultatif, pour un téléphone tenu droit). Quand les deux
+ * sont déposées, le rendu passe par un `<picture>` art-directed : la `<source>`
+ * portrait n'est retenue que par `MEDIA_PHOTO_PORTRAIT` (critère justifié sur
+ * la constante), et le navigateur ne télécharge **que** la variante retenue —
+ * c'est le comportement natif de `<picture>`, aucun preload à arbitrer. Les
+ * attributs de priorité de l'image LCP (`loading="eager"`,
+ * `fetchpriority="high"`) restent sur l'`<img>`, qui les applique au fichier
+ * servi, quel qu'il soit. La spec HTML ne donne qu'un `alt` à un `<picture>` :
+ * c'est celui de la photo paysage, et l'admin demande en conséquence que le
+ * portrait soit la même scène recadrée. Une seule photo déposée — l'une **ou**
+ * l'autre — emprunte le rendu à image unique historique, inchangé au pixel.
+ *
+ * Vidéo de fond — prévue, pas construite (plan d'extension)
+ * ---------------------------------------------------------
+ * Décision client : une vidéo pourra remplacer la photo « plus tard ». Le jour
+ * venu, le diff est petit et connu d'avance :
+ *   1. le singleton gagne un champ vidéo optionnel (mêmes règles que
+ *      `champsVideo` de src/cms/champs.ts : fichier mp4 servi depuis notre
+ *      propre origine — R2 —, jamais un lecteur de plateforme, cf.
+ *      ARCHITECTURE.md §6) ;
+ *   2. `ContenuHero` gagne la clé correspondante, et la pile de couches une
+ *      branche `hero__video` AVANT les deux branches photo ci-dessous : vidéo
+ *      remplie ⇒ elle prime sur les photos (`<video autoplay muted loop
+ *      playsinline>` sans commandes, `poster` = la photo paysage) ;
+ *   3. `prefers-reduced-motion` ⇒ on ne sert PAS la vidéo : les photos
+ *      reprennent la main (le repli existe déjà, c'est le rendu actuel).
+ * Rien d'autre ne bouge : voile, contenu et invite ignorent la nature de la
+ * couche de fond.
+ *
  * Exemple d'assemblage :
  *   <Hero ecole={ecole} hero={hero} identite={identite} ctx={ctx} />
  */
-import { Image } from 'astro:assets';
+import { getImage, Image } from 'astro:assets';
 import Button from '../ui/Button.astro';
 import Filet from '../ui/Filet.astro';
 import Icon from '../ui/Icon.astro';
 import Logotype from '../ui/Logotype.astro';
 import type { Ecole } from '../../lib/ecoles';
 import { lien } from '../../lib/liens';
-import { resoudre as resoudrePhotoCms, resoudrePhoto, type PhotoCms } from '../../lib/images';
+import {
+  largeursSrcset,
+  resoudre as resoudrePhotoCms,
+  resoudrePhoto,
+  type PhotoCms,
+} from '../../lib/images';
 import { contexteDe, resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
 
 /**
@@ -59,7 +96,10 @@ export interface MarqueCms {
 
 /** Singleton « Accueil · En-tête » (`src/content/commun/hero.yaml`). */
 export interface ContenuHero {
+  /** Photo de fond, cadrage paysage — la photo de référence. */
   photo?: PhotoCms | null;
+  /** Cadrage portrait, facultatif — téléphones tenus droits. Pas de crédit. */
+  photoPortrait?: PhotoCms | null;
   surTitre?: string | null;
   accroche?: string | null;
   lieuTexte?: string | null;
@@ -110,7 +150,60 @@ const {
 const contexte: ContexteRaccourcis = ctx ?? contexteDe(ecole.fiche, { nbArmes: 0, nbProfs: 0 });
 const source = 'src/content/commun/hero.yaml';
 
+/**
+ * Critère de la variante portrait : fenêtre **étroite ET tenue droite**.
+ *
+ *   - `max-width: 819px` — la bascule de *contenu* du site (ARCHITECTURE §5),
+ *     celle que ce composant applique déjà au voile et au blason : sous 820 px,
+ *     le hero est en gabarit compact, et c'est là qu'un cadrage vertical sert.
+ *     Pas de seuil inventé : 820 est le seul seuil de contenu du site.
+ *   - `orientation: portrait` — un téléphone tenu **couché** (ex. 740 × 360)
+ *     passe aussi sous 820 px de large ; lui servir la photo verticale n'en
+ *     laisserait qu'une mince bande centrale (`object-fit: cover`). La photo
+ *     paysage y est le bon choix, d'où la double condition.
+ *
+ * La media query est recopiée dans la CSS du bas (cadrage par variante) : une
+ * feuille de style ne sait pas lire une constante, cette déclaration fait foi.
+ */
+const MEDIA_PHOTO_PORTRAIT = '(max-width: 819px) and (orientation: portrait)';
+
+/** Largeurs de srcset du fond plein écran — mêmes paliers depuis l'origine. */
+const LARGEURS_HERO = [640, 960, 1280, 1600, 2048];
+
 const photo = resoudrePhotoCms(hero.photo);
+const photoPortrait = resoudrePhotoCms(hero.photoPortrait);
+
+/**
+ * Une seule photo déposée — l'une OU l'autre — sert partout, via la branche à
+ * image unique historique. Ne déposer que le portrait n'est pas le mode
+ * nominal (l'admin présente le paysage comme la photo principale), mais un
+ * fond photographique recadré vaut mieux qu'un aplat d'encre.
+ */
+const photoSeule = photo && photoPortrait ? null : (photo ?? photoPortrait);
+
+/**
+ * Les deux variantes du `<picture>` art-directed, générées par le même service
+ * d'images que `<Image>` (sharp, WebP, qualité 78) : mêmes formats, mêmes
+ * paliers — `largeursSrcset` écarte simplement ceux qui dépassent la largeur
+ * native de chaque fichier, le portrait étant plus étroit que le paysage.
+ */
+const variantes =
+  photo && photoPortrait
+    ? {
+        paysage: await getImage({
+          src: photo.source,
+          widths: largeursSrcset(photo.source, { largeurs: LARGEURS_HERO }),
+          sizes: '100vw',
+          quality: 78,
+        }),
+        portrait: await getImage({
+          src: photoPortrait.source,
+          widths: largeursSrcset(photoPortrait.source, { largeurs: LARGEURS_HERO }),
+          sizes: '100vw',
+          quality: 78,
+        }),
+      }
+    : null;
 
 // « Laisser vide pour afficher automatiquement "à {ville}" » (libellé de l'admin).
 const ville = ecole.fiche.lieu?.ville || ecole.fiche.ville || ecole.ville;
@@ -130,19 +223,53 @@ const blason = logo ?? resoudrePhoto(CHEMIN_LOGO);
 
 <section class:list={['hero', { 'hero--sous-entete': sousEntete }, classe]} id={id}>
   {
-    photo && (
+    /* Une seule photo : le rendu historique, à l'attribut près. */
+    photoSeule && (
       <div class="hero__photo">
         <Image
-          src={photo.source}
-          alt={photo.alt}
-          widths={[640, 960, 1280, 1600, 2048]}
+          src={photoSeule.source}
+          alt={photoSeule.alt}
+          widths={LARGEURS_HERO}
           sizes="100vw"
           quality={78}
           loading="eager"
           decoding="async"
           fetchpriority="high"
-          style={`object-position:${photo.objectPosition}`}
+          style={`object-position:${photoSeule.objectPosition}`}
         />
+      </div>
+    )
+  }
+  {
+    /* Deux photos : art direction. Une seule des deux est téléchargée — la
+       `<source>` retenue par sa media query, ou le repli paysage de l'<img>,
+       qui porte l'alt et la priorité LCP pour les deux (cf. commentaire de
+       tête). Le cadrage de chaque variante passe par les variables CSS. */
+    variantes && photo && photoPortrait && (
+      <div
+        class="hero__photo hero__photo--deux-cadrages"
+        style={`--cadrage-paysage:${photo.objectPosition};--cadrage-portrait:${photoPortrait.objectPosition}`}
+      >
+        <picture>
+          <source
+            media={MEDIA_PHOTO_PORTRAIT}
+            srcset={variantes.portrait.srcSet.attribute}
+            sizes="100vw"
+            width={variantes.portrait.attributes.width}
+            height={variantes.portrait.attributes.height}
+          />
+          <img
+            src={variantes.paysage.src}
+            srcset={variantes.paysage.srcSet.attribute}
+            sizes="100vw"
+            alt={photo.alt}
+            width={variantes.paysage.attributes.width}
+            height={variantes.paysage.attributes.height}
+            loading="eager"
+            decoding="async"
+            fetchpriority="high"
+          />
+        </picture>
       </div>
     )
   }
@@ -239,6 +366,30 @@ const blason = logo ?? resoudrePhoto(CHEMIN_LOGO);
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  /* Le <picture> de l'art direction ne doit pas s'interposer dans la mesure :
+     il prend la taille du cadre, l'img au-dessus garde son object-fit. */
+  .hero__photo :global(picture) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /*
+   * Art direction : chaque variante garde son propre cadrage (les variables
+   * sont posées par la branche « deux photos » du gabarit). La media query est
+   * la MÊME que l'attribut `media` de la <source> — c'est la constante
+   * `MEDIA_PHOTO_PORTRAIT` (frontmatter) qui fait foi.
+   */
+  .hero__photo--deux-cadrages :global(img) {
+    object-position: var(--cadrage-paysage, 50% 50%);
+  }
+
+  @media (max-width: 819px) and (orientation: portrait) {
+    .hero__photo--deux-cadrages :global(img) {
+      object-position: var(--cadrage-portrait, 50% 50%);
+    }
   }
 
   /* Voile : 72 % en mobile, 67 % en desktop (design-spec §1.2, familles B). */

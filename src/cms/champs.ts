@@ -94,7 +94,7 @@ export const cadrage = fields.select({
 });
 
 /** Photo = fichier + description alternative (obligatoire à l'usage) + cadrage. */
-export const photo = (label: string, dossier: string) =>
+export const photo = (label: string, dossier: string, description?: string) =>
   fields.object(
     {
       fichier: imageEditoriale('Fichier', dossier),
@@ -113,7 +113,7 @@ export const photo = (label: string, dossier: string) =>
           'Le nom seul — le « © » est ajouté automatiquement. Ex. « Alexandre Vergne — L’IMAGINARIUM ».',
       }),
     },
-    { label },
+    { label, description },
   );
 
 /**

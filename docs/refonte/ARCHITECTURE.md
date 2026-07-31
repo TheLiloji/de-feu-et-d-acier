@@ -94,6 +94,11 @@ Une planche de traité n'est pas une photo du club : c'est l'image d'une bibliot
 - Une adresse de plateforme reste acceptée par le champ, mais la vignette n'est alors qu'un **lien sortant**, et le départ du site est annoncé à l'écran (nom de l'hébergeur + `arrow-up-right`) plutôt que deviné.
 - **Sous-titres obligatoires dès qu'une vidéo est publiée** (WCAG 1.2.2) : un champ « Sous-titres (fichier .vtt) » accompagne chaque vidéo, à remplir avec la piste française déposée à côté du fichier. Un champ « Image d'attente » permet de donner au lecteur une affiche autre que la vignette.
 
+### Le fond du hero — deux cadrages de photo, une vidéo prévue
+
+- La photo de fond de l'accueil existe en **deux cadrages**, saisis dans le singleton « Accueil · En-tête » : **paysage** (photo de référence, servie partout par défaut) et **portrait** (facultatif, pour les téléphones tenus droits). Quand les deux sont déposés, `Hero.astro` rend un `<picture>` art-directed : la `<source>` portrait est retenue par `(max-width: 819px) and (orientation: portrait)` — 820 est **la** bascule de contenu du site (§5), déjà celle du voile du hero ; la condition d'orientation évite de servir un cadrage vertical à un téléphone tenu couché, où `object-fit: cover` n'en garderait qu'une bande. Le navigateur ne télécharge **qu'une** des deux photos (comportement natif de `<picture>`, aucun preload à arbitrer), et l'`<img>` — l'image LCP — garde `loading="eager"` + `fetchpriority="high"`. Un `<picture>` n'a qu'un `alt` : c'est celui de la photo paysage, d'où la consigne de l'admin — le portrait est la même scène, recadrée en hauteur.
+- **Vidéo de fond (prévue, non construite)** — décision client : « une possibilité plus tard de mettre une vidéo ». Le jour venu : champ vidéo optionnel du singleton (mêmes règles que `champsVideo` — fichier mp4 de même origine, R2, jamais de plateforme) ; vidéo remplie ⇒ elle **prime sur les photos**, en autoplay muet en boucle (`muted playsinline loop`, sans commandes) ; `prefers-reduced-motion` ⇒ on sert les photos ; `poster` = la photo paysage. Le plan pas à pas est en tête de `src/components/sections/Hero.astro`, dont les couches sont déjà découpées pour que l'ajout soit un petit diff.
+
 ## 7. Git, build, déploiement
 
 - Travail sur la branche **`refonte`**. `origin/refonte` archive aussi les masters photos — c'est voulu.

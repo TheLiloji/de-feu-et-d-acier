@@ -465,6 +465,31 @@ reste utilisable par tout le monde.
 > **Le site refuse de publier une photo sans description.** C'est un garde-fou
 > volontaire : aucune image ne part en ligne muette.
 
+### La photo d'accueil existe en deux cadrages
+
+**Textes des pages → Accueil · En-tête.** La grande photo qui ouvre le site se
+remplit en deux exemplaires :
+
+- **Photo de fond — cadrage paysage (ordinateur)** : une photo horizontale,
+  plus large que haute. C'est la photo principale, celle des écrans
+  d'ordinateur.
+- **Photo de fond — cadrage portrait (téléphone, facultatif)** : une photo
+  verticale, plus haute que large. Elle est servie aux téléphones tenus droits,
+  où une photo horizontale serait rognée des deux côtés — on n'y verrait que le
+  centre. **Idéalement la même scène** que la photo paysage, recadrée en
+  hauteur, pour que les deux écrans racontent la même chose. Comme la
+  description lue aux personnes malvoyantes est celle de la photo paysage, une
+  scène différente serait mal décrite sur téléphone.
+
+**Si vous laissez la case portrait vide, rien ne casse** : la photo paysage
+sert partout, recadrée automatiquement sur les petits écrans — c'est le
+fonctionnement historique du site.
+
+**Ce qu'il faut vérifier après coup** : sur un ordinateur, rien ne change ; sur
+un téléphone tenu droit, la photo verticale apparaît. Chaque visiteur ne
+télécharge que la photo de son écran, jamais les deux — déposer la seconde
+photo ne ralentit personne.
+
 ---
 
 ## 9. Modifier les créneaux, le tarif, le lieu, le contact
