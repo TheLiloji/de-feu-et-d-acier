@@ -5,6 +5,12 @@ photo:
     des projecteurs.
   cadrage: centre
   credit: ''
+photoPortrait:
+  fichier: /src/assets/photos/commun/hero-scene-portrait-2x3.jpg
+  alt: >-
+    Deux tireurs à l'épée longue en plein assaut, l'un en noir de dos, l'autre
+    en veste jaune.
+  cadrage: centre
 surTitre: Arts martiaux historiques européens
 accroche: '{creneaux_court}, essai offert'
 lieuTexte: ''
