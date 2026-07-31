@@ -21,7 +21,8 @@
  *      WCAG 2.1 AA.
  *   8. Les canaux techniques répondent : `/rss.xml` bien formé, au moins un
  *      article, liens absolus ; `/.well-known/security.txt` avec un contact
- *      et une date d'expiration à venir.
+ *      et une date d'expiration à venir ; `/site.webmanifest` valide et
+ *      toutes ses icônes servies.
  *
  * Par défaut, le script construit le site (`npm run build`) puis démarre son
  * propre `npm run preview` sur http://localhost:4321, qu'il arrête à la fin
@@ -508,6 +509,30 @@ async function verifierFluxTechniques(base) {
     );
   } catch (e) {
     ligne('8-flux', 'GET /.well-known/security.txt', false, String(e?.message ?? e).slice(0, 120));
+  }
+
+  try {
+    const reponse = await fetch(`${base}/site.webmanifest`);
+    let manifest = null;
+    try {
+      manifest = reponse.ok ? await reponse.json() : null;
+    } catch {
+      /* JSON invalide : `manifest` reste nul, la ligne ci-dessous échoue. */
+    }
+    const icones = Array.isArray(manifest?.icons) ? manifest.icons : [];
+    const iconesServies = [];
+    for (const icone of icones) {
+      const r = await fetch(`${base}${icone.src}`);
+      if (r.ok) iconesServies.push(icone.src);
+    }
+    ligne(
+      '8-flux',
+      '/site.webmanifest répond, JSON valide, toutes ses icônes servies',
+      reponse.ok && Boolean(manifest?.name) && icones.length > 0 && iconesServies.length === icones.length,
+      `HTTP ${reponse.status}, ${iconesServies.length}/${icones.length} icône(s)`,
+    );
+  } catch (e) {
+    ligne('8-flux', 'GET /site.webmanifest', false, String(e?.message ?? e).slice(0, 120));
   }
 }
 
