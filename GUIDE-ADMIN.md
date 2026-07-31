@@ -490,6 +490,15 @@ un téléphone tenu droit, la photo verticale apparaît. Chaque visiteur ne
 télécharge que la photo de son écran, jamais les deux — déposer la seconde
 photo ne ralentit personne.
 
+### La section « Le club » accepte les photos très larges
+
+**Textes des pages → Accueil · Le club.** La photo de cette section peut être
+un panorama — une photo beaucoup plus large que haute, comme une photo de
+groupe avec tout le club. Dans ce cas, elle s'affiche **entière**, sur toute
+la largeur de la section, sous le titre : personne n'est coupé. Une photo au
+format habituel reprend la mise en page classique, à côté du titre. Rien à
+régler : déposez la photo, le site choisit tout seul la bonne présentation.
+
 ---
 
 ## 9. Modifier les créneaux, le tarif, le lieu, le contact
