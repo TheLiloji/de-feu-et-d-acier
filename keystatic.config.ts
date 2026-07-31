@@ -1017,7 +1017,21 @@ const singletonsCommuns = {
     path: 'src/content/commun/hero',
     format: { data: 'yaml' },
     schema: {
-      photo: photo('Photo de fond', 'commun'),
+      // Deux cadrages de la photo de fond, jamais téléchargés ensemble : le
+      // rendu (Hero.astro) sert le portrait aux fenêtres étroites et verticales,
+      // le paysage partout ailleurs. Le portrait n'a pas de champ crédit : le
+      // hero n'affiche pas de ligne de crédit, et les deux cadrages sont censés
+      // venir de la même prise de vue (celui de la photo paysage fait foi).
+      photo: photo(
+        'Photo de fond — cadrage paysage (ordinateur)',
+        'commun',
+        'Une photo horizontale, plus large que haute. C’est la photo principale : tant que la photo portrait ci-dessous est vide, elle est servie sur tous les écrans, téléphone compris.',
+      ),
+      photoPortrait: photoDecorative(
+        'Photo de fond — cadrage portrait (téléphone, facultatif)',
+        'commun',
+        'Une photo verticale, plus haute que large — idéalement la même scène que la photo paysage, recadrée en hauteur. Elle remplace la photo paysage sur les téléphones tenus droits, où celle-ci serait trop rognée. Laisser vide pour que la photo paysage serve partout.',
+      ),
       surTitre: fields.text({
         label: 'Sur-titre',
         defaultValue: 'Arts martiaux historiques européens',
