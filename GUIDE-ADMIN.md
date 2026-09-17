@@ -832,6 +832,21 @@ en **Publié** une fois la relecture faite. La page, l'encadré de la fiche
 arme et le plan du site se mettent à jour tout seuls à la publication
 suivante.
 
+### Le champ de recherche et l'assistant
+
+En tête de la page « Questions d'armes », un champ de recherche suggère les
+questions publiées à mesure que le visiteur tape. Si aucune ne répond, un
+bouton « Poser la question » fait rédiger une réponse courte par une IA, à
+partir de nos sources uniquement (le wiki de la FFAMHE et le contenu du site),
+**toujours avec les sources citées dessous** et un avertissement rappelant que
+la parole des profs prime.
+
+Le bon réflexe : les questions que les visiteurs posent à l'assistant sont
+exactement celles qui méritent de devenir de vraies pages. Quand on vous
+rapporte une bonne question (ou qu'on vous la pose en salle), ajoutez-la ici,
+avec une réponse relue : une page publiée sera toujours mieux écrite, mieux
+sourcée et mieux référencée qu'une réponse générée.
+
 ---
 
 ## 13. Quand la modification apparaît sur le site

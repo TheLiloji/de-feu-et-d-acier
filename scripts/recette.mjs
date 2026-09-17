@@ -2,7 +2,7 @@
 /**
  * Recette automatisée du site — `npm run recette`.
  *
- * Rejoue, sur le rendu réel (jamais déduit du source), les huit contrôles
+ * Rejoue, sur le rendu réel (jamais déduit du source), les neuf contrôles
  * d'acceptation qui suivent une grosse édition de contenu ou précèdent un
  * déploiement manuel. Voir docs/RECETTE.md pour le mode d'emploi et la
  * lecture d'un échec.
@@ -23,6 +23,12 @@
  *      article, liens absolus ; `/.well-known/security.txt` avec un contact
  *      et une date d'expiration à venir ; `/site.webmanifest` valide et
  *      toutes ses icônes servies.
+ *   9. La recherche « Questions d'armes » : le champ de suggestions apparaît
+ *      (une fois le JavaScript passé) sur /questions/ et sur une fiche arme,
+ *      et taper « rapière » fait remonter les questions rapière ; `/api/ia`
+ *      répond un JSON bien formé — état du service en GET, 400 français sur
+ *      une question trop courte, et 503 « non activé » sur une bonne question
+ *      quand aucune clé n'est configurée (le cas du preview local).
  *
  * Par défaut, le script construit le site (`npm run build`) puis démarre son
  * propre `npm run preview` sur http://localhost:4321, qu'il arrête à la fin
@@ -605,6 +611,108 @@ async function verifierFichesTraites(navigateur, base) {
   }
 }
 
+// ── Point 9 : recherche « Questions d'armes » et /api/ia ────────────────────
+
+/**
+ * L'étage 1 (suggestions) sur le rendu réel : le bloc est `hidden` tant que le
+ * script du composant n'a pas tourné, donc voir le champ, c'est déjà vérifier
+ * le chemin JavaScript ; la frappe de « rapière » doit ensuite proposer au
+ * moins une question qui en parle (l'index inliné et sa normalisation).
+ */
+async function verifierRechercheQuestions(navigateur, base) {
+  console.log('\n── 9. Recherche « Questions d’armes » : champ de suggestions ──');
+  for (const chemin of ['/questions/', '/armes/rapiere/']) {
+    const page = await ouvrirPage(navigateur, VIEWPORT_DEFAUT);
+    try {
+      await page.goto(base + chemin, { waitUntil: 'load' });
+      const champ = page.locator('[data-cherche] input[role="combobox"]');
+      await champ.scrollIntoViewIfNeeded();
+      const visible = await champ.isVisible();
+      ligne('9-suggestions', `${chemin} — champ présent une fois le JS passé`, visible, '');
+      if (!visible) continue;
+
+      await champ.fill('rapière');
+      await page.waitForTimeout(350);
+      const options = await page.locator('[data-cherche] [role="option"]').allTextContents();
+      const pertinentes = options.filter((texte) => /rapi/i.test(texte));
+      ligne(
+        '9-suggestions',
+        `${chemin} — « rapière » fait remonter les questions rapière`,
+        pertinentes.length > 0,
+        `${pertinentes.length}/${options.length} option(s)`,
+      );
+    } catch (e) {
+      ligne('9-suggestions', chemin, false, String(e?.message ?? e).slice(0, 120));
+    } finally {
+      await page.close();
+    }
+  }
+}
+
+/**
+ * L'étage 2 côté serveur, sans jamais consommer un appel Gemini : l'état en
+ * GET, un refus 400 propre, et — si le service n'est pas activé, l'état
+ * normal d'un preview local sans clé — le 503 JSON français. Contre un site
+ * où la clé est posée, ce dernier contrôle est ignoré plutôt que de brûler
+ * du quota.
+ */
+async function verifierApiIa(base) {
+  console.log('\n── 9bis. /api/ia répond un JSON propre ──');
+  let actif = null;
+  try {
+    const reponse = await fetch(`${base}/api/ia`);
+    const corps = await reponse.json();
+    actif = typeof corps.actif === 'boolean' ? corps.actif : null;
+    ligne(
+      '9-api',
+      'GET /api/ia — 200 et JSON { actif: booléen }',
+      reponse.status === 200 && actif !== null,
+      `HTTP ${reponse.status}, actif=${String(corps.actif)}`,
+    );
+  } catch (e) {
+    ligne('9-api', 'GET /api/ia', false, String(e?.message ?? e).slice(0, 120));
+  }
+
+  // L'en-tête Origin est posé exprès : la route refuse les requêtes sans
+  // origine (garde-fou anti-abus), et c'est le refus 400 qu'on veut voir ici.
+  const poster = (question) =>
+    fetch(`${base}/api/ia`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: base },
+      body: JSON.stringify({ question }),
+    });
+
+  try {
+    const reponse = await poster('ab');
+    const corps = await reponse.json();
+    ligne(
+      '9-api',
+      'POST /api/ia — question trop courte refusée en 400, message français',
+      reponse.status === 400 && typeof corps.erreur === 'string' && corps.erreur.length > 0,
+      `HTTP ${reponse.status}`,
+    );
+  } catch (e) {
+    ligne('9-api', 'POST /api/ia (question trop courte)', false, String(e?.message ?? e).slice(0, 120));
+  }
+
+  if (actif === false) {
+    try {
+      const reponse = await poster('Qui était Johannes Liechtenauer ?');
+      const corps = await reponse.json();
+      ligne(
+        '9-api',
+        'POST /api/ia — mode « non activé » : 503 et JSON { erreur } français',
+        reponse.status === 503 && typeof corps.erreur === 'string' && corps.erreur.includes('activé'),
+        `HTTP ${reponse.status}`,
+      );
+    } catch (e) {
+      ligne('9-api', 'POST /api/ia (mode non activé)', false, String(e?.message ?? e).slice(0, 120));
+    }
+  } else {
+    console.log('ℹ  clé configurée sur la cible : le contrôle du mode « non activé » est ignoré (pas d’appel Gemini depuis la recette).');
+  }
+}
+
 // ── Résumé final ─────────────────────────────────────────────────────────────
 
 function imprimerResume() {
@@ -642,6 +750,8 @@ async function main() {
       await verifierSitemap(base);
       await verifierFluxTechniques(base);
       await verifierFichesTraites(navigateur, base);
+      await verifierRechercheQuestions(navigateur, base);
+      await verifierApiIa(base);
       rapporterNetflix(mesures);
       rapporterTirets(mesures);
       rapporterImages(mesures);
