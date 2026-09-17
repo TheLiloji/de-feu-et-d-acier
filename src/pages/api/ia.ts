@@ -273,14 +273,9 @@ export const POST: APIRoute = async (contexte) => {
     return erreur(403, 'Cette adresse ne répond qu’aux pages du site.');
   }
 
-  const cle = await lireCle();
-  if (!cle) {
-    return erreur(
-      503,
-      'Le service de réponse n’est pas activé. Les questions publiées sur cette page restent le meilleur point de départ.',
-    );
-  }
-
+  // La forme de la requête d'abord, la disponibilité du service ensuite : une
+  // requête malformée vaut 400 même quand le service n'est pas activé (et la
+  // recette vérifie ce 400 sur un preview sans clé).
   let question = '';
   try {
     const corps = (await request.json()) as { question?: unknown };
@@ -291,6 +286,14 @@ export const POST: APIRoute = async (contexte) => {
 
   if (question.length < QUESTION_MIN || question.length > QUESTION_MAX) {
     return erreur(400, `La question doit faire entre ${QUESTION_MIN} et ${QUESTION_MAX} caractères.`);
+  }
+
+  const cle = await lireCle();
+  if (!cle) {
+    return erreur(
+      503,
+      'Le service de réponse n’est pas activé. Les questions publiées sur cette page restent le meilleur point de départ.',
+    );
   }
 
   // L'IP : l'en-tête Cloudflare d'abord, l'adaptateur ensuite (dev/preview).
