@@ -1455,6 +1455,25 @@ const singletonsCommuns = {
         },
         { label: 'Confidentialité (RGPD)' },
       ),
+      // L'assistant de « Questions d'armes » est le SEUL écart à la promesse
+      // « aucune donnée » du site : la question part vers l'API Gemini de
+      // Google, l'IP sert fugacement à la limite anti-abus. Cette section de
+      // /confidentialite/ le dit noir sur blanc — la vider masquerait l'écart
+      // sans le supprimer, d'où la mise en garde du libellé.
+      ia: fields.object(
+        {
+          titre: fields.text({ label: 'Titre de la section' }),
+          paragraphes: fields.array(fields.text({ label: 'Paragraphe', multiline: true }), {
+            label: 'Paragraphes',
+            itemLabel: (p) => p.value?.slice(0, 60) || 'Paragraphe',
+          }),
+        },
+        {
+          label: 'Assistant de réponse (IA)',
+          description:
+            'Section de la page Confidentialité qui décrit l’assistant de « Questions d’armes ». Tant que l’assistant existe sur le site, cette section doit dire honnêtement ce qui est transmis : ne pas la vider.',
+        },
+      ),
     },
   }),
 };
