@@ -29,10 +29,13 @@
   // `/_image` est dans la liste parce qu'astro.config.mjs y câble délibérément
   // le passe-plat de l'adaptateur : sans lui, une URL /_image restée dans un
   // cache recevrait la page 404 au lieu de l'image d'origine.
+  // `/api/ia` est l'assistant de la page « Questions d'armes »
+  // (src/pages/api/ia.ts) : seule autre route serveur du site, elle a besoin
+  // du Worker comme l'admin. Son secret : `wrangler secret put GEMINI_API_KEY`.
   "assets": {
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/keystatic", "/keystatic/*", "/api/keystatic/*", "/_image"]
+    "run_worker_first": ["/keystatic", "/keystatic/*", "/api/keystatic/*", "/api/ia", "/_image"]
   },
 
   // Aucun binding KV : les sessions Astro sont neutralisées côté astro.config.mjs
