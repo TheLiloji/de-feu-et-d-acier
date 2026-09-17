@@ -13,7 +13,7 @@ import cormorantLatinItalique from '@fontsource-variable/cormorant-garamond/file
 import interLatin from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 import type { Ecole } from '../lib/ecoles';
 import type { Identite } from '../lib/contenu';
-import { jsonLdSportsClub } from '../lib/jsonld';
+import { jsonLdSportsClub, serialiserJsonLd } from '../lib/jsonld';
 import { typographieFr } from '../lib/typographie';
 import { resoudrePhoto } from '../lib/images';
 import { validerContenu } from '../lib/validation';
@@ -108,17 +108,10 @@ const jsonLd = jsonLdSportsClub({
   image: imagePartage,
 });
 
-/**
- * `</script>` ou un séparateur de ligne Unicode dans une chaîne du CMS
- * fermerait la balise et casserait le `<head>` de toutes les pages. On échappe
- * donc avant l'injection — le JSON reste valide, les échappements `\uXXXX`
- * étant compris par tout parseur.
- */
-const jsonLdSerialise = JSON.stringify(jsonLd)
-  .replace(/</g, '\\u003c')
-  .replace(/>/g, '\\u003e')
-  .replace(/&/g, '\\u0026')
-  .replace(/[\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16)}`);
+// L'échappement (balise fermante, séparateurs de ligne Unicode) est porté par
+// `serialiserJsonLd` — le même sérialiseur que les nœuds FAQPage et
+// BreadcrumbList d'une page de question.
+const jsonLdSerialise = serialiserJsonLd(jsonLd);
 ---
 
 <!doctype html>

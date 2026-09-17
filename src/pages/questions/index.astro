@@ -1,0 +1,437 @@
+---
+/**
+ * `/questions/` — « Questions d'armes », le sommaire des pages question-réponse.
+ * Gabarit NON maquetté (design-spec §10.2), composé dans le langage des deux
+ * autres pages de liste du site (`/sources/`, `/actualites/`) :
+ *
+ *   - page entièrement en `$ink`, le rythme vient des filets et de l'espacement ;
+ *   - fil d'Ariane à filet bas, « Retour » à gauche, chemin à droite ;
+ *   - tête de page : eyebrow au losange, H1 Cormorant à ligne accentuée, chapô,
+ *     compte des questions publiées ;
+ *   - puis un groupe par arme, dans l'ordre du catalogue des disciplines, et un
+ *     groupe « Questions générales » pour ce qui parle des AMHE sans viser une
+ *     arme. Chaque groupe : le nom de l'arme en Cormorant, le lien vers sa
+ *     fiche, et la liste des questions à filets — un sommaire concis, le détail
+ *     vit dans les pages profondes ;
+ *   - barre d'onglets mobile en pied : chrome global (ARCHITECTURE.md §5).
+ *
+ * Une question rattachée à plusieurs armes apparaît sous chacune : c'est un
+ * sommaire, pas un inventaire, et le visiteur qui lit « Messer » doit y trouver
+ * tout ce qui parle du messer. Les brouillons n'entrent jamais dans la liste
+ * (même filtre que `getStaticPaths` de `/questions/[slug]` et que le sitemap).
+ *
+ * Le balisage FAQPage vit sur les pages de question, jamais ici : dupliquer les
+ * paires question-réponse sur deux URL est ce que la doc Google demande
+ * d'éviter (src/lib/jsonld.ts, section « Questions d'armes »).
+ */
+import Base from '../../layouts/Base.astro';
+import FilArianeSources from '../../components/sources/FilArianeSources.astro';
+import Footer from '../../components/sections/Footer.astro';
+import Nav from '../../components/sections/Nav.astro';
+import Eyebrow from '../../components/ui/Eyebrow.astro';
+import Icon from '../../components/ui/Icon.astro';
+import Reveal from '../../components/ui/Reveal.astro';
+import SectionTitle from '../../components/ui/SectionTitle.astro';
+import TabBar from '../../components/ui/TabBar.astro';
+import TextLink from '../../components/ui/TextLink.astro';
+import { estNomIcone } from '../../components/ui/icones';
+import {
+  lireDisciplines,
+  lireEntetes,
+  lireHero,
+  lireIdentite,
+  lireMenus,
+  profsDe,
+  questionsPubliees,
+} from '../../lib/contenu';
+import { getEcolePrincipale } from '../../lib/ecoles';
+import { lien, lienArme } from '../../lib/liens';
+import { contexteDe, resoudre } from '../../lib/raccourcis';
+import { typographieFr } from '../../lib/typographie';
+
+/** Replis des textes de tête, si la rubrique du CMS est vidée. */
+const LIBELLE = 'Questions d’armes';
+const TITRE_LIGNE_1 = 'Une question,';
+const TITRE_LIGNE_2 = 'une réponse sourcée.';
+const LEDE =
+  'Les questions qu’on nous pose sur les armes et sur la pratique, avec des ' +
+  'réponses courtes. Chacune s’appuie sur les sources étudiées en salle, et ' +
+  'les cite en bas de page.';
+
+const ecole = await getEcolePrincipale();
+const [identite, hero, menus, entetes, disciplines, profs, questions] = await Promise.all([
+  lireIdentite(),
+  lireHero(),
+  lireMenus(),
+  lireEntetes(),
+  lireDisciplines(),
+  profsDe(ecole),
+  questionsPubliees(),
+]);
+
+// Même base de comptes que l'accueil et les autres pages de liste
+// (ARCHITECTURE.md §4) : les raccourcis du chapô comptent ce qui est affiché.
+const ctx = contexteDe(ecole.fiche, {
+  nbArmes: disciplines.filter((d) => d.entry.affichee).length,
+  nbProfs: profs.filter((p) => p.entry.visible).length,
+});
+
+const SOURCE_ENTETE = 'src/content/commun/entetes.yaml › Questions d’armes';
+const entete = entetes.questions;
+const libelle = entete?.eyebrow?.trim() || LIBELLE;
+const titreLigne1 = entete?.titreLigne1?.trim() || TITRE_LIGNE_1;
+const titreLigne2 = entete?.titreLigne2?.trim() || TITRE_LIGNE_2;
+const lede = resoudre(entete?.lede?.trim() || LEDE, ctx, `${SOURCE_ENTETE} › chapô`);
+
+// Barre d'onglets mobile : chrome global. Aucun onglet actif — la barre n'a pas
+// d'entrée « Questions » —, l'exergue reste l'onglet des épées croisées.
+const onglets = (menus.barreMobile ?? []).map((onglet) => ({
+  libelle: onglet.libelle,
+  href: lien(ecole, onglet.lien),
+  icone: estNomIcone(onglet.icone) ? onglet.icone : 'house',
+  exergue: onglet.icone === 'swords',
+}));
+
+/** Une entrée du sommaire, prête à rendre. */
+interface EntreeSommaire {
+  href: string;
+  question: string;
+}
+
+const entreeDe = (q: (typeof questions)[number]): EntreeSommaire => ({
+  href: lien(ecole, `/questions/${q.slug}/`),
+  // Le titre d'une question ne transite pas par `resoudre()` (aucun raccourci
+  // n'y est autorisé) : la composition typographique se pose ici.
+  question: typographieFr(q.entry.question),
+});
+
+/**
+ * Les groupes du sommaire : une section par arme **affichée**, dans l'ordre du
+ * catalogue, puis les questions générales. Une question dont aucune arme n'a
+ * de fiche publique (armes vides, ou uniquement l'épée-bocle) rejoint les
+ * générales plutôt que de disparaître : le sommaire montre tout ce qui est
+ * publié, c'est le même principe de parité que le reste du site.
+ */
+const affichees = [...disciplines]
+  .filter((d) => d.entry.affichee)
+  .sort((a, b) => (a.entry.ordre ?? 100) - (b.entry.ordre ?? 100));
+
+const groupes = affichees
+  .map((discipline) => ({
+    slug: discipline.slug,
+    nom: typographieFr(discipline.entry.nom),
+    hrefArme: lienArme(ecole, discipline.slug),
+    entrees: questions
+      .filter((q) => q.entry.armes.includes(discipline.slug))
+      .map(entreeDe),
+  }))
+  .filter((groupe) => groupe.entrees.length > 0);
+
+const slugsAffiches = new Set(affichees.map((d) => d.slug));
+const generales = questions
+  .filter((q) => !q.entry.armes.some((arme) => slugsAffiches.has(arme)))
+  .map(entreeDe);
+
+const compte =
+  questions.length === 0
+    ? ''
+    : questions.length === 1
+      ? '1 question'
+      : `${questions.length} questions`;
+
+// Meta description propre à la page : sans elle, `Base` retomberait sur la
+// description du site.
+const description =
+  'Les réponses courtes du club AMHE aux questions sur l’épée longue, le ' +
+  'messer, la rapière et le combat viking : poids des armes, gardes, maîtres ' +
+  'et traités, chaque réponse citant ses sources.';
+
+const idTitre = 'questions-titre';
+---
+
+<Base ecole={ecole} identite={identite} titre={LIBELLE} description={description}>
+
+  {/* Page sans hero photographique : la barre garde son fond plein dès le
+      chargement. */}
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+    fond="solide"
+  />
+
+  <FilArianeSources
+    retourHref={lien(ecole, '/')}
+    chemin={[{ libelle: 'Accueil', href: lien(ecole, '/') }, { libelle: libelle }]}
+  />
+
+  <header class="tete">
+    <div class="gouttiere">
+      <div class="tete__bloc">
+        <Eyebrow texte={libelle} marque="diamant" />
+        <SectionTitle
+          balise="h1"
+          taille="fiche"
+          id={idTitre}
+          lignes={[{ texte: titreLigne1 }, { texte: titreLigne2, accent: true }]}
+        />
+        {/* `resoudre()` compose déjà la typographie française : pas de second
+            passage par `typographieFr`. */}
+        <p class="tete__lede">{lede}</p>
+        {compte && <p class="tete__compte">{compte}</p>}
+      </div>
+    </div>
+  </header>
+
+  <section class="sommaire" aria-labelledby={idTitre}>
+    <div class="gouttiere">
+      {
+        questions.length === 0 ? (
+          <div class="vide">
+            <p class="vide__titre">Aucune question publiée pour l’instant.</p>
+            <p class="vide__texte">
+              Les réponses du club aux questions sur les armes paraîtront ici, une page par
+              question.
+            </p>
+          </div>
+        ) : (
+          <>
+            {groupes.map((groupe, g) => (
+              <section class="groupe" aria-label={`Questions sur ${groupe.nom}`}>
+                <Reveal delai={Math.min(g, 3) * 70}>
+                  <header class="groupe__tete">
+                    <h2 class="groupe__nom">{groupe.nom}</h2>
+                    <TextLink
+                      libelle="La fiche de l’arme"
+                      href={groupe.hrefArme}
+                      ton="mute"
+                      taille="petite"
+                    />
+                  </header>
+                  <ul class="groupe__liste" role="list">
+                    {groupe.entrees.map((entree) => (
+                      <li class="groupe__item">
+                        <a class="question" href={entree.href}>
+                          <span class="question__texte">{entree.question}</span>
+                          <span class="question__fleche" aria-hidden="true">
+                            <Icon name="arrow-right" size={18} />
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </Reveal>
+              </section>
+            ))}
+
+            {generales.length > 0 && (
+              <section class="groupe" aria-label="Questions générales sur les AMHE">
+                <Reveal delai={Math.min(groupes.length, 3) * 70}>
+                  <header class="groupe__tete">
+                    <h2 class="groupe__nom">Questions générales</h2>
+                  </header>
+                  <ul class="groupe__liste" role="list">
+                    {generales.map((entree) => (
+                      <li class="groupe__item">
+                        <a class="question" href={entree.href}>
+                          <span class="question__texte">{entree.question}</span>
+                          <span class="question__fleche" aria-hidden="true">
+                            <Icon name="arrow-right" size={18} />
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </Reveal>
+              </section>
+            )}
+
+            {/* Le chemin vers la bibliothèque : les réponses citent les traités,
+                la page qui les rassemble est à une page de là. */}
+            <p class="renvoi-sources">
+              Les traités cités dans les réponses sont présentés dans
+              <TextLink libelle="la bibliothèque du club" href={lien(ecole, '/sources/')} ton="soft" taille="petite" />
+            </p>
+          </>
+        )
+      }
+    </div>
+  </section>
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient après le pied de
+        page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide du site" />
+  </Fragment>
+</Base>
+
+<style>
+  /* ── Tête de page (même rampe que /sources/ et /actualites/) ─────────────── */
+
+  .tete__bloc {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(14px, 11.029px + 0.7619vw, 22px);
+    padding-block: clamp(40px, 20.686px + 4.9524vw, 92px)
+      clamp(20px, 11.086px + 2.286vw, 44px);
+  }
+
+  .tete__lede {
+    max-width: 62ch;
+    font-size: var(--fs-body-lede);
+    line-height: 1.6;
+    color: var(--parch-soft);
+  }
+
+  .tete__compte {
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  /* ── Les groupes ─────────────────────────────────────────────────────────── */
+
+  .sommaire {
+    padding-block-end: clamp(60px, 34px + 6.6667vw, 130px);
+  }
+
+  .groupe {
+    padding-block-start: clamp(26px, 18.571px + 1.9048vw, 46px);
+  }
+
+  .groupe__tete {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 24px;
+    padding-block-end: clamp(12px, 9.771px + 0.5714vw, 18px);
+  }
+
+  .groupe__nom {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-display-s);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--parch);
+  }
+
+  .groupe__liste {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .groupe__item {
+    border-top: var(--filet);
+  }
+
+  .groupe__item:last-child {
+    border-bottom: var(--filet);
+  }
+
+  /* ── Une question du sommaire ────────────────────────────────────────────── */
+
+  .question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(14px, 11.029px + 0.7619vw, 22px);
+    padding-block: clamp(14px, 11.029px + 0.7619vw, 22px);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .question__texte {
+    font-family: var(--font-display);
+    font-size: clamp(18px, 15.771px + 0.5714vw, 24px);
+    line-height: 1.25;
+    color: var(--parch);
+    transition: color var(--transition);
+  }
+
+  .question__fleche {
+    display: inline-flex;
+    flex: none;
+    color: var(--parch-mute);
+    transition:
+      color var(--transition),
+      transform var(--transition);
+  }
+
+  .question:hover .question__texte,
+  .question:focus-visible .question__texte {
+    color: var(--ember-hot);
+  }
+
+  .question:hover .question__fleche,
+  .question:focus-visible .question__fleche {
+    color: var(--ember-hot);
+    transform: translateX(3px);
+  }
+
+  .question:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .question__fleche,
+    .question:hover .question__fleche {
+      transition: none;
+      transform: none;
+    }
+  }
+
+  /* ── Renvoi vers la bibliothèque ─────────────────────────────────────────── */
+
+  .renvoi-sources {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    max-width: 72ch;
+    margin-top: clamp(28px, 20.5px + 1.92vw, 48px);
+    padding-top: clamp(16px, 13.029px + 0.7619vw, 24px);
+    border-top: var(--filet);
+    font-size: var(--fs-body-xxs);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+
+  /* ── État vide (aucun état vide n'est maquetté, design-spec §10.2) ───────── */
+
+  .vide {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(12px, 9.771px + 0.5714vw, 18px);
+    padding-block: clamp(40px, 25.886px + 3.619vw, 78px);
+    border-top: var(--filet);
+    border-bottom: var(--filet);
+  }
+
+  .vide__titre {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-display-s);
+    line-height: 1.1;
+    color: var(--parch);
+  }
+
+  .vide__texte {
+    max-width: 52ch;
+    margin: 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+</style>
