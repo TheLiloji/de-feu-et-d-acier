@@ -28,10 +28,11 @@ intéresse ; le reste peut attendre.
 9. [Modifier les créneaux, le tarif, le lieu, le contact](#9-modifier-les-créneaux-le-tarif-le-lieu-le-contact)
 10. [Les photos du gymnase (à faire à la rentrée)](#10-les-photos-du-gymnase-à-faire-à-la-rentrée)
 11. [Les sources : traités et planches](#11-les-sources--traités-et-planches)
-12. [Quand la modification apparaît sur le site](#12-quand-la-modification-apparaît-sur-le-site)
-13. [Si une modification est refusée](#13-si-une-modification-est-refusée)
-14. [Qui appeler](#14-qui-appeler)
-15. [Petits réflexes qui font gagner du temps](#15-petits-réflexes-qui-font-gagner-du-temps)
+12. [Ajouter une question d'armes](#12-ajouter-une-question-darmes)
+13. [Quand la modification apparaît sur le site](#13-quand-la-modification-apparaît-sur-le-site)
+14. [Si une modification est refusée](#14-si-une-modification-est-refusée)
+15. [Qui appeler](#15-qui-appeler)
+16. [Petits réflexes qui font gagner du temps](#16-petits-réflexes-qui-font-gagner-du-temps)
 
 ---
 
@@ -80,7 +81,7 @@ fichier :
 | --- | --- |
 | **Publier** | *Annonces (messages courts)* · *Articles (actualités)* |
 | **L'école** | *Lieu, contact, créneaux & tarifs* · *Encadrants* |
-| **Enseignement** | *Armes & disciplines* · *Les sources (traités historiques)* |
+| **Enseignement** | *Armes & disciplines* · *Les sources (traités historiques)* · *Questions d'armes* |
 | **Contenus** | *Albums photo* · *Questions fréquentes (locales)* · *Questions fréquentes (générales)* · *Partenaires* |
 | **Textes des pages** | les textes fixes de l'accueil (*Accueil · En-tête*, *Accueil · Le club*, *Accueil · La rigueur*, *Accueil · Nous rejoindre*, *Accueil · Tournois & saison*, *Accueil · Titres des sections*, *Textes des fiches arme & prof*) |
 | **Réglages** | *Identité du site* · *Menus & pied de page* · *Mentions légales & confidentialité* |
@@ -216,7 +217,7 @@ Deux choses qu'il ne fait **pas**, et qui vous restent :
 
 ## 6. Composer une page avec les blocs
 
-Quatre textes du site se composent **librement** : vous écrivez vos paragraphes,
+Cinq textes du site se composent **librement** : vous écrivez vos paragraphes,
 et vous glissez entre eux des blocs tout prêts, dans l'ordre que vous voulez.
 Un peu de texte, une vidéo, une interview, encore du texte, une carte vers la
 page de l'épée longue, une galerie de photos pour finir : la page suit votre
@@ -228,8 +229,9 @@ plan, pas l'inverse.
 | **L'école → Encadrants** | *Biographie* |
 | **Enseignement → Armes & disciplines** | *Description longue (fiche arme)* |
 | **Enseignement → Les sources (traités historiques)** | *Présentation* |
+| **Enseignement → Questions d'armes** | *Réponse* |
 
-Les six blocs sont les mêmes dans les quatre champs. Ailleurs (réponse de la
+Les six blocs sont les mêmes dans les cinq champs. Ailleurs (réponse de la
 foire aux questions, présentation d'un partenaire), le texte reste simple :
 ce sont des textes courts, affichés dans un cadre où un carrousel de photos
 n'aurait pas de sens.
@@ -768,7 +770,71 @@ la partie intéressante.
 
 ---
 
-## 12. Quand la modification apparaît sur le site
+## 12. Ajouter une question d'armes
+
+La page « Questions d'armes » du site (`/questions/`) rassemble des réponses
+courtes aux questions qu'on nous pose : « L'épée longue, c'est lourd ? »,
+« Qui était Johannes Liechtenauer ? »… Chaque question a sa propre page. Le but
+est double : répondre pour de vrai, et **être trouvé sur Google** par les gens
+qui tapent ces questions. C'est du contenu qui amène des visiteurs, donc des
+curieux, donc des adhérents.
+
+Tout se passe dans **Enseignement → Questions d'armes**.
+
+### Rédiger
+
+- **La question** : écrivez-la comme un curieux la poserait, avec son point
+  d'interrogation. C'est le titre de la page, et souvent ce que les gens
+  tapent dans Google.
+- **La réponse** : courte et sobre, 150 à 300 mots. **La première phrase
+  répond déjà** (« Beaucoup moins qu'on ne l'imagine. ») : c'est elle que
+  Google affiche sous le lien. Le reste développe, donne les faits, et peut
+  finir sur ce qui se passe en salle.
+- **Que du vérifiable.** Chaque fait historique doit venir d'une source que
+  vous pouvez citer : le wiki de la FFAMHE, une fiche de la bibliothèque du
+  site, une numérisation. En cas de doute sur un fait, on ne l'affirme pas :
+  « les manuscrits hésitent » est une bonne phrase, une date inventée est une
+  faute.
+- **Jamais de copier-coller**, même du wiki de la FFAMHE, même en changeant
+  trois mots. D'abord parce qu'un texte recopié doit respecter une licence,
+  ensuite parce que Google ignore les textes qu'il a déjà lus ailleurs — la
+  page ne servirait à rien. On lit, on comprend, on écrit avec ses mots, et on
+  crédite la source.
+
+### Sourcer
+
+Le bloc **« Appuyé sur »** liste les sources de la réponse, affichées dans un
+encadré en bas de page : pour chacune, un nom, l'adresse de la page exacte, et
+une ligne de crédit (affichée mot pour mot, comme les crédits de planches).
+
+Si la réponse reprend des faits du wiki de la FFAMHE, cochez **« Réponse
+écrite d'après le wiki AMHE de la FFAMHE »** : la page affiche alors la
+mention de licence CC BY-NC-SA que le wiki demande. C'est la contrepartie du
+droit de réutiliser son contenu, au même titre que les lignes de crédit des
+planches.
+
+### Rattacher aux armes
+
+**« Armes concernées »** relie la question au reste du site : elle apparaît
+alors dans l'encadré « Questions sur cette arme » de chaque fiche cochée, et
+la page « Questions d'armes » la range sous ces armes. Une question générale
+sur les AMHE (rien à cocher) se range toute seule dans « Questions
+générales ». La page ajoute d'elle-même les liens vers la fiche de l'arme et
+vers les traités liés : pas besoin de les répéter dans la réponse.
+
+### Faire valider, puis publier
+
+Une réponse engage le club sur des faits historiques : avant de publier,
+**faites relire par le référent de l'arme concernée** (et, pour les crédits ou
+une source inhabituelle, par Zaccharie). Le champ **Statut** est là pour ça :
+rédigez en **Brouillon** (la page n'existe pas encore sur le site), et passez
+en **Publié** une fois la relecture faite. La page, l'encadré de la fiche
+arme et le plan du site se mettent à jour tout seuls à la publication
+suivante.
+
+---
+
+## 13. Quand la modification apparaît sur le site
 
 Chaque clic sur **Enregistrer** enregistre votre travail. Le site public, lui,
 est reconstruit à partir de ce contenu, et cette reconstruction prend un moment.
@@ -789,12 +855,12 @@ Si votre modification n'apparaît pas :
    l'ancienne version en mémoire, et c'est la cause la plus fréquente du
    « pourtant j'ai bien enregistré ».
 3. Si rien ne change au bout d'**une demi-heure**, prévenez Zaccharie : la
-   reconstruction a probablement été refusée par un garde-fou (section 13) et
+   reconstruction a probablement été refusée par un garde-fou (section 14) et
    le message d'erreur n'est visible que de son côté.
 
 ---
 
-## 13. Si une modification est refusée
+## 14. Si une modification est refusée
 
 Le site sait se protéger, à deux moments.
 
@@ -863,7 +929,7 @@ formulaire.
 
 ---
 
-## 14. Qui appeler
+## 15. Qui appeler
 
 **Zaccharie** s'occupe de la partie technique du site. Pour le joindre, passez
 par l'adresse de l'association, **amhe63.dfda@gmail.com**, ou par la messagerie
@@ -885,7 +951,7 @@ pour ça.
 
 ---
 
-## 15. Petits réflexes qui font gagner du temps
+## 16. Petits réflexes qui font gagner du temps
 
 - **Enregistrez souvent.** Un formulaire ouvert deux heures dans un onglet, c'est
   une déconnexion qui vous attend.
