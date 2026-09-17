@@ -8,6 +8,13 @@
 > ont été produits par `Markdoc.format()` puis re-parsés pour vérifier qu'ils
 > sont stables. En cas de conflit avec `content-model.md`, ce fichier gagne pour
 > les quatre champs concernés ; `ARCHITECTURE.md` reste au-dessus de tout.
+>
+> **Mise à jour du 17/09/2026** : un **cinquième** champ a rejoint le régime
+> décrit ici — la *Réponse* d'une question d'armes (collection `questions`,
+> ARCHITECTURE.md §4). Il passe par le même helper `corpsLibre`, déclare le
+> même jeu exact de widgets (règle du §1.6, inchangée) et est relu par le
+> garde-fou n° 9. Partout où ce document compte « quatre » champs, lire
+> désormais « cinq » ; tout le reste vaut tel quel.
 
 ## 0. Demande client et périmètre
 

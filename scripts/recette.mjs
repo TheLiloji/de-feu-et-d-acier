@@ -8,7 +8,7 @@
  * lecture d'un échec.
  *
  *   1. Les routes connues répondent 200 ; une adresse inconnue répond 404.
- *   2. Zéro débordement horizontal à 390/820/1000/1440 px sur 6 gabarits.
+ *   2. Zéro débordement horizontal à 390/820/1000/1440 px sur 8 gabarits.
  *   3. Zéro <script>/<noscript> visible (le piège du `display: grid` universel).
  *   4. Un seul <h1> par page ; sitemap.xml compte autant d'URL que de pages
  *      HTML construites, 404 exclue.
@@ -53,8 +53,8 @@ const VIEWPORT_DEFAUT = { width: 1440, height: 900 };
 
 // ── Le plan du site : à tenir à jour à la main, comme sitemap.xml.ts ───────
 //
-// 21 pages connues (toutes attendues à 200) + 1 adresse volontairement
-// inconnue (attendue à 404) = les 22 routes du cahier des charges.
+// 34 pages connues (toutes attendues à 200) + 1 adresse volontairement
+// inconnue (attendue à 404) = les 35 routes du cahier des charges.
 
 const ROUTES_CONNUES = [
   '/',
@@ -76,6 +76,19 @@ const ROUTES_CONNUES = [
   '/sources/marozzo-opera-nova/',
   '/sources/i33/',
   '/sources/paulus-kal/',
+  '/questions/',
+  '/questions/l-epee-longue-c-est-lourd/',
+  '/questions/pourquoi-la-garde-s-appelle-vom-tag/',
+  '/questions/qui-etait-johannes-liechtenauer/',
+  '/questions/pourquoi-les-traites-d-escrime-sont-ecrits-en-vers/',
+  '/questions/pourquoi-le-messer-s-appelle-un-couteau/',
+  '/questions/le-messer-se-combat-il-comme-l-epee-longue/',
+  '/questions/quelle-difference-entre-la-rapiere-et-l-escrime-sportive/',
+  '/questions/qui-a-ecrit-le-premier-traite-d-escrime-en-francais/',
+  '/questions/l-escrime-bolonaise-qu-est-ce-que-c-est/',
+  '/questions/comment-sait-on-comment-combattaient-les-vikings/',
+  '/questions/l-amhe-c-est-de-la-reconstitution/',
+  '/questions/peut-on-apprendre-a-se-battre-dans-des-livres-de-500-ans/',
   '/mentions-legales/',
   '/confidentialite/',
 ];
@@ -89,11 +102,12 @@ const SLUGS_TRAITES = ROUTES_CONNUES.filter((r) => r.startsWith('/sources/') && 
 );
 
 /**
- * 6 gabarits représentatifs pour le contrôle de débordement (point 2) : le
- * passer sur les 21 pages coûterait cher pour peu de gain, ces six-là
- * couvrent le hero de l'accueil, une fiche arme, une fiche prof, la liste
- * d'actualités, l'index des sources et une fiche de traité (la plus dense en
- * mise en page : galerie, encadré de numérisation, extrait).
+ * 8 gabarits représentatifs pour le contrôle de débordement (point 2) : le
+ * passer sur les 34 pages coûterait cher pour peu de gain, ceux-là couvrent
+ * le hero de l'accueil, une fiche arme, une fiche prof, la liste
+ * d'actualités, l'index des sources, une fiche de traité (la plus dense en
+ * mise en page : galerie, encadré de numérisation, extrait), le sommaire des
+ * questions d'armes et une page de question (encadré des sources, renvois).
  */
 const PAGES_DEBORDEMENT = [
   '/',
@@ -102,6 +116,8 @@ const PAGES_DEBORDEMENT = [
   '/actualites/',
   '/sources/',
   '/sources/talhoffer-1467/',
+  '/questions/',
+  '/questions/pourquoi-la-garde-s-appelle-vom-tag/',
 ];
 const LARGEURS_DEBORDEMENT = [390, 820, 1000, 1440];
 
