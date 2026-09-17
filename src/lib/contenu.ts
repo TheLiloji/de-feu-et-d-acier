@@ -33,6 +33,7 @@ export const lireDisciplines = () => reader.collections.disciplines.all();
 export const lirePartenaires = () => reader.collections.partenaires.all();
 export const lireFaqGenerale = () => reader.collections.faq.all();
 export const lireTraites = () => reader.collections.traites.all();
+export const lireQuestions = () => reader.collections.questions.all();
 
 // ── Les sources (traités historiques) ──────────────────────────────────────
 
@@ -73,6 +74,40 @@ export async function planchesMajestueuses() {
   );
 }
 
+// ── Questions d'armes ──────────────────────────────────────────────────────
+
+/**
+ * Les questions publiées, dans l'ordre voulu par le CMS.
+ *
+ * Même règle de tri que `traitesTries()` : « Ordre d'affichage » d'abord, la
+ * question ensuite pour départager, un ordre absent passe en dernier. Les
+ * brouillons n'entrent jamais dans la liste — c'est le même critère que le
+ * `getStaticPaths` de `/questions/[slug]`, le sitemap et les encadrés des
+ * fiches arme, qui doivent rester d'accord entre eux.
+ */
+export async function questionsPubliees() {
+  const questions = await lireQuestions();
+  return questions
+    .filter((q) => q.entry.statut === 'publie')
+    .sort(
+      (a, b) =>
+        (a.entry.ordre ?? Number.MAX_SAFE_INTEGER) - (b.entry.ordre ?? Number.MAX_SAFE_INTEGER) ||
+        a.entry.question.localeCompare(b.entry.question, 'fr'),
+    );
+}
+
+/**
+ * Les questions publiées qui portent une arme donnée — de quoi bâtir
+ * l'encadré « Questions sur cette arme » d'une fiche arme sans que la page
+ * ait à filtrer elle-même.
+ *
+ * @param arme Slug de discipline (`epee-longue`, `messer`…), tel que le CMS
+ *             l'enregistre dans « Armes concernées ».
+ */
+export async function questionsDeLArme(arme: string) {
+  return (await questionsPubliees()).filter((q) => q.entry.armes.includes(arme));
+}
+
 // ── Contenu d'école ────────────────────────────────────────────────────────
 //
 // Le dossier EST l'école : les clés de collection sont dépliées depuis
@@ -106,3 +141,4 @@ export type QuestionFaq = Awaited<ReturnType<typeof lireFaqGenerale>>[number];
 export type Album = Awaited<ReturnType<typeof albumsDe>>[number];
 export type Traite = Awaited<ReturnType<typeof lireTraites>>[number];
 export type PlancheTraite = Traite['entry']['planches'][number];
+export type Question = Awaited<ReturnType<typeof lireQuestions>>[number];

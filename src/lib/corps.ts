@@ -1,9 +1,10 @@
 /**
  * Corps libres — découpage de l'arbre Markdoc en prose et en widgets.
  *
- * Quatre champs du CMS acceptent des widgets insérés au fil du texte
+ * Cinq champs du CMS acceptent des widgets insérés au fil du texte
  * (widgets.md §0) : la biographie d'un encadrant, la description longue d'une
- * arme, le contenu d'un article et la présentation d'un traité. Le lecteur
+ * arme, le contenu d'un article, la présentation d'un traité et la réponse
+ * d'une question d'armes. Le lecteur
  * Keystatic en renvoie l'arbre analysé (`{ node }`), dans lequel un widget
  * apparaît comme un nœud `tag` enfant direct du `document`.
  *

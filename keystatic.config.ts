@@ -69,13 +69,14 @@ interface CiblesRenvoi {
 }
 
 /**
- * Corps libre : texte riche **et** widgets insérables. Les quatre gabarits de
+ * Corps libre : texte riche **et** widgets insérables. Les cinq gabarits de
  * contenu long du site — biographie d’un encadrant, description longue d’une
- * arme, contenu d’un article, présentation d’un traité.
+ * arme, contenu d’un article, présentation d’un traité, réponse d’une
+ * question d’armes.
  *
- * ⚠️ Les quatre champs déclarent **le même jeu de widgets**, à dessein : un tag
+ * ⚠️ Les cinq champs déclarent **le même jeu de widgets**, à dessein : un tag
  * présent dans un fichier mais absent du champ qui le relit rend l’entrée
- * impossible à ouvrir dans l’admin (widgets.md §1.6). Le jour où un cinquième
+ * impossible à ouvrir dans l’admin (widgets.md §1.6). Le jour où un sixième
  * gabarit accueille des widgets, il passe par ce helper, pas par un autre.
  */
 const corpsLibre = (
@@ -892,6 +893,89 @@ const collectionsCommunes = {
     },
   }),
 
+  questions: collection({
+    label: 'Questions d’armes',
+    path: 'src/content/commun/questions/*',
+    slugField: 'question',
+    format: { data: 'yaml', contentField: 'reponse' },
+    entryLayout: 'content',
+    columns: ['question', 'statut', 'date'],
+    schema: {
+      question: fields.slug({
+        name: {
+          label: 'La question',
+          description:
+            'Telle qu’un curieux la poserait, avec son point d’interrogation. Ex. « L’épée longue, c’est lourd ? ». C’est le titre de la page.',
+          validation: { isRequired: true },
+        },
+        slug: {
+          label: 'Adresse de la page',
+          description:
+            'La fin de l’adresse web, et le nom du fichier. Ex. « l-epee-longue-c-est-lourd ». À ne plus changer une fois la page en ligne : les liens déjà partagés cesseraient de fonctionner.',
+        },
+      }),
+      statut: fields.select({
+        label: 'Statut',
+        description:
+          'Un brouillon n’est pas affiché sur le site et n’a pas d’adresse. Attention : il est tout de même enregistré dans le dépôt, qui est public — écrire un brouillon, ce n’est pas écrire en privé.',
+        options: [
+          { label: 'Brouillon (pas encore affiché sur le site)', value: 'brouillon' },
+          { label: 'Publié', value: 'publie' },
+        ],
+        defaultValue: 'brouillon',
+      }),
+      date: fields.date({
+        label: 'Date de publication',
+        defaultValue: { kind: 'today' },
+        validation: { isRequired: true },
+      }),
+      armes: fields.multiRelationship({
+        label: 'Armes concernées',
+        collection: 'disciplines',
+        description:
+          'Les armes dont la question parle. La question remonte alors dans l’encadré « Questions sur cette arme » de chaque fiche concernée, et la page « Questions d’armes » la range sous ces armes. Ne rien cocher pour une question générale sur les AMHE.',
+      }),
+      reponse: corpsLibre(
+        'Réponse',
+        'commun',
+        CIBLES_COMMUNES,
+        'Courte et sobre : 150 à 300 mots, qui répondent dès la première phrase. N’affirmer que ce que l’on peut vérifier dans une source, et le dire avec prudence quand la source elle-même est prudente. Jamais de copier-coller d’un site, wiki de la FFAMHE compris : la réponse s’écrit avec vos mots, la source se crédite en bas.',
+      ),
+      appuyeSur: fields.array(
+        fields.object({
+          libelle: fields.text({
+            label: 'Nom de la source',
+            description:
+              'Comment la source est annoncée sur la page. Ex. « Wiki AMHE de la FFAMHE — Johannes Liechtenauer ».',
+          }),
+          url: fields.text({
+            label: 'Adresse',
+            description: 'Le lien vers la page exacte d’où viennent les faits.',
+          }),
+          credit: fields.text({
+            label: 'Ligne de crédit',
+            multiline: true,
+            description:
+              'Affichée mot pour mot sous la source, comme un crédit de planche : rien n’est ajouté ni corrigé à l’affichage, pas même un « © ». Ex. « D’après le wiki AMHE de la FFAMHE, sous licence CC BY-NC-SA 3.0. »',
+          }),
+        }),
+        {
+          label: 'Appuyé sur (facultatif)',
+          description:
+            'Les sources d’où viennent les faits de la réponse. Elles s’affichent dans un encadré en bas de page : c’est ce qui distingue une réponse du club d’un avis en l’air.',
+          itemLabel: (p) => p.fields.libelle.value || 'Source',
+        },
+      ),
+      deriveDuWiki: fields.checkbox({
+        label: 'Réponse écrite d’après le wiki AMHE de la FFAMHE',
+        description:
+          'À cocher quand la réponse reprend des faits du wiki de la fédération. La page affiche alors la mention de licence CC BY-NC-SA que le wiki demande, et le texte de la réponse est partagé aux mêmes conditions.',
+        defaultValue: false,
+      }),
+      ordre,
+    },
+  }),
+
   partenaires: collection({
     label: 'Partenaires',
     path: 'src/content/commun/partenaires/*',
@@ -1074,6 +1158,12 @@ const singletonsCommuns = {
       sources: enTete(
         'Les sources',
         'Titres de la page « La bibliothèque » (/sources/), qui présente les traités étudiés au club.',
+      ),
+      // Même cas que « Les sources » juste au-dessus : la rubrique titre la
+      // page « Questions d'armes » (/questions/), pas une section de l'accueil.
+      questions: enTete(
+        'Questions d’armes',
+        'Titres de la page « Questions d’armes » (/questions/), qui rassemble les réponses courtes du club.',
       ),
     },
   }),
@@ -1448,7 +1538,7 @@ function navigation(): Record<string, CleNav[]> {
     return {
       Publier: [k('annonces', e), k('articles', e)],
       'L’école': [k('ecole', e), k('profs', e)],
-      Enseignement: ['disciplines', 'traites'],
+      Enseignement: ['disciplines', 'traites', 'questions'],
       Contenus: [k('galerie', e), k('faq', e), 'faq', 'partenaires'],
       'Textes des pages': [...TEXTES_DES_PAGES],
       Réglages: [...REGLAGES],
@@ -1466,7 +1556,7 @@ function navigation(): Record<string, CleNav[]> {
       k('faq', e),
     ];
   }
-  groupes['Contenus communs'] = ['disciplines', 'traites', 'faq', 'partenaires'];
+  groupes['Contenus communs'] = ['disciplines', 'traites', 'questions', 'faq', 'partenaires'];
   groupes['Textes des pages'] = [...TEXTES_DES_PAGES];
   groupes['Réglages'] = [...REGLAGES];
   return groupes;
