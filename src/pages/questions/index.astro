@@ -25,6 +25,7 @@
  * d'éviter (src/lib/jsonld.ts, section « Questions d'armes »).
  */
 import Base from '../../layouts/Base.astro';
+import ChercheQuestions from '../../components/questions/ChercheQuestions.astro';
 import FilArianeSources from '../../components/sources/FilArianeSources.astro';
 import Footer from '../../components/sections/Footer.astro';
 import Nav from '../../components/sections/Nav.astro';
@@ -47,6 +48,7 @@ import {
 import { getEcolePrincipale } from '../../lib/ecoles';
 import { lien, lienArme } from '../../lib/liens';
 import { contexteDe, resoudre } from '../../lib/raccourcis';
+import { indexSuggestions } from '../../lib/recherche';
 import { typographieFr } from '../../lib/typographie';
 
 /** Replis des textes de tête, si la rubrique du CMS est vidée. */
@@ -132,6 +134,14 @@ const generales = questions
   .filter((q) => !q.entry.armes.some((arme) => slugsAffiches.has(arme)))
   .map(entreeDe);
 
+/**
+ * L'index des suggestions (étage 1 de la recherche, bâti au build) : le champ
+ * en tête de sommaire filtre les questions publiées à la frappe, et — cette
+ * page seulement — porte le bouton « Poser la question » de l'assistant
+ * (étage 2, cf. ChercheQuestions.astro et src/pages/api/ia.ts).
+ */
+const suggestions = await indexSuggestions({ ecole, questions, disciplines });
+
 const compte =
   questions.length === 0
     ? ''
@@ -181,6 +191,10 @@ const idTitre = 'questions-titre';
             passage par `typographieFr`. */}
         <p class="tete__lede">{lede}</p>
         {compte && <p class="tete__compte">{compte}</p>}
+        {/* Recherche à deux étages : suggestions à la frappe, et l'assistant
+            derrière « Poser la question » quand le service est activé. Sans
+            JavaScript, rien n'apparaît — la page reste ce qu'elle est. */}
+        <ChercheQuestions entrees={suggestions} avecChatbot class="tete__cherche" />
       </div>
     </div>
   </header>

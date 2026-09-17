@@ -43,6 +43,7 @@ import {
   lireMenus,
   profsDe,
   questionsDeLArme,
+  questionsPubliees,
   traitesDeLArme,
   traitesTries,
 } from '../../lib/contenu';
@@ -51,6 +52,7 @@ import { cadrageCss, creditAffiche, resoudrePhoto } from '../../lib/images';
 import { estExterne, lien } from '../../lib/liens';
 import { contexteDe, majusculeInitiale, resoudre } from '../../lib/raccourcis';
 import { indexRenvois } from '../../lib/renvois';
+import { indexSuggestions } from '../../lib/recherche';
 import { typographieFr } from '../../lib/typographie';
 
 export async function getStaticPaths() {
@@ -206,6 +208,15 @@ const questionsFiche = questionsArme.map((question) => ({
   question: typographieFr(question.entry.question),
 }));
 
+// L'index du champ de suggestions de l'encadré : **toutes** les questions
+// publiées, pas seulement celles de l'arme — taper « rapière » ici doit mener
+// aux pages rapière, quelle que soit la fiche (src/lib/recherche.ts).
+const suggestions = await indexSuggestions({
+  ecole,
+  questions: await questionsPubliees(),
+  disciplines,
+});
+
 const onglets = (menus.barreMobile ?? []).map((onglet) => ({
   libelle: onglet.libelle,
   href: lien(ecole, onglet.lien),
@@ -270,8 +281,13 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
   />
 
   {/* Le maillage vers « Questions d'armes » : discret, sous « La source »,
-      masqué tant qu'aucune question publiée ne cite l'arme. */}
-  <ArmeQuestions questions={questionsFiche} hrefSommaire={lien(ecole, '/questions/')} />
+      masqué tant qu'aucune question publiée ne cite l'arme. Le champ de
+      suggestions (étage 1 seulement) filtre toutes les questions publiées. */}
+  <ArmeQuestions
+    questions={questionsFiche}
+    suggestions={suggestions}
+    hrefSommaire={lien(ecole, '/questions/')}
+  />
 
   <ArmeBandeCta
     titre={bandeau.titre}

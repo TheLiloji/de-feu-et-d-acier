@@ -59,6 +59,8 @@ export const ICONES = {
 
   // ── Non maquettés, mais atteignables depuis le CMS ───────────────────────
   mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+  // Le champ de recherche des « Questions d'armes » (ChercheQuestions.astro).
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   instagram:
     '<rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>',
   youtube:

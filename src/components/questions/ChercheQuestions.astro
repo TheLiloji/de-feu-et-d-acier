@@ -1,0 +1,679 @@
+---
+/**
+ * Champ de recherche « Questions d'armes » — les deux étages.
+ *
+ * **Étage 1 — suggestions, autonome et sans réseau.** La frappe filtre en
+ * direct les questions publiées, depuis un index inliné dans la page (bâti au
+ * build par `src/lib/recherche.ts` et passé en props : le composant ne lit
+ * aucun contenu, multi-ecoles.md §6.6). Présent en tête du sommaire
+ * `/questions/` et dans l'encadré « Questions sur cette arme » des fiches.
+ *
+ * **Étage 2 — l'assistant, sur `/questions/` seulement** (`avecChatbot`). Si
+ * les suggestions ne suffisent pas, un bouton « Poser la question » envoie la
+ * question à `POST /api/ia` : recherche lexicale dans le corpus, réponse
+ * rédigée par Gemini, sources citées sous le texte (src/pages/api/ia.ts). Le
+ * bouton n'apparaît que si le service se dit actif — la page l'interroge en
+ * `GET` au premier geste dans le champ, jamais au chargement : sans clé
+ * configurée, l'interface reste exactement l'étage 1.
+ *
+ * **Progressif** : tout le bloc est `hidden` tant que le script n'a pas
+ * tourné — sans JavaScript, la page reste ce qu'elle est aujourd'hui.
+ *
+ * **Clavier et lecteurs d'écran** : motif combobox/listbox ARIA — le champ
+ * porte `role="combobox"`, `aria-expanded` et `aria-activedescendant` ; la
+ * liste `role="listbox"`, ses entrées `role="option"` ; ↑/↓ déplacent la
+ * sélection, Entrée ouvre la question, Échap referme. Le compte de résultats
+ * est annoncé par une zone `role="status"`.
+ */
+import Button from '../ui/Button.astro';
+import Icon from '../ui/Icon.astro';
+import type { EntreeSuggestion } from '../../lib/recherche';
+
+export interface Props {
+  /** L'index des suggestions, bâti par `indexSuggestions()`. */
+  entrees: readonly EntreeSuggestion[];
+  /** Étage 2 : le bouton « Poser la question » (page /questions/ seulement). */
+  avecChatbot?: boolean;
+  /** Préfixe des id — à changer si deux champs cohabitaient sur une page. */
+  id?: string;
+  class?: string;
+}
+
+const { entrees, avecChatbot = false, id = 'cherche-questions', class: classe } = Astro.props;
+
+const idChamp = `${id}-champ`;
+const idListe = `${id}-liste`;
+const idPanneau = `${id}-panneau`;
+---
+
+<div
+  class:list={['cherche', classe]}
+  data-cherche
+  data-chatbot={avecChatbot ? '' : undefined}
+  hidden
+>
+  <label class="cherche__label hors-ecran" for={idChamp}>Chercher parmi les questions</label>
+
+  <div class="cherche__champ">
+    <span class="cherche__loupe" aria-hidden="true"><Icon name="search" /></span>
+    <input
+      class="cherche__saisie"
+      id={idChamp}
+      type="text"
+      role="combobox"
+      aria-expanded="false"
+      aria-controls={idListe}
+      aria-autocomplete="list"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      maxlength="300"
+      placeholder="Chercher une question : rapière, garde, Liechtenauer…"
+    />
+  </div>
+
+  <ul class="cherche__liste" id={idListe} role="listbox" aria-label="Questions suggérées" hidden>
+  </ul>
+
+  <p class="cherche__etat" role="status"></p>
+
+  {
+    avecChatbot && (
+      <div class="cherche__ia" data-ia hidden>
+        <Button
+          variante="contour"
+          taille="petite"
+          libelle="Poser la question"
+          data-poser
+          aria-controls={idPanneau}
+        />
+        <p class="cherche__ia-quoi">
+          L’assistant cherche dans nos sources et rédige une réponse courte.
+        </p>
+      </div>
+    )
+  }
+
+  {
+    avecChatbot && (
+      <section
+        class="panneau"
+        id={idPanneau}
+        data-panneau
+        tabindex="-1"
+        aria-label="Réponse de l’assistant"
+        hidden
+      >
+        <p class="panneau__label">L’assistant répond</p>
+        <p class="panneau__question" data-question-posee></p>
+        <p class="panneau__attente" data-attente hidden>
+          Le site relit ses sources<span class="panneau__points" aria-hidden="true" />
+        </p>
+        <p class="panneau__erreur" data-erreur hidden></p>
+        <div class="panneau__resultat" data-resultat hidden>
+          <p class="panneau__texte" data-texte></p>
+          <div class="panneau__appui" data-appui hidden>
+            <p class="panneau__appui-label">Sources</p>
+            <ul class="panneau__sources" data-sources role="list"></ul>
+            <p class="panneau__licence" data-licence hidden>
+              Les pages du wiki AMHE de la FFAMHE citées ci-dessus sont sous licence CC BY-NC-SA 3.0.
+            </p>
+          </div>
+        </div>
+        <p class="panneau__avertissement">
+          Réponse générée automatiquement à partir de nos sources. En cas de doute, la parole des
+          profs prime.
+        </p>
+      </section>
+    )
+  }
+
+  {/* Îlot de données, jamais exécuté (`type="application/json"`), lu par le
+      script ci-dessous. `<` échappé : un contenu qui contiendrait
+      « </script> » fermerait l'îlot. */}
+  <script
+    is:inline
+    type="application/json"
+    data-donnees
+    set:html={JSON.stringify(entrees).replace(/</g, '\\u003c')}
+  />
+</div>
+
+<script>
+  // La même normalisation que l'index bâti au build : c'est la condition pour
+  // que « rapière » (frappe) retrouve « rapiere » (index).
+  import { tokeniser } from '../../ia/normalisation.mjs';
+
+  const MAX_SUGGESTIONS = 8;
+  const MIN_CHATBOT = 3;
+  const MAX_QUESTION = 300;
+
+  interface Entree {
+    h: string;
+    q: string;
+    m: string;
+  }
+
+  interface ReponseIa {
+    reponse?: string;
+    erreur?: string;
+    sources?: { titre: string; url: string; wiki?: boolean }[];
+  }
+
+  function initialiser(racine: HTMLElement): void {
+    const ilot = racine.querySelector<HTMLScriptElement>('script[data-donnees]');
+    const saisie = racine.querySelector<HTMLInputElement>('input[role="combobox"]');
+    const liste = racine.querySelector<HTMLUListElement>('[role="listbox"]');
+    const etat = racine.querySelector<HTMLElement>('[role="status"]');
+    if (!ilot || !saisie || !liste || !etat) return;
+
+    let entrees: Entree[] = [];
+    try {
+      entrees = JSON.parse(ilot.textContent ?? '[]') as Entree[];
+    } catch {
+      return; // îlot illisible : on laisse la page telle quelle, sans champ
+    }
+
+    // Le JavaScript est là : le champ peut exister.
+    racine.hidden = false;
+
+    let resultats: Entree[] = [];
+    let active = -1;
+
+    const idListe = liste.id;
+
+    const fermer = () => {
+      liste.hidden = true;
+      liste.textContent = '';
+      saisie.setAttribute('aria-expanded', 'false');
+      saisie.removeAttribute('aria-activedescendant');
+      etat.textContent = '';
+      resultats = [];
+      active = -1;
+    };
+
+    const marquerActive = (index: number) => {
+      active = index;
+      liste.querySelectorAll<HTMLLIElement>('[role="option"]').forEach((option, i) => {
+        option.setAttribute('aria-selected', i === index ? 'true' : 'false');
+        option.classList.toggle('est-active', i === index);
+      });
+      if (index >= 0) saisie.setAttribute('aria-activedescendant', `${idListe}-${index}`);
+      else saisie.removeAttribute('aria-activedescendant');
+    };
+
+    const filtrer = () => {
+      const termes = tokeniser(saisie.value);
+      if (saisie.value.trim().length < 2 || termes.length === 0) {
+        fermer();
+        majChatbot();
+        return;
+      }
+
+      resultats = entrees
+        .filter((entree) => termes.every((terme: string) => entree.m.includes(terme)))
+        .slice(0, MAX_SUGGESTIONS);
+
+      liste.textContent = '';
+      for (const [i, entree] of resultats.entries()) {
+        const option = document.createElement('li');
+        option.id = `${idListe}-${i}`;
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-selected', 'false');
+        option.className = 'cherche__option';
+        option.textContent = entree.q;
+        // `mousedown` : avant le `blur` du champ, qui referme la liste.
+        option.addEventListener('mousedown', (evenement) => {
+          evenement.preventDefault();
+          window.location.assign(entree.h);
+        });
+        liste.append(option);
+      }
+
+      liste.hidden = resultats.length === 0;
+      saisie.setAttribute('aria-expanded', resultats.length > 0 ? 'true' : 'false');
+      marquerActive(-1);
+      etat.textContent =
+        resultats.length === 0
+          ? 'Aucune question publiée ne correspond.'
+          : resultats.length === 1
+            ? '1 question correspond.'
+            : `${resultats.length} questions correspondent.`;
+
+      majChatbot();
+    };
+
+    saisie.addEventListener('input', filtrer);
+
+    saisie.addEventListener('keydown', (evenement) => {
+      if (evenement.key === 'ArrowDown' && resultats.length > 0) {
+        evenement.preventDefault();
+        marquerActive(active < resultats.length - 1 ? active + 1 : 0);
+      } else if (evenement.key === 'ArrowUp' && resultats.length > 0) {
+        evenement.preventDefault();
+        marquerActive(active > 0 ? active - 1 : resultats.length - 1);
+      } else if (evenement.key === 'Enter') {
+        const cible = active >= 0 ? resultats[active] : null;
+        if (cible) {
+          evenement.preventDefault();
+          window.location.assign(cible.h);
+        }
+      } else if (evenement.key === 'Escape') {
+        if (!liste.hidden) {
+          evenement.preventDefault();
+          fermer();
+        }
+      }
+    });
+
+    // Refermer quand le focus sort du bloc (le `mousedown` des options a déjà
+    // navigué avant ce `blur`).
+    saisie.addEventListener('blur', () => {
+      window.setTimeout(() => {
+        if (!racine.contains(document.activeElement)) fermer();
+      }, 120);
+    });
+
+    // ── Étage 2 : l'assistant (page /questions/ seulement) ─────────────────
+
+    const blocIa = racine.querySelector<HTMLElement>('[data-ia]');
+    const panneau = racine.querySelector<HTMLElement>('[data-panneau]');
+    const bouton = racine.querySelector<HTMLButtonElement>('[data-poser]');
+
+    /** `inconnu` tant que /api/ia n'a pas répondu ; sondé au premier geste. */
+    let etatService: 'inconnu' | 'actif' | 'inactif' = 'inconnu';
+    let sondeLancee = false;
+    let envoiEnCours = false;
+
+    const majChatbot = () => {
+      if (!blocIa) return;
+      const assezLongue = saisie.value.trim().length >= MIN_CHATBOT;
+      blocIa.hidden = etatService !== 'actif' || !assezLongue;
+    };
+
+    const sonder = () => {
+      if (sondeLancee || !blocIa) return;
+      sondeLancee = true;
+      fetch('/api/ia')
+        .then((reponse) => reponse.json())
+        .then((corps: { actif?: boolean }) => {
+          etatService = corps.actif ? 'actif' : 'inactif';
+          majChatbot();
+        })
+        .catch(() => {
+          etatService = 'inactif';
+        });
+    };
+
+    saisie.addEventListener('focus', sonder, { once: true });
+
+    const poser = async () => {
+      if (!panneau || !bouton || envoiEnCours) return;
+      const question = saisie.value.trim().slice(0, MAX_QUESTION);
+      if (question.length < MIN_CHATBOT) return;
+
+      const attente = panneau.querySelector<HTMLElement>('[data-attente]');
+      const zoneErreur = panneau.querySelector<HTMLElement>('[data-erreur]');
+      const resultat = panneau.querySelector<HTMLElement>('[data-resultat]');
+      const texte = panneau.querySelector<HTMLElement>('[data-texte]');
+      const appui = panneau.querySelector<HTMLElement>('[data-appui]');
+      const sources = panneau.querySelector<HTMLElement>('[data-sources]');
+      const licence = panneau.querySelector<HTMLElement>('[data-licence]');
+      const questionPosee = panneau.querySelector<HTMLElement>('[data-question-posee]');
+      if (!attente || !zoneErreur || !resultat || !texte || !appui || !sources || !licence) return;
+
+      envoiEnCours = true;
+      bouton.disabled = true;
+      panneau.hidden = false;
+      // Fines insécables à l'intérieur des guillemets : la composition du site.
+      if (questionPosee) questionPosee.textContent = `« ${question} »`;
+      attente.hidden = false;
+      zoneErreur.hidden = true;
+      resultat.hidden = true;
+
+      const motionReduite = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      panneau.scrollIntoView({ behavior: motionReduite ? 'auto' : 'smooth', block: 'nearest' });
+
+      let corps: ReponseIa | null = null;
+      let statut = 0;
+      try {
+        const reponse = await fetch('/api/ia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question }),
+        });
+        statut = reponse.status;
+        corps = (await reponse.json()) as ReponseIa;
+      } catch {
+        corps = null;
+      }
+
+      attente.hidden = true;
+      envoiEnCours = false;
+      bouton.disabled = false;
+
+      if (!corps || (statut !== 200 && !corps.erreur) || (statut === 200 && !corps.reponse)) {
+        zoneErreur.textContent =
+          'Le service de réponse est indisponible pour le moment. Les questions publiées ci-dessus restent le meilleur point de départ.';
+        zoneErreur.hidden = false;
+        panneau.focus();
+        return;
+      }
+
+      if (corps.erreur) {
+        zoneErreur.textContent = corps.erreur;
+        zoneErreur.hidden = false;
+        panneau.focus();
+        return;
+      }
+
+      texte.textContent = corps.reponse ?? '';
+
+      sources.textContent = '';
+      const listeSources = corps.sources ?? [];
+      for (const source of listeSources) {
+        const item = document.createElement('li');
+        const lien = document.createElement('a');
+        lien.textContent = source.titre;
+        lien.href = source.url;
+        if (/^https?:\/\//.test(source.url)) {
+          lien.target = '_blank';
+          lien.rel = 'noopener noreferrer';
+        }
+        item.append(lien);
+        sources.append(item);
+      }
+      appui.hidden = listeSources.length === 0;
+      licence.hidden = !listeSources.some((source) => source.wiki);
+
+      resultat.hidden = false;
+      panneau.focus();
+    };
+
+    bouton?.addEventListener('click', poser);
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-cherche]').forEach(initialiser);
+</script>
+
+<style>
+  .cherche {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(10px, 8.514px + 0.381vw, 14px);
+    width: 100%;
+    max-width: 620px;
+  }
+
+  /* Plusieurs blocs d'ici posent leur propre `display`, qui l'emporterait sur
+     le `display: none` que le navigateur donne à l'attribut `hidden` — et le
+     champ apparaîtrait sans JavaScript. Cette règle rétablit la hiérarchie. */
+  .cherche[hidden],
+  .cherche [hidden] {
+    display: none !important;
+  }
+
+  /* Libellé pour lecteurs d'écran seulement. */
+  .hors-ecran {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* ── Le champ ────────────────────────────────────────────────────────────── */
+
+  .cherche__champ {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .cherche__loupe {
+    position: absolute;
+    inset-inline-start: 14px;
+    display: inline-flex;
+    --icone-cote: 15px;
+    color: var(--parch-mute);
+    pointer-events: none;
+  }
+
+  .cherche__saisie {
+    width: 100%;
+    padding: 12px 14px 12px 40px;
+    font-family: inherit;
+    font-size: var(--fs-body-s);
+    line-height: 1.4;
+    color: var(--parch);
+    background: var(--surface-1);
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    transition: border-color var(--transition);
+  }
+
+  .cherche__saisie::placeholder {
+    color: var(--parch-mute);
+  }
+
+  .cherche__saisie:hover {
+    border-color: var(--line-strong);
+  }
+
+  .cherche__saisie:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 2px;
+    border-color: var(--line-strong);
+  }
+
+  /* ── Les suggestions ─────────────────────────────────────────────────────── */
+
+  .cherche__liste {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    background: var(--coal);
+    overflow: hidden;
+  }
+
+  .cherche__liste :global(.cherche__option) {
+    padding: clamp(10px, 8.514px + 0.381vw, 14px) 14px;
+    font-family: var(--font-display);
+    font-size: clamp(16px, 14.514px + 0.381vw, 20px);
+    line-height: 1.3;
+    color: var(--parch);
+    cursor: pointer;
+    transition:
+      background-color var(--transition),
+      color var(--transition);
+  }
+
+  .cherche__liste :global(.cherche__option + .cherche__option) {
+    border-top: var(--filet);
+  }
+
+  .cherche__liste :global(.cherche__option:hover),
+  .cherche__liste :global(.cherche__option.est-active) {
+    background: var(--ember-tint-5);
+    color: var(--ember-hot);
+  }
+
+  .cherche__etat {
+    min-height: 1.2em;
+    margin: 0;
+    font-size: var(--fs-body-xxs);
+    line-height: 1.2;
+    color: var(--parch-mute);
+  }
+
+  /* ── L'appel à l'assistant ───────────────────────────────────────────────── */
+
+  .cherche__ia {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 18px;
+  }
+
+  .cherche__ia-quoi {
+    margin: 0;
+    font-size: var(--fs-body-xxs);
+    line-height: 1.5;
+    color: var(--parch-mute);
+  }
+
+  /* ── Le panneau de réponse ───────────────────────────────────────────────── */
+
+  .panneau {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(10px, 8.514px + 0.381vw, 14px);
+    padding: clamp(16px, 8.571px + 1.905vw, 36px) clamp(16px, 7.086px + 2.286vw, 40px);
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    background: var(--surface-1);
+  }
+
+  .panneau:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 2px;
+  }
+
+  .panneau__label {
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: clamp(8.5px, 7.757px + 0.1905vw, 10.5px);
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .panneau__question {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(17px, 15.5px + 0.38vw, 21px);
+    line-height: 1.3;
+    color: var(--parch);
+  }
+
+  .panneau__attente {
+    margin: 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+
+  /* L'attente : trois points qui s'écrivent, rien de plus. Neutralisée si la
+     personne a demandé moins d'animations. */
+  .panneau__points::after {
+    content: '…';
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+    animation: panneau-points 1.4s steps(4, end) infinite;
+  }
+
+  @keyframes panneau-points {
+    from {
+      width: 0;
+    }
+    to {
+      width: 1.2em;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panneau__points::after {
+      animation: none;
+    }
+  }
+
+  .panneau__erreur {
+    margin: 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--parch-soft);
+  }
+
+  .panneau__resultat {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(12px, 9.771px + 0.5714vw, 18px);
+  }
+
+  .panneau__texte {
+    max-width: 62ch;
+    margin: 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.7;
+    color: var(--parch-soft);
+    white-space: pre-line;
+  }
+
+  .panneau__appui {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: clamp(10px, 8.514px + 0.381vw, 14px);
+    border-top: var(--filet);
+  }
+
+  .panneau__appui-label {
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  .panneau__sources {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .panneau__sources :global(a) {
+    width: fit-content;
+    font-size: var(--fs-body-s);
+    line-height: 1.5;
+    color: var(--parch);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    text-underline-offset: 0.2em;
+    transition: color var(--transition);
+  }
+
+  .panneau__sources :global(a:hover),
+  .panneau__sources :global(a:focus-visible) {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  .panneau__licence {
+    margin: 0;
+    font-size: var(--fs-body-xxs);
+    line-height: 1.55;
+    color: var(--parch-mute);
+  }
+
+  .panneau__avertissement {
+    margin: 0;
+    padding-top: clamp(10px, 8.514px + 0.381vw, 14px);
+    border-top: var(--filet);
+    font-size: var(--fs-body-xxs);
+    line-height: 1.55;
+    color: var(--parch-mute);
+  }
+</style>
