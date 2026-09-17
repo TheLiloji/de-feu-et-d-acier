@@ -14,7 +14,8 @@
     "check": "astro check",
     "astro": "astro",
     "deploy": "wrangler deploy -c dist/server/wrangler.json",
-    "recette": "node scripts/recette.mjs"
+    "recette": "node scripts/recette.mjs",
+    "index-ia": "node scripts/construire-index-ia.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "14.1.5",
