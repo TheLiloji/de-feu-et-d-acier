@@ -14,10 +14,19 @@
  * l'arme) : le composant ne lit aucun contenu (multi-ecoles.md §6.6,
  * invariants 3 et 4). Aucune question ⇒ le bloc ne se rend pas — pas de
  * promesse vide.
+ *
+ * S'y ajoute, si la page le fournit, le champ de suggestions de la rubrique
+ * (`ChercheQuestions`, étage 1 seulement — l'assistant reste sur /questions/) :
+ * l'index couvre **toutes** les questions publiées, pas seulement celles de
+ * l'arme — taper « rapière » depuis la fiche épée longue mène quand même aux
+ * bonnes pages. Sans JavaScript, le champ n'existe pas et le bloc est
+ * exactement ce qu'il était.
  */
+import ChercheQuestions from '../questions/ChercheQuestions.astro';
 import Icon from '../ui/Icon.astro';
 import Reveal from '../ui/Reveal.astro';
 import TextLink from '../ui/TextLink.astro';
+import type { EntreeSuggestion } from '../../lib/recherche';
 
 /** Une question publiée, prête à lier. */
 export interface QuestionDeLArme {
@@ -31,6 +40,8 @@ export interface Props {
   questions: readonly QuestionDeLArme[];
   /** Adresse du sommaire « Questions d'armes ». */
   hrefSommaire: string;
+  /** L'index des suggestions (toutes les questions publiées). Absent ⇒ pas de champ. */
+  suggestions?: readonly EntreeSuggestion[];
   /** Sur-titre du bloc. */
   libelle?: string;
   class?: string;
@@ -39,6 +50,7 @@ export interface Props {
 const {
   questions,
   hrefSommaire,
+  suggestions = [],
   libelle = 'Questions sur cette arme',
   class: classe,
 } = Astro.props;
@@ -50,6 +62,13 @@ const {
       <div class="gouttiere">
         <Reveal>
           <h2 class="arme-questions__label">{libelle}</h2>
+          {suggestions.length > 0 && (
+            <ChercheQuestions
+              entrees={suggestions}
+              id="cherche-questions-arme"
+              class="arme-questions__cherche"
+            />
+          )}
           <ul class="arme-questions__liste" role="list">
             {questions.map((question) => (
               <li class="arme-questions__item">
@@ -89,6 +108,12 @@ const {
     letter-spacing: var(--ls-eyebrow-s);
     text-transform: uppercase;
     color: var(--ember);
+  }
+
+  /* Le champ de suggestions, entre le label et la liste. `:global` : la classe
+     est posée sur la racine du composant enfant, hors de la portée scopée. */
+  .arme-questions :global(.arme-questions__cherche) {
+    margin-bottom: clamp(14px, 11.029px + 0.7619vw, 22px);
   }
 
   .arme-questions__liste {
