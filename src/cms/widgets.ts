@@ -7,14 +7,14 @@
  * d'outils (ou la touche « / »), avec leurs champs, leur aperçu et leur
  * dialogue d'édition.
  *
- * Quatre champs les accueillent, et eux seuls : la biographie d'un encadrant,
- * la description longue d'une arme, le contenu d'un article et la présentation
- * d'un traité. L'accueil reste fermé.
+ * Cinq champs les accueillent, et eux seuls : la biographie d'un encadrant,
+ * la description longue d'une arme, le contenu d'un article, la présentation
+ * d'un traité et la réponse d'une question d'armes. L'accueil reste fermé.
  *
  * ⚠️ Trois règles de compatibilité, vérifiées dans l'implémentation de
  * Keystatic 0.6.3 (widgets.md §1.6) :
  *
- *   - **les quatre champs doivent déclarer le même jeu de widgets.** Un tag
+ *   - **les cinq champs doivent déclarer le même jeu de widgets.** Un tag
  *     rencontré dans un fichier mais absent du `Record` fait échouer
  *     l'ouverture de l'entrée dans l'admin, pas seulement l'affichage du bloc ;
  *   - **retirer un champ d'un widget est une rupture** : tout `.mdoc` qui le

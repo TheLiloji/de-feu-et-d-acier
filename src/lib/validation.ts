@@ -507,9 +507,10 @@ async function verifierPistesSousTitres(): Promise<string[]> {
 }
 
 /**
- * 9. Les corps libres : biographie, description longue, article, présentation.
+ * 9. Les corps libres : biographie, description longue, article, présentation,
+ *    réponse d'une question d'armes.
  *
- * Quatre champs du CMS acceptent des **widgets** insérés dans le fil du texte
+ * Cinq champs du CMS acceptent des **widgets** insérés dans le fil du texte
  * (docs/refonte/widgets.md). Ils échappent à tous les contrôles précédents pour
  * une raison mécanique : un corps Markdoc est une valeur **paresseuse** du
  * lecteur, c'est-à-dire une fonction, et les parcours récursifs des n° 3, 5 et
@@ -522,7 +523,7 @@ async function verifierPistesSousTitres(): Promise<string[]> {
  * de contenu, ou un lien mort, sont exactement ce qu'un garde-fou doit rendre
  * impossible.
  *
- * Ce contrôle relit donc les quatre champs, tag par tag, et refuse :
+ * Ce contrôle relit donc les cinq champs, tag par tag, et refuse :
  *
  *   a. un renvoi vers un slug inexistant, ou vers une page non publiée ;
  *   b. un renvoi dont la destination n'a pas été choisie ;
@@ -579,6 +580,13 @@ function champsDeCorps(): ChampDeCorps[] {
       champ: 'presentation',
       libelle: 'Présentation',
       dossier: 'src/content/commun/traites',
+      ecole: ECOLE_PRINCIPALE,
+    },
+    {
+      collection: 'questions',
+      champ: 'reponse',
+      libelle: 'Réponse',
+      dossier: 'src/content/commun/questions',
       ecole: ECOLE_PRINCIPALE,
     },
   ];

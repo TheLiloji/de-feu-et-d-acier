@@ -9,9 +9,10 @@
  * identiques écrites en parallèle (`src/components/fiches/bio.ts`, et une copie
  * locale dans `Faq.astro` et `Partenaires.astro`).
  *
- * ⚠️ **Ce rendu ne sait pas afficher les widgets de corps libre.** Les quatre
+ * ⚠️ **Ce rendu ne sait pas afficher les widgets de corps libre.** Les cinq
  * champs qui les acceptent (biographie d'un encadrant, description longue d'une
- * arme, contenu d'un article, présentation d'un traité) passent par
+ * arme, contenu d'un article, présentation d'un traité, réponse d'une question
+ * d'armes) passent par
  * `src/components/corps/CorpsLibre.astro`, qui découpe l'arbre avant de le
  * rendre (`src/lib/corps.ts`). Ce module-ci sert les textes riches **sans
  * widget** : réponses de FAQ et présentations de partenaires.
@@ -57,7 +58,8 @@ function erreurWidget(source: string): Error {
     `Un widget se trouve dans un champ qui ne sait pas les afficher — ${source}.\n` +
       'Les widgets (galerie, vidéo, questions-réponses, renvoi, bouton, planche) ' +
       'ne sont acceptés que dans la biographie d’un encadrant, la description longue ' +
-      'd’une arme, le contenu d’un article et la présentation d’un traité.',
+      'd’une arme, le contenu d’un article, la présentation d’un traité et la réponse ' +
+      'd’une question d’armes.',
   );
 }
 
