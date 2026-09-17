@@ -163,6 +163,16 @@ Secrets) avant la mise en ligne de l'admin. Ne jamais les committer :
 | `KEYSTATIC_GITHUB_CLIENT_ID` | OAuth de la GitHub App |
 | `KEYSTATIC_GITHUB_CLIENT_SECRET` | idem |
 
+**Un secret facultatif** : `GEMINI_API_KEY` (clé créée sur aistudio.google.com,
+posée par `wrangler secret put GEMINI_API_KEY`) active l'assistant de la page
+« Questions d'armes » (`/api/ia`). Sans elle, le site est entièrement
+fonctionnel : le champ de recherche suggère les questions publiées, et le
+bouton « Poser la question » n'apparaît pas. En local, la valeur spéciale
+`bouchon` (`GEMINI_API_KEY=bouchon npm run dev`) simule la réponse sans appel
+réseau. L'index que l'assistant interroge est committé
+(`src/ia/index-ia.json`) et se régénère avec `npm run index-ia` depuis le
+corpus hors dépôt — voir l'en-tête de `scripts/construire-index-ia.mjs`.
+
 **Une valeur publique, inlinée au build** : `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`.
 Ce n'en est **pas** un quatrième secret. Keystatic la lit via `import.meta.env`
 dans son bundle client : Vite la remplace au moment du `astro build`, et un
@@ -183,7 +193,7 @@ npm run deploy      # wrangler deploy -c dist/server/wrangler.json
 
 Le site public est entièrement pré-rendu : il est servi en assets statiques. Le
 Worker n'est réveillé que pour les motifs listés dans `run_worker_first`
-(wrangler.jsonc) — `/keystatic`, `/api/keystatic/*` et `/_image`. Toute autre
+(wrangler.jsonc) — `/keystatic`, `/api/keystatic/*`, `/api/ia` et `/_image`. Toute autre
 URL inconnue est servie directement par les assets, avec la page `404.html`.
 
 ## Liens

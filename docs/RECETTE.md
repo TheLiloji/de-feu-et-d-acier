@@ -41,7 +41,7 @@ Par défaut, le script :
 
 1. construit le site (`npm run build`) ;
 2. démarre son propre `npm run preview` sur `http://localhost:4321` ;
-3. joue les huit contrôles décrits plus bas ;
+3. joue les neuf contrôles décrits plus bas ;
 4. arrête le serveur de preview qu'il a démarré — toujours, même en cas
    d'échec ou d'interruption.
 
@@ -72,6 +72,7 @@ recette pour autant.
 | 6 | « Netflix » apparaît exactement une fois sur l'accueil (texte de l'encart d'adhésion) ; zéro tiret cadratin dans un paragraphe de prose, hors lignes de crédit et citations. |
 | 7 | Aucune image cassée (`naturalWidth === 0` après défilement complet) ; zéro violation `axe-core` en WCAG 2.1 AA. |
 | 8 | Les canaux techniques répondent : `/rss.xml` bien formé (au moins un article, liens absolus) ; `/.well-known/security.txt` avec un contact et une date d'expiration à venir ; `/site.webmanifest` valide, toutes ses icônes servies. |
+| 9 | La recherche « Questions d'armes » : le champ de suggestions apparaît (une fois le JavaScript passé) sur `/questions/` et sur une fiche arme, et « rapière » y fait remonter les questions rapière ; `/api/ia` répond un JSON bien formé — état du service en GET, 400 français sur une question trop courte, 503 « non activé » sur une bonne question quand aucune clé n'est posée (l'état normal du preview local ; contre un site où la clé existe, ce dernier point est ignoré pour ne pas consommer d'appel Gemini). |
 
 ## Lire un échec
 
