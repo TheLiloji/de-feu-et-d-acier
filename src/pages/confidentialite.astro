@@ -60,6 +60,16 @@ const SOURCE = 'src/content/commun/legal.yaml → confidentialité';
 const paragraphes = resoudreListe(legal.rgpd?.paragraphes ?? [], ctx, SOURCE).filter(Boolean);
 const note = resoudre(legal.rgpd?.note, ctx, `${SOURCE} → note`);
 
+// La section « Assistant de réponse (IA) » : l'unique écart à la promesse
+// « aucune donnée » du site — la question posée part vers l'API Gemini de
+// Google, l'IP sert fugacement à la limite anti-abus (src/pages/api/ia.ts).
+// Tant que l'assistant existe, cette section doit rester remplie : la
+// description du champ dans l'admin le rappelle au rédacteur.
+const iaTitre = resoudre(legal.ia?.titre, ctx, `${SOURCE} → assistant IA, titre`);
+const iaParagraphes = resoudreListe(legal.ia?.paragraphes ?? [], ctx, `${SOURCE} → assistant IA`).filter(
+  Boolean,
+);
+
 // ── Titre et navigation entre les deux pages légales ───────────────────────
 const normaliser = (url: string) => url.replace(/[?#].*$/, '').replace(/\/+$/, '') || '/';
 
@@ -111,6 +121,17 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
             ))
           }
         </div>
+
+        {
+          iaTitre && iaParagraphes.length > 0 && (
+            <section class="legal__ia" aria-label={iaTitre}>
+              <h2 class="legal__ia-titre">{iaTitre}</h2>
+              {iaParagraphes.map((paragraphe) => (
+                <p class="legal__para">{paragraphe}</p>
+              ))}
+            </section>
+          )
+        }
 
         {
           note && (
@@ -208,6 +229,27 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
   .legal__para {
     color: var(--parch-soft);
     line-height: 1.7;
+  }
+
+  /* La section de l'assistant IA : un sous-titre Cormorant sous filet, même
+     colonne de lecture que le reste — une rubrique de la page, pas un encart. */
+  .legal__ia {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(18px, 14.286px + 0.9524vw, 28px);
+    max-width: 66ch;
+    margin-block-start: var(--esp-bloc);
+    padding-block-start: clamp(22px, 18.286px + 0.9524vw, 32px);
+    border-top: var(--filet);
+  }
+
+  .legal__ia-titre {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-display-s);
+    font-weight: 400;
+    line-height: 1.15;
+    color: var(--parch);
   }
 
   /* La note RGPD porte le seul appel à l'action de la page : elle est isolée

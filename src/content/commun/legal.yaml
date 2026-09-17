@@ -47,3 +47,25 @@ rgpd:
     Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et
     de suppression sur les données qui vous concernent. Pour exercer ces droits,
     écrivez à {email}.
+ia:
+  titre: L'assistant de « Questions d'armes »
+  paragraphes:
+    - >-
+      La page « Questions d'armes » propose un assistant facultatif : si les
+      questions publiées ne suffisent pas, un bouton « Poser la question »
+      envoie votre question à l'API Gemini de Google, le service d'intelligence
+      artificielle qui rédige la réponse à partir de nos sources. Le texte de
+      votre question est la seule chose transmise : ni compte, ni cookie, ni
+      identifiant ne l'accompagnent. Google traite ce texte selon ses propres
+      conditions d'utilisation.
+    - >-
+      Pour empêcher les abus, le service limite le nombre de questions posées
+      depuis une même adresse IP (une dizaine par heure). L'adresse est
+      utilisée fugacement pour ce comptage, sous une forme abrégée et non
+      réversible, puis oubliée. Le site ne conserve ni les questions posées,
+      ni les réponses produites, ni les adresses.
+    - >-
+      Rien de tout cela ne concerne le reste du site, qui fonctionne comme
+      décrit ci-dessus : aucun cookie, aucune mesure d'audience, aucune donnée
+      stockée. Tant que vous ne cliquez pas sur « Poser la question », rien
+      n'est envoyé à personne.
