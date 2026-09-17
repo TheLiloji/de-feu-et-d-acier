@@ -52,8 +52,13 @@ import { chercherPassages, type PassageRetrouve } from '../../ia/moteur';
 
 export const prerender = false;
 
-/** Modèle « flash » gratuit courant. En changer ne demande que cette ligne. */
-const MODELE = 'gemini-2.5-flash';
+/**
+ * Modèle « flash » gratuit courant. En changer ne demande que cette ligne.
+ * Attention au manège des retraites Google : gemini-2.5-flash part le
+ * 16/10/2026 et les clés récentes n'y accèdent déjà plus (constaté au
+ * premier déploiement, 17/09/2026 — le service répondait 503).
+ */
+const MODELE = 'gemini-3.6-flash';
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODELE}:generateContent`;
 
 const QUESTION_MIN = 3;
