@@ -23,6 +23,7 @@ import ArmeCorps from '../../components/fiches/ArmeCorps.astro';
 import ArmeFilAriane from '../../components/fiches/ArmeFilAriane.astro';
 import ArmeHero from '../../components/fiches/ArmeHero.astro';
 import ArmeMiniCours from '../../components/fiches/ArmeMiniCours.astro';
+import ArmeQuestions from '../../components/fiches/ArmeQuestions.astro';
 import ArmeSource from '../../components/fiches/ArmeSource.astro';
 import Footer from '../../components/sections/Footer.astro';
 import Nav from '../../components/sections/Nav.astro';
@@ -41,6 +42,7 @@ import {
   lireIdentite,
   lireMenus,
   profsDe,
+  questionsDeLArme,
   traitesDeLArme,
   traitesTries,
 } from '../../lib/contenu';
@@ -81,22 +83,35 @@ function avecArticle(nom: string): string {
 const { slug } = Astro.params;
 
 const ecole = await getEcolePrincipale();
-const [identite, hero, fiches, menus, disciplines, profs, traitesArme, traites, articles] =
-  await Promise.all([
-    lireIdentite(),
-    lireHero(),
-    lireFiches(),
-    lireMenus(),
-    lireDisciplines(),
-    profsDe(ecole),
-    // Les traités dont « Armes concernées » cite cette arme, dans l'ordre du CMS.
-    traitesDeLArme(slug),
-    // Les deux dernières lectures ne servent qu'à l'index des renvois : un corps
-    // libre peut pointer vers n'importe quelle page du site. Le Reader mémoïse
-    // (`readItem` est enveloppé dans `cache()`), le coût est celui d'un `Map.get`.
-    traitesTries(),
-    articlesDe(ecole),
-  ]);
+const [
+  identite,
+  hero,
+  fiches,
+  menus,
+  disciplines,
+  profs,
+  traitesArme,
+  questionsArme,
+  traites,
+  articles,
+] = await Promise.all([
+  lireIdentite(),
+  lireHero(),
+  lireFiches(),
+  lireMenus(),
+  lireDisciplines(),
+  profsDe(ecole),
+  // Les traités dont « Armes concernées » cite cette arme, dans l'ordre du CMS.
+  traitesDeLArme(slug),
+  // Les questions d'armes publiées qui parlent de cette arme — l'encadré
+  // « Questions sur cette arme », maillon vers la rubrique /questions/.
+  questionsDeLArme(slug),
+  // Les deux dernières lectures ne servent qu'à l'index des renvois : un corps
+  // libre peut pointer vers n'importe quelle page du site. Le Reader mémoïse
+  // (`readItem` est enveloppé dans `cache()`), le coût est celui d'un `Map.get`.
+  traitesTries(),
+  articlesDe(ecole),
+]);
 
 const affichees = disciplines.filter((d) => d.entry.affichee);
 const entree = affichees.find((d) => d.slug === slug);
@@ -183,6 +198,14 @@ const traiteSource = premierTraite
     }
   : null;
 
+// L'encadré « Questions sur cette arme » : les questions publiées, dans
+// l'ordre du CMS, composées typographiquement ici (leur titre ne transite pas
+// par `resoudre()`).
+const questionsFiche = questionsArme.map((question) => ({
+  href: lien(ecole, `/questions/${question.slug}/`),
+  question: typographieFr(question.entry.question),
+}));
+
 const onglets = (menus.barreMobile ?? []).map((onglet) => ({
   libelle: onglet.libelle,
   href: lien(ecole, onglet.lien),
@@ -245,6 +268,10 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
     autres={Math.max(traitesArme.length - 1, 0)}
     hrefBibliotheque={lien(ecole, '/sources/')}
   />
+
+  {/* Le maillage vers « Questions d'armes » : discret, sous « La source »,
+      masqué tant qu'aucune question publiée ne cite l'arme. */}
+  <ArmeQuestions questions={questionsFiche} hrefSommaire={lien(ecole, '/questions/')} />
 
   <ArmeBandeCta
     titre={bandeau.titre}

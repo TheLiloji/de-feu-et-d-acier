@@ -22,7 +22,13 @@
  * pré-rendus, donc aucune URL à publier) et la page 404.
  */
 import type { APIRoute } from 'astro';
-import { articlesDe, lireDisciplines, profsDe, traitesTries } from '../lib/contenu';
+import {
+  articlesDe,
+  lireDisciplines,
+  profsDe,
+  questionsPubliees,
+  traitesTries,
+} from '../lib/contenu';
 import { getEcoles } from '../lib/ecoles';
 import { profsAffiches } from '../components/fiches/prof';
 import { lien, lienAbsolu } from '../lib/liens';
@@ -89,6 +95,27 @@ export const GET: APIRoute = async ({ site }) => {
   entrees.push({ chemin: '/sources/', priorite: '0.7' });
   for (const traite of await traitesTries()) {
     entrees.push({ chemin: `/sources/${traite.slug}/`, priorite: '0.6' });
+  }
+
+  // Les questions d'armes sont communes elles aussi (src/content/commun/) :
+  // une seule série d'entrées, jamais préfixée d'une école. `questionsPubliees()`
+  // est exactement la source du `getStaticPaths` de `/questions/[slug]` : les
+  // brouillons n'ont pas de page, donc pas d'URL. C'est la rubrique bâtie pour
+  // le référencement : les questions portent leur date en `lastmod`, et le
+  // sommaire prend celle de la plus récente.
+  const questions = await questionsPubliees();
+  const derniereQuestion = questions
+    .map((q) => q.entry.date ?? '')
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  entrees.push({ chemin: '/questions/', priorite: '0.7', modifiee: derniereQuestion });
+  for (const question of questions) {
+    entrees.push({
+      chemin: `/questions/${question.slug}/`,
+      priorite: '0.6',
+      modifiee: question.entry.date ?? undefined,
+    });
   }
 
   // Pages légales : elles appartiennent à l'association, pas à une implantation

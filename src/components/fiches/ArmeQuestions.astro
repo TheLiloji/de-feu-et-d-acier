@@ -1,0 +1,163 @@
+---
+/**
+ * Encadré « Questions sur cette arme » — fiche arme, sous l'encadré
+ * « La source » et avant la bande d'appel.
+ *
+ * C'est le maillon des fiches arme vers la rubrique « Questions d'armes » :
+ * les requêtes qui amènent sur une fiche (« épée longue », « messer arme »…)
+ * sont celles que les pages de question doivent capter, et le lien doit
+ * exister dans les deux sens. Le bloc reste **discret**, à dessein : un label
+ * ember, la liste des questions publiées à filets, le lien vers le sommaire.
+ * Pas de carte, pas d'image — la fiche a déjà ses temps forts.
+ *
+ * La page fournit les questions déjà filtrées (publiées, rattachées à
+ * l'arme) : le composant ne lit aucun contenu (multi-ecoles.md §6.6,
+ * invariants 3 et 4). Aucune question ⇒ le bloc ne se rend pas — pas de
+ * promesse vide.
+ */
+import Icon from '../ui/Icon.astro';
+import Reveal from '../ui/Reveal.astro';
+import TextLink from '../ui/TextLink.astro';
+
+/** Une question publiée, prête à lier. */
+export interface QuestionDeLArme {
+  href: string;
+  /** La question, déjà composée typographiquement. */
+  question: string;
+}
+
+export interface Props {
+  /** Les questions publiées rattachées à l'arme. Vide ⇒ rien n'est rendu. */
+  questions: readonly QuestionDeLArme[];
+  /** Adresse du sommaire « Questions d'armes ». */
+  hrefSommaire: string;
+  /** Sur-titre du bloc. */
+  libelle?: string;
+  class?: string;
+}
+
+const {
+  questions,
+  hrefSommaire,
+  libelle = 'Questions sur cette arme',
+  class: classe,
+} = Astro.props;
+---
+
+{
+  questions.length > 0 && (
+    <section class:list={['arme-questions', classe]} aria-label={libelle}>
+      <div class="gouttiere">
+        <Reveal>
+          <h2 class="arme-questions__label">{libelle}</h2>
+          <ul class="arme-questions__liste" role="list">
+            {questions.map((question) => (
+              <li class="arme-questions__item">
+                <a class="arme-questions__lien" href={question.href}>
+                  <span class="arme-questions__texte">{question.question}</span>
+                  <span class="arme-questions__fleche" aria-hidden="true">
+                    <Icon name="arrow-right" size={16} />
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p class="arme-questions__toutes">
+            <TextLink
+              libelle="Toutes les questions d’armes"
+              href={hrefSommaire}
+              ton="mute"
+              taille="petite"
+            />
+          </p>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .arme-questions {
+    padding-bottom: clamp(28px, 2.743px + 6.476vw, 96px);
+  }
+
+  .arme-questions__label {
+    margin: 0 0 clamp(10px, 8.514px + 0.381vw, 14px);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .arme-questions__liste {
+    max-width: 720px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .arme-questions__item {
+    border-top: var(--filet);
+  }
+
+  .arme-questions__item:last-child {
+    border-bottom: var(--filet);
+  }
+
+  .arme-questions__lien {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(12px, 9.771px + 0.5714vw, 18px);
+    padding-block: clamp(10px, 8.514px + 0.381vw, 14px);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .arme-questions__texte {
+    font-family: var(--font-display);
+    font-size: clamp(16px, 14.514px + 0.381vw, 20px);
+    line-height: 1.3;
+    color: var(--parch);
+    transition: color var(--transition);
+  }
+
+  .arme-questions__fleche {
+    display: inline-flex;
+    flex: none;
+    color: var(--parch-mute);
+    transition:
+      color var(--transition),
+      transform var(--transition);
+  }
+
+  .arme-questions__lien:hover .arme-questions__texte,
+  .arme-questions__lien:focus-visible .arme-questions__texte {
+    color: var(--ember-hot);
+  }
+
+  .arme-questions__lien:hover .arme-questions__fleche,
+  .arme-questions__lien:focus-visible .arme-questions__fleche {
+    color: var(--ember-hot);
+    transform: translateX(3px);
+  }
+
+  .arme-questions__lien:focus-visible {
+    outline: 2px solid var(--ember-hot);
+    outline-offset: 4px;
+  }
+
+  .arme-questions__toutes {
+    margin-top: clamp(12px, 9.771px + 0.5714vw, 18px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .arme-questions__fleche,
+    .arme-questions__lien:hover .arme-questions__fleche {
+      transition: none;
+      transform: none;
+    }
+  }
+</style>

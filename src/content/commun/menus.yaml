@@ -38,6 +38,8 @@ colonnes:
         url: '#rigueur'
       - libelle: Les sources
         url: /sources/
+      - libelle: Questions d'armes
+        url: /questions/
       - libelle: Disciplines
         url: '#disciplines'
       - libelle: FAQ

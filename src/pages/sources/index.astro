@@ -31,6 +31,7 @@ import Eyebrow from '../../components/ui/Eyebrow.astro';
 import Reveal from '../../components/ui/Reveal.astro';
 import SectionTitle from '../../components/ui/SectionTitle.astro';
 import TabBar from '../../components/ui/TabBar.astro';
+import TextLink from '../../components/ui/TextLink.astro';
 import { estNomIcone } from '../../components/ui/icones';
 import {
   lireDisciplines,
@@ -237,6 +238,13 @@ const idTitre = 'sources-titre';
       }
 
       {cartes.length > 0 && <p class="droits">{typographieFr(MENTION_DROITS)}</p>}
+
+      {/* Maillon vers « Questions d'armes » : les réponses courtes citent ces
+          traités, le chemin inverse doit exister aussi. */}
+      <p class="questions-renvoi">
+        {typographieFr('Une question précise sur une arme ou un maître ? Les réponses courtes du club sont dans')}
+        <TextLink libelle="les questions d’armes" href={lien(ecole, '/questions/')} ton="soft" taille="petite" />
+      </p>
     </div>
   </section>
 
@@ -341,6 +349,20 @@ const idTitre = 'sources-titre';
     margin-top: clamp(28px, 20.5px + 1.92vw, 48px);
     padding-top: clamp(16px, 13.029px + 0.7619vw, 24px);
     border-top: var(--filet);
+    font-size: var(--fs-body-xxs);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+
+  /* ── Renvoi vers « Questions d'armes » ───────────────────────────────────── */
+
+  .questions-renvoi {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    max-width: 72ch;
+    margin-top: clamp(12px, 9.771px + 0.5714vw, 18px);
     font-size: var(--fs-body-xxs);
     line-height: 1.6;
     color: var(--parch-mute);
