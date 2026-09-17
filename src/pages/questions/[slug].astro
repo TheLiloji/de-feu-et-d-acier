@@ -1,0 +1,641 @@
+---
+/**
+ * `/questions/<slug>/` — une question, sa réponse. Gabarit NON maquetté,
+ * composé dans le langage des pages de détail du site (fiche de traité) :
+ *
+ *   1. fil d'Ariane à filet bas — « Retour » vers le sommaire des questions ;
+ *   2. tête : eyebrow à tiret, la question en H1 Cormorant, la ligne de
+ *      contexte (armes concernées, date de publication) ;
+ *   3. la réponse — un corps libre, comme la présentation d'un traité :
+ *      prose sobre, widgets possibles, raccourcis résolus ;
+ *   4. l'encadré « Appuyé sur » : les sources de la réponse, chaque ligne de
+ *      crédit rendue **verbatim** (régime des crédits patrimoniaux — ni « © »,
+ *      ni composition typographique, cf. ARCHITECTURE.md §6), et la mention de
+ *      licence CC BY-NC-SA quand la réponse dérive du wiki AMHE de la FFAMHE ;
+ *   5. « Pour aller plus loin » : les renvois vers la fiche de chaque arme
+ *      concernée et vers les traités liés à ces armes — le maillage interne
+ *      qui est la raison d'être SEO de la rubrique ;
+ *   6. pied à filet : retour au sommaire et questions voisines ;
+ *   7. barre d'onglets mobile — chrome global, rendue sur toutes les pages.
+ *
+ * **Balisage : FAQPage, pas QAPage.** L'arbitrage est documenté dans
+ * `src/lib/jsonld.ts` (section « Questions d'armes ») : la doc Google réserve
+ * QAPage aux pages où les visiteurs soumettent des réponses, et décrit
+ * FAQPage pour les questions-réponses rédigées par le site lui-même — notre
+ * cas exact. S'y ajoute un BreadcrumbList, le résultat enrichi de fil
+ * d'Ariane restant ouvert à tous les sites.
+ *
+ * Une route par question **publiée** : un brouillon n'a pas d'adresse, comme
+ * un article. Le même filtre alimente le sommaire, le sitemap et les encadrés
+ * des fiches arme — ils ne peuvent pas se contredire.
+ */
+import Base from '../../layouts/Base.astro';
+import CorpsLibre from '../../components/corps/CorpsLibre.astro';
+import FilArianeSources from '../../components/sources/FilArianeSources.astro';
+import Footer from '../../components/sections/Footer.astro';
+import Nav from '../../components/sections/Nav.astro';
+import Button from '../../components/ui/Button.astro';
+import Eyebrow from '../../components/ui/Eyebrow.astro';
+import SectionTitle from '../../components/ui/SectionTitle.astro';
+import TabBar from '../../components/ui/TabBar.astro';
+import TextLink from '../../components/ui/TextLink.astro';
+import { estNomIcone } from '../../components/ui/icones';
+import { anneeCourte, auteurCourt } from '../../components/sources/traites';
+import {
+  articlesDe,
+  lireDisciplines,
+  lireHero,
+  lireIdentite,
+  lireMenus,
+  profsDe,
+  questionsPubliees,
+  traitesTries,
+} from '../../lib/contenu';
+import { decouperCorps, texteDuCorps } from '../../lib/corps';
+import { getEcolePrincipale } from '../../lib/ecoles';
+import { jsonLdFilAriane, jsonLdQuestion, serialiserJsonLd } from '../../lib/jsonld';
+import { lien, lienArme } from '../../lib/liens';
+import { contexteDe, resoudre } from '../../lib/raccourcis';
+import { indexRenvois } from '../../lib/renvois';
+import { typographieFr } from '../../lib/typographie';
+
+export async function getStaticPaths() {
+  const questions = await questionsPubliees();
+  return questions.map((question) => ({ params: { slug: question.slug } }));
+}
+
+const { slug } = Astro.params;
+
+const ecole = await getEcolePrincipale();
+const [identite, hero, menus, disciplines, profs, traites, articles, questions] =
+  await Promise.all([
+    lireIdentite(),
+    lireHero(),
+    lireMenus(),
+    lireDisciplines(),
+    profsDe(ecole),
+    traitesTries(),
+    // Pour l'index des renvois seulement : une réponse peut renvoyer vers
+    // n'importe quelle page du site, articles compris.
+    articlesDe(ecole),
+    questionsPubliees(),
+  ]);
+
+const rang = questions.findIndex((q) => q.slug === slug);
+if (rang === -1) {
+  throw new Error(
+    `Question introuvable pour « /questions/${slug}/ ».\n` +
+      'Les questions vivent dans src/content/commun/questions/ ; seules celles au statut ' +
+      '« Publié » ont une page.',
+  );
+}
+
+const question = questions[rang]!;
+const entree = question.entry;
+
+const precedente = rang > 0 ? questions[rang - 1] : null;
+const suivante = rang < questions.length - 1 ? questions[rang + 1] : null;
+
+// Le titre ne transite pas par `resoudre()` (aucun raccourci n'y est
+// autorisé) : la composition typographique se pose ici — H1, <title>, fil
+// d'Ariane et balisage FAQPage disent la question de la même façon.
+const titre = typographieFr(entree.question);
+
+// Mêmes compteurs que l'accueil (ARCHITECTURE.md §4) pour les raccourcis de la
+// réponse : « {essai} » ou « {email} » s'y résolvent comme partout.
+const ctx = contexteDe(ecole.fiche, {
+  nbArmes: disciplines.filter((d) => d.entry.affichee).length,
+  nbProfs: profs.filter((p) => p.entry.visible).length,
+});
+
+/**
+ * Les armes concernées qui ont une fiche publique — même filtre que
+ * `getStaticPaths` de `/armes/[slug]` : une arme sans carte n'a pas de page,
+ * on ne fabrique pas de lien vers le vide.
+ */
+const armes = disciplines
+  .filter((d) => d.entry.affichee && entree.armes.includes(d.slug))
+  .sort((a, b) => (a.entry.ordre ?? 100) - (b.entry.ordre ?? 100))
+  .map((d) => ({
+    slug: d.slug,
+    nom: typographieFr(d.entry.nom),
+    href: lienArme(ecole, d.slug),
+  }));
+
+/**
+ * Les traités liés : ceux dont « Armes concernées » recoupe les armes de la
+ * question, dans l'ordre éditorial de la bibliothèque, sans doublon. C'est le
+ * renvoi demandé par la rubrique — la réponse cite des traités, la fiche du
+ * traité est à un clic.
+ */
+const slugsArmes = new Set(armes.map((a) => a.slug));
+const traitesLies = traites
+  .filter((t) => t.entry.armes.some((arme) => slugsArmes.has(arme)))
+  .map((t) => ({
+    slug: t.slug,
+    titre: typographieFr(t.entry.titre),
+    sousTitre: [auteurCourt(t.entry.auteur), anneeCourte(t.entry.annee)]
+      .map((m) => typographieFr(m))
+      .filter(Boolean)
+      .join(' · '),
+    href: lien(ecole, `/sources/${t.slug}/`),
+  }));
+
+/*
+ * La réponse est un corps libre (widgets.md §0) : le lecteur en renvoie
+ * l'arbre analysé, le découpage et le rendu appartiennent à `CorpsLibre`. Le
+ * découpage est refait ici, à vide, pour savoir si la section a quelque chose
+ * à montrer.
+ */
+const sourceReponse = `src/content/commun/questions/${slug}.mdoc — réponse`;
+const reponse = await entree.reponse();
+const aDeLaReponse = decouperCorps(reponse.node, sourceReponse).length > 0;
+
+/** Index des renvois — fourni même sans widget « Renvoi » (cf. CorpsLibre). */
+const renvois = indexRenvois({ ecole, disciplines, traites, profs, articles });
+
+/**
+ * Les sources « Appuyé sur ». Une entrée sans nom ou sans adresse est un
+ * défaut de contenu, pas un cas d'affichage : le build s'arrête en nommant le
+ * fichier, comme pour un renvoi cassé. La ligne de crédit, elle, est rendue
+ * **verbatim** (aucun « © », aucune composition) : c'est le régime des crédits
+ * patrimoniaux, et la seule prose du site avec les crédits de planches à y
+ * échapper.
+ */
+const sources = (entree.appuyeSur ?? []).map((source, i) => {
+  const libelle = source.libelle?.trim() ?? '';
+  const url = source.url?.trim() ?? '';
+  if (!libelle || !url) {
+    throw new Error(
+      `Source incomplète — ${sourceReponse.replace(' — réponse', '')} › « Appuyé sur » n° ${i + 1}.\n` +
+        `Nom : ${libelle || '(vide)'} · Adresse : ${url || '(vide)'}\n` +
+        'Chaque source cite un nom et l’adresse de la page exacte d’où viennent les faits. ' +
+        'Remplir les deux champs, ou retirer la source.',
+    );
+  }
+  return {
+    libelle: typographieFr(libelle),
+    url,
+    credit: (source.credit ?? '').trim(),
+  };
+});
+
+const deriveDuWiki = Boolean(entree.deriveDuWiki);
+
+/** Adresse du texte de la licence du wiki FFAMHE, citée sous les sources. */
+const LICENCE_WIKI = 'https://creativecommons.org/licenses/by-nc-sa/3.0/deed.fr';
+
+// ── Métadonnées et balisage ────────────────────────────────────────────────
+
+const FORMAT_DATE = new Intl.DateTimeFormat('fr-FR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/** « 2026-09-17 » → « 17 septembre 2026 ». Midi UTC : aucun décalage de jour. */
+const dateLisible = entree.date ? FORMAT_DATE.format(new Date(`${entree.date}T12:00:00Z`)) : '';
+
+// La ligne de contexte sous le titre : les armes concernées, puis la date.
+const contexte = [...armes.map((a) => a.nom), dateLisible].filter(Boolean).join(' · ');
+
+// Meta description : les premières lignes de la réponse. La rédaction de la
+// rubrique demande une première phrase qui répond — c'est exactement ce qu'une
+// meta description doit faire.
+const description =
+  resoudre(texteDuCorps(reponse.node, 155, sourceReponse), ctx, sourceReponse) || undefined;
+
+// Le texte complet de la réponse (prose seule) pour le nœud FAQPage — la
+// limite haute ne tronque pas une réponse de 300 mots, elle borne l'accident.
+const reponseTexte = resoudre(texteDuCorps(reponse.node, 4000, sourceReponse), ctx, sourceReponse);
+
+const site = Astro.site ?? new URL('https://dfda-amhe.fr');
+const cheminPage = lien(ecole, `/questions/${slug}/`);
+
+const jsonLdFaq = serialiserJsonLd(
+  jsonLdQuestion({
+    site,
+    chemin: cheminPage,
+    question: titre,
+    reponse: reponseTexte,
+    date: entree.date,
+  }),
+);
+
+const jsonLdAriane = serialiserJsonLd(
+  jsonLdFilAriane(site, [
+    { libelle: 'Accueil', chemin: lien(ecole, '/') },
+    { libelle: 'Questions d’armes', chemin: lien(ecole, '/questions/') },
+    { libelle: titre },
+  ]),
+);
+
+// Barre d'onglets mobile : chrome global, aucun onglet actif.
+const onglets = (menus.barreMobile ?? []).map((onglet) => ({
+  libelle: onglet.libelle,
+  href: lien(ecole, onglet.lien),
+  icone: estNomIcone(onglet.icone) ? onglet.icone : 'house',
+  exergue: onglet.icone === 'swords',
+}));
+
+const sommaire = lien(ecole, '/questions/');
+const idTitre = 'question-titre';
+---
+
+<Base ecole={ecole} identite={identite} titre={titre} description={description}>
+
+  <Fragment slot="head">
+    <script type="application/ld+json" is:inline set:html={jsonLdFaq} />
+    <script type="application/ld+json" is:inline set:html={jsonLdAriane} />
+  </Fragment>
+
+  {/* Page sans hero photographique : la barre garde son fond plein dès le
+      chargement. */}
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+    fond="solide"
+  />
+
+  <FilArianeSources
+    retourHref={sommaire}
+    chemin={[
+      { libelle: 'Accueil', href: lien(ecole, '/') },
+      { libelle: 'Questions d’armes', href: sommaire },
+      { libelle: titre },
+    ]}
+  />
+
+  <article class="question" aria-labelledby={idTitre}>
+    <header class="tete">
+      <div class="gouttiere tete__bloc">
+        <Eyebrow texte="Questions d’armes" marque="tiret" />
+        <SectionTitle balise="h1" taille="fiche" id={idTitre} lignes={[{ texte: titre }]} />
+        {contexte && <p class="tete__contexte">{contexte}</p>}
+      </div>
+    </header>
+
+    {
+      aDeLaReponse && (
+        <section class="reponse" aria-label="La réponse">
+          <div class="gouttiere">
+            <CorpsLibre
+              node={reponse.node}
+              ecole={ecole}
+              ctx={ctx}
+              source={sourceReponse}
+              renvois={renvois}
+              prefixeId="reponse"
+            />
+          </div>
+        </section>
+      )
+    }
+
+    {
+      (sources.length > 0 || deriveDuWiki) && (
+        <section class="appui" aria-label="Les sources de la réponse">
+          <div class="gouttiere">
+            <div class="appui__carte">
+              <h2 class="appui__label">Appuyé sur</h2>
+
+              {sources.length > 0 && (
+                <ul class="appui__liste" role="list">
+                  {sources.map((source) => (
+                    <li class="appui__source">
+                      <a
+                        class="appui__lien"
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {source.libelle}
+                      </a>
+                      {/* La ligne de crédit est rendue mot pour mot — régime
+                          des crédits patrimoniaux, comme sous une planche. */}
+                      {source.credit && <p class="appui__credit">{source.credit}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {deriveDuWiki && (
+                <p class="appui__licence">
+                  Réponse rédigée d’après le wiki AMHE de la FFAMHE, sous licence{' '}
+                  <a href={LICENCE_WIKI} target="_blank" rel="noopener noreferrer">
+                    CC BY-NC-SA 3.0
+                  </a>
+                  . Elle est partagée aux mêmes conditions.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    {
+      (armes.length > 0 || traitesLies.length > 0) && (
+        <nav class="plus-loin" aria-label="Pour aller plus loin">
+          <div class="gouttiere">
+            <p class="plus-loin__label">Pour aller plus loin</p>
+            <ul class="plus-loin__liste" role="list">
+              {armes.map((arme) => (
+                <li class="plus-loin__item">
+                  <span class="plus-loin__type">La fiche de l’arme</span>
+                  <TextLink libelle={arme.nom} href={arme.href} />
+                </li>
+              ))}
+              {traitesLies.map((traite) => (
+                <li class="plus-loin__item">
+                  <span class="plus-loin__type">
+                    {traite.sousTitre ? `Le traité · ${traite.sousTitre}` : 'Le traité'}
+                  </span>
+                  <TextLink libelle={traite.titre} href={traite.href} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </nav>
+      )
+    }
+
+    <footer class="pied">
+      <div class="gouttiere pied__rangee">
+        <Button variante="contour" libelle="Toutes les questions" href={sommaire} />
+
+        {
+          (precedente || suivante) && (
+            <nav class="voisines" aria-label="Autres questions">
+              {precedente && (
+                <a class="voisine" href={lien(ecole, `/questions/${precedente.slug}/`)}>
+                  <span class="voisine__label">Question précédente</span>
+                  <span class="voisine__titre">{typographieFr(precedente.entry.question)}</span>
+                </a>
+              )}
+              {suivante && (
+                /* Alignée à droite seulement si elle a un vis-à-vis : seule
+                   dans sa grille, une entrée justifiée à droite paraît égarée. */
+                <a
+                  class:list={['voisine', { 'voisine--suivante': Boolean(precedente) }]}
+                  href={lien(ecole, `/questions/${suivante.slug}/`)}
+                >
+                  <span class="voisine__label">Question suivante</span>
+                  <span class="voisine__titre">{typographieFr(suivante.entry.question)}</span>
+                </a>
+              )}
+            </nav>
+          )
+        }
+      </div>
+    </footer>
+  </article>
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient après le pied de
+        page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide du site" />
+  </Fragment>
+</Base>
+
+<style>
+  /* ── Tête ────────────────────────────────────────────────────────────────── */
+
+  .tete__bloc {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(14px, 11.029px + 0.7619vw, 22px);
+    padding-block: clamp(40px, 20.686px + 4.9524vw, 92px)
+      clamp(26px, 15.6px + 2.6667vw, 54px);
+  }
+
+  .tete__contexte {
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  /* ── Réponse ─────────────────────────────────────────────────────────────── */
+
+  /* Le corps est rendu par `CorpsLibre`, qui porte sa mesure et son rythme. */
+  .reponse {
+    padding-block-end: clamp(36px, 22.5px + 3.46vw, 72px);
+  }
+
+  /* ── L'encadré « Appuyé sur » ────────────────────────────────────────────── */
+
+  .appui {
+    padding-block-end: clamp(28px, 17.5px + 2.69vw, 56px);
+  }
+
+  .appui__carte {
+    display: flex;
+    max-width: 720px;
+    flex-direction: column;
+    gap: clamp(12px, 9.771px + 0.5714vw, 18px);
+    padding: clamp(16px, 8.571px + 1.905vw, 36px) clamp(16px, 7.086px + 2.286vw, 40px);
+    border: var(--filet);
+    border-radius: var(--radius-2);
+    background: var(--surface-1);
+  }
+
+  .appui__label {
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: clamp(8.5px, 7.757px + 0.1905vw, 10.5px);
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .appui__liste {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(10px, 8.514px + 0.381vw, 14px);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .appui__source {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .appui__lien {
+    width: fit-content;
+    font-size: var(--fs-body-s);
+    line-height: 1.5;
+    color: var(--parch);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    text-underline-offset: 0.2em;
+    transition: color var(--transition);
+  }
+
+  .appui__lien:hover,
+  .appui__lien:focus-visible {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  /* Verbatim : la ligne vient de la source, elle peut être longue et sans
+     espaces (adresses) — on la laisse se replier n'importe où. */
+  .appui__credit {
+    margin: 0;
+    font-size: var(--fs-body-xxs);
+    line-height: 1.55;
+    color: var(--parch-mute);
+    overflow-wrap: anywhere;
+  }
+
+  .appui__licence {
+    margin: 0;
+    padding-top: clamp(10px, 8.514px + 0.381vw, 14px);
+    border-top: var(--filet);
+    font-size: var(--fs-body-xxs);
+    line-height: 1.55;
+    color: var(--parch-mute);
+  }
+
+  .appui__licence a {
+    color: var(--parch-soft);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    text-underline-offset: 0.2em;
+    transition: color var(--transition);
+  }
+
+  .appui__licence a:hover,
+  .appui__licence a:focus-visible {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  /* ── « Pour aller plus loin » ────────────────────────────────────────────── */
+
+  .plus-loin {
+    padding-block-end: clamp(36px, 22.5px + 3.46vw, 72px);
+  }
+
+  .plus-loin__label {
+    padding-block: clamp(14px, 11.029px + 0.7619vw, 22px) 0;
+    border-top: var(--filet);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .plus-loin__liste {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(14px, 11.029px + 0.7619vw, 22px) clamp(24px, 16.571px + 1.9048vw, 44px);
+    margin: clamp(14px, 11.029px + 0.7619vw, 22px) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 820px) {
+    .plus-loin__liste {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .plus-loin__item {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .plus-loin__type {
+    font-size: var(--fs-body-xxs);
+    line-height: var(--lh-body-tight);
+    color: var(--parch-mute);
+  }
+
+  /* ── Pied ────────────────────────────────────────────────────────────────── */
+
+  .pied {
+    border-top: var(--filet);
+  }
+
+  .pied__rangee {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(20px, 12.571px + 1.9048vw, 40px);
+    padding-block: clamp(30px, 20.343px + 2.4762vw, 56px)
+      clamp(60px, 34px + 6.6667vw, 130px);
+  }
+
+  .voisines {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(14px, 11.029px + 0.7619vw, 22px);
+    min-width: 0;
+  }
+
+  .voisine {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 6px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .voisine__label {
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: 1.2;
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .voisine__titre {
+    font-family: var(--font-display);
+    font-size: clamp(17px, 15.5px + 0.38vw, 21px);
+    line-height: 1.2;
+    color: var(--parch);
+    transition: color var(--transition);
+  }
+
+  .voisine:hover .voisine__titre,
+  .voisine:focus-visible .voisine__titre {
+    color: var(--ember-hot);
+  }
+
+  @media (min-width: 820px) {
+    .voisines {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(24px, 16.571px + 1.9048vw, 44px);
+      max-width: 620px;
+    }
+
+    /* La question suivante est à droite : texte calé sur ce bord, comme dans
+       un feuilletage. */
+    .voisine--suivante {
+      align-items: flex-end;
+      text-align: right;
+    }
+  }
+</style>

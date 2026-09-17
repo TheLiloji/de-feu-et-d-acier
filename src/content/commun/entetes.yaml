@@ -38,6 +38,14 @@ sources:
     les étudie, puis on les met à l'épreuve en salle. Le haut Moyen Âge n'a
     laissé aucun manuel d'escrime, et le combat viking se reconstruit
     autrement.
+questions:
+  eyebrow: Questions d'armes
+  titreLigne1: Une question,
+  titreLigne2: une réponse sourcée.
+  lede: >-
+    Les questions qu'on nous pose sur les armes et sur la pratique, avec des
+    réponses courtes. Chacune s'appuie sur les sources étudiées en salle, et
+    les cite en bas de page.
 partenaires:
   eyebrow: Partenaires
   titreLigne1: Sans eux,
