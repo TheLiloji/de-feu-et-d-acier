@@ -44,12 +44,14 @@ import {
   lireMenus,
   profsDe,
   questionsPubliees,
+  traitesTries,
 } from '../../lib/contenu';
 import { getEcolePrincipale } from '../../lib/ecoles';
 import { lien, lienArme } from '../../lib/liens';
 import { contexteDe, resoudre } from '../../lib/raccourcis';
 import { indexSuggestions } from '../../lib/recherche';
 import { typographieFr } from '../../lib/typographie';
+import { vignettesTraites } from '../../lib/vignettes';
 
 /** Replis des textes de tête, si la rubrique du CMS est vidée. */
 const LIBELLE = 'Questions d’armes';
@@ -61,15 +63,18 @@ const LEDE =
   'les cite en bas de page.';
 
 const ecole = await getEcolePrincipale();
-const [identite, hero, menus, entetes, disciplines, profs, questions] = await Promise.all([
-  lireIdentite(),
-  lireHero(),
-  lireMenus(),
-  lireEntetes(),
-  lireDisciplines(),
-  profsDe(ecole),
-  questionsPubliees(),
-]);
+const [identite, hero, menus, entetes, disciplines, profs, questions, traites] = await Promise.all(
+  [
+    lireIdentite(),
+    lireHero(),
+    lireMenus(),
+    lireEntetes(),
+    lireDisciplines(),
+    profsDe(ecole),
+    questionsPubliees(),
+    traitesTries(),
+  ],
+);
 
 // Même base de comptes que l'accueil et les autres pages de liste
 // (ARCHITECTURE.md §4) : les raccourcis du chapô comptent ce qui est affiché.
@@ -142,6 +147,14 @@ const generales = questions
  */
 const suggestions = await indexSuggestions({ ecole, questions, disciplines });
 
+/**
+ * Les vignettes des traités pour le panneau de l'assistant (étage 2) : quand
+ * une source citée est une fiche `/sources/<slug>/`, le panneau montre la
+ * planche vedette du traité à côté du lien. Bâti au build, inliné comme
+ * l'index des suggestions — src/lib/vignettes.ts.
+ */
+const vignettes = await vignettesTraites({ ecole, traites });
+
 const compte =
   questions.length === 0
     ? ''
@@ -194,7 +207,12 @@ const idTitre = 'questions-titre';
         {/* Recherche à deux étages : suggestions à la frappe, et l'assistant
             derrière « Poser la question » quand le service est activé. Sans
             JavaScript, rien n'apparaît — la page reste ce qu'elle est. */}
-        <ChercheQuestions entrees={suggestions} avecChatbot class="tete__cherche" />
+        <ChercheQuestions
+          entrees={suggestions}
+          vignettes={vignettes}
+          avecChatbot
+          class="tete__cherche"
+        />
       </div>
     </div>
   </header>
