@@ -65,7 +65,6 @@ const VIEWPORT_DEFAUT = { width: 1440, height: 900 };
 const ROUTES_CONNUES = [
   '/',
   '/actualites/',
-  '/actualites/le-site-fait-peau-neuve/',
   '/actualites/les-inscriptions-sont-ouvertes/',
   '/armes/epee-longue/',
   '/armes/messer/',
