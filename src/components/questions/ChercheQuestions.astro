@@ -28,18 +28,32 @@
 import Button from '../ui/Button.astro';
 import Icon from '../ui/Icon.astro';
 import type { EntreeSuggestion } from '../../lib/recherche';
+import type { VignetteTraite } from '../../lib/vignettes';
 
 export interface Props {
   /** L'index des suggestions, bâti par `indexSuggestions()`. */
   entrees: readonly EntreeSuggestion[];
   /** Étage 2 : le bouton « Poser la question » (page /questions/ seulement). */
   avecChatbot?: boolean;
+  /**
+   * Vignettes des traités du site, bâties au build par `vignettesTraites()`
+   * (src/lib/vignettes.ts) : quand l'assistant cite `/sources/<slug>/`, le
+   * panneau pose la planche vedette du traité à côté du lien. Uniquement des
+   * images du site — une source externe n'est jamais illustrée.
+   */
+  vignettes?: Readonly<Record<string, VignetteTraite>>;
   /** Préfixe des id — à changer si deux champs cohabitaient sur une page. */
   id?: string;
   class?: string;
 }
 
-const { entrees, avecChatbot = false, id = 'cherche-questions', class: classe } = Astro.props;
+const {
+  entrees,
+  avecChatbot = false,
+  vignettes = {},
+  id = 'cherche-questions',
+  class: classe,
+} = Astro.props;
 
 const idChamp = `${id}-champ`;
 const idListe = `${id}-liste`;
@@ -137,6 +151,19 @@ const idPanneau = `${id}-panneau`;
     data-donnees
     set:html={JSON.stringify(entrees).replace(/</g, '\\u003c')}
   />
+
+  {/* Second îlot, même régime : les vignettes des traités pour le panneau de
+      l'assistant. Inliné seulement là où le panneau existe. */}
+  {
+    avecChatbot && Object.keys(vignettes).length > 0 && (
+      <script
+        is:inline
+        type="application/json"
+        data-vignettes
+        set:html={JSON.stringify(vignettes).replace(/</g, '\\u003c')}
+      />
+    )
+  }
 </div>
 
 <script>
@@ -152,6 +179,14 @@ const idPanneau = `${id}-panneau`;
     h: string;
     q: string;
     m: string;
+  }
+
+  /** Une vignette de traité inlinée (src/lib/vignettes.ts, clés courtes). */
+  interface Vignette {
+    s: string;
+    a: string;
+    l: number;
+    h: number;
   }
 
   interface ReponseIa {
@@ -280,6 +315,19 @@ const idPanneau = `${id}-panneau`;
     const panneau = racine.querySelector<HTMLElement>('[data-panneau]');
     const bouton = racine.querySelector<HTMLButtonElement>('[data-poser]');
 
+    // Les vignettes des traités du site, si la page en a inliné. Un îlot
+    // absent ou illisible laisse le dictionnaire vide : les sources
+    // s'affichent alors en lien seul, comme avant.
+    let vignettes: Record<string, Vignette> = {};
+    const ilotVignettes = racine.querySelector<HTMLScriptElement>('script[data-vignettes]');
+    if (ilotVignettes) {
+      try {
+        vignettes = JSON.parse(ilotVignettes.textContent ?? '{}') as Record<string, Vignette>;
+      } catch {
+        vignettes = {};
+      }
+    }
+
     /** `inconnu` tant que /api/ia n'a pas répondu ; sondé au premier geste. */
     let etatService: 'inconnu' | 'actif' | 'inactif' = 'inconnu';
     let sondeLancee = false;
@@ -383,6 +431,24 @@ const idPanneau = `${id}-panneau`;
       const listeSources = corps.sources ?? [];
       for (const source of listeSources) {
         const item = document.createElement('li');
+        item.className = 'panneau__source';
+
+        // La vignette du traité, quand la source est une fiche du site. La
+        // consultation se fait sur l'URL exacte : une adresse externe n'est
+        // jamais dans le dictionnaire, donc jamais illustrée.
+        const vignette = vignettes[source.url];
+        if (vignette) {
+          const image = document.createElement('img');
+          image.src = vignette.s;
+          image.alt = vignette.a;
+          image.width = vignette.l;
+          image.height = vignette.h;
+          image.loading = 'lazy';
+          image.decoding = 'async';
+          image.className = 'panneau__source-vignette';
+          item.append(image);
+        }
+
         const lien = document.createElement('a');
         lien.textContent = source.titre;
         lien.href = source.url;
@@ -655,10 +721,29 @@ const idPanneau = `${id}-panneau`;
   .panneau__sources {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  /* Les items sont créés par le script : leurs classes échappent au scope. */
+  .panneau__sources :global(.panneau__source) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* La vignette d'un traité du site : petite, cadrée au filet comme toute
+     planche, à côté du lien — jamais une galerie. Les dimensions intrinsèques
+     sont posées par le script, la hauteur d'affichage est fixée ici. */
+  .panneau__sources :global(.panneau__source-vignette) {
+    flex: none;
+    width: auto;
+    height: 44px;
+    border: var(--filet);
+    border-radius: var(--radius-1);
+    background: var(--char);
   }
 
   .panneau__sources :global(a) {
