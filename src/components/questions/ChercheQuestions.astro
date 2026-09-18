@@ -68,7 +68,7 @@ const idPanneau = `${id}-panneau`;
       autocapitalize="off"
       spellcheck="false"
       maxlength="300"
-      placeholder="Chercher une question : rapière, garde, Liechtenauer…"
+      placeholder="Chercher une question, ou poser la vôtre…"
     />
   </div>
 
@@ -287,8 +287,11 @@ const idPanneau = `${id}-panneau`;
 
     const majChatbot = () => {
       if (!blocIa) return;
+      // Le bloc se montre dès que le service est là : un bouton visible mais
+      // grisé apprend au visiteur que poser sa propre question est possible.
       const assezLongue = saisie.value.trim().length >= MIN_CHATBOT;
-      blocIa.hidden = etatService !== 'actif' || !assezLongue;
+      blocIa.hidden = etatService !== 'actif';
+      if (bouton) bouton.disabled = !assezLongue || envoiEnCours;
     };
 
     const sonder = () => {
@@ -305,11 +308,18 @@ const idPanneau = `${id}-panneau`;
         });
     };
 
-    saisie.addEventListener('focus', sonder, { once: true });
+    // Sondé au chargement : le bouton doit se voir sans attendre un focus.
+    sonder();
 
     const poser = async () => {
       if (!panneau || !bouton || envoiEnCours) return;
-      const question = saisie.value.trim().slice(0, MAX_QUESTION);
+      // Une question collée avec ses guillemets (« … ») les garderait : on
+      // gomme les guillemets d'enrobage avant l'envoi et l'affichage.
+      const question = saisie.value
+        .trim()
+        .replace(/^[«"'\s]+/, '')
+        .replace(/[»"'\s]+$/, '')
+        .slice(0, MAX_QUESTION);
       if (question.length < MIN_CHATBOT) return;
 
       const attente = panneau.querySelector<HTMLElement>('[data-attente]');
@@ -553,6 +563,13 @@ const idPanneau = `${id}-panneau`;
     letter-spacing: 0.24em;
     text-transform: uppercase;
     color: var(--ember);
+  }
+
+  /* Bouton grisé tant que la question est trop courte : l'affordance reste
+     visible, l'action attend trois caractères. */
+  .cherche__ia :global([data-poser][disabled]) {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .panneau__question {

@@ -53,12 +53,15 @@ import { chercherPassages, type PassageRetrouve } from '../../ia/moteur';
 export const prerender = false;
 
 /**
- * Modèle « flash » gratuit courant. En changer ne demande que cette ligne.
- * Attention au manège des retraites Google : gemini-2.5-flash part le
- * 16/10/2026 et les clés récentes n'y accèdent déjà plus (constaté au
- * premier déploiement, 17/09/2026 — le service répondait 503).
+ * Modèle « flash-lite » gratuit courant. En changer ne demande que cette ligne.
+ * Deux pièges vécus :
+ *   - le manège des retraites Google : gemini-2.5-flash refusait déjà les
+ *     clés récentes un mois avant sa retraite (17/09/2026, 503 systématique) ;
+ *   - les quotas du palier gratuit : gemini-3.6-flash ≈ 20 requêtes PAR JOUR
+ *     (épuisé dès les premiers essais, 18/09/2026) contre ≈ 500/jour pour
+ *     flash-lite. Pour un assistant public, flash-lite est le seul viable.
  */
-const MODELE = 'gemini-3.6-flash';
+const MODELE = 'gemini-3.5-flash-lite';
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODELE}:generateContent`;
 
 const QUESTION_MIN = 3;
@@ -228,11 +231,17 @@ function genererBouchon(prompt: string, passages: PassageRetrouve[]): string {
   );
 }
 
-/** Appel REST Gemini. Rend le texte, ou `null` si l'API ne répond pas bien. */
-async function genererGemini(cle: string, prompt: string): Promise<string | null> {
-  let reponse: Response;
+/**
+ * Appel REST Gemini. Résultat discriminé : le quota amont (429) a son propre
+ * cas pour que le visiteur lise « réessayez dans quelques minutes » plutôt
+ * qu'une fausse panne. Une seule retentative sur 429 : les à-coups de la
+ * limite par minute passent, l'épuisement du jour non.
+ */
+type ResultatGemini = { type: 'ok'; texte: string } | { type: 'quota' } | { type: 'panne' };
+
+async function appelBrut(cle: string, prompt: string): Promise<Response | null> {
   try {
-    reponse = await fetch(ENDPOINT, {
+    return await fetch(ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -248,7 +257,17 @@ async function genererGemini(cle: string, prompt: string): Promise<string | null
   } catch {
     return null; // réseau, délai : l'appelant rend l'erreur sobre
   }
-  if (!reponse.ok) return null;
+}
+
+async function genererGemini(cle: string, prompt: string): Promise<ResultatGemini> {
+  let reponse = await appelBrut(cle, prompt);
+  if (reponse?.status === 429) {
+    await new Promise((r) => setTimeout(r, 1200));
+    reponse = await appelBrut(cle, prompt);
+    if (reponse?.status === 429) return { type: 'quota' };
+  }
+  if (!reponse) return { type: 'panne' };
+  if (!reponse.ok) return { type: 'panne' };
 
   try {
     const corps = (await reponse.json()) as {
@@ -258,9 +277,9 @@ async function genererGemini(cle: string, prompt: string): Promise<string | null
       .map((p) => p.text ?? '')
       .join('')
       .trim();
-    return texte || null;
+    return texte ? { type: 'ok', texte } : { type: 'panne' };
   } catch {
-    return null;
+    return { type: 'panne' };
   }
 }
 
@@ -341,16 +360,23 @@ export const POST: APIRoute = async (contexte) => {
   }
 
   const prompt = composerPrompt(question, passages);
-  const texte = estBouchon(cle)
-    ? genererBouchon(prompt, passages)
+  const resultat: ResultatGemini = estBouchon(cle)
+    ? { type: 'ok', texte: genererBouchon(prompt, passages) }
     : await genererGemini(cle, prompt);
 
-  if (!texte) {
+  if (resultat.type === 'quota') {
+    return erreur(
+      429,
+      'L’assistant a reçu beaucoup de questions ces dernières minutes. Réessayez un peu plus tard, ou parcourez les questions publiées.',
+    );
+  }
+  if (resultat.type === 'panne') {
     return erreur(
       503,
       'Le service de réponse ne répond pas pour le moment. Réessayez plus tard, ou parcourez les questions publiées.',
     );
   }
+  const texte = resultat.texte;
 
   // Les sources citées sous la réponse : une par document, ordre des scores.
   const vues = new Set<string>();
