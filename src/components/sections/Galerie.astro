@@ -162,7 +162,9 @@ const titre = [
 ].filter((ligne) => ligne.texte.length > 0);
 
 const facebook = ecole.fiche.reseaux?.facebook ?? '';
+const instagram = ecole.fiche.reseaux?.instagram ?? '';
 const LIBELLE_FACEBOOK = 'Suivre sur Facebook';
+const LIBELLE_INSTAGRAM = 'Suivre sur Instagram';
 
 const idTitre = `${id}-titre`;
 const mosaique = tuiles.length === MAX_TUILES;
@@ -188,15 +190,26 @@ const mosaique = tuiles.length === MAX_TUILES;
         <Reveal>
           <div class="galerie__tete">
             {titre.length > 0 && <SectionTitle lignes={titre} taille="xl" id={idTitre} />}
-            {facebook && (
+            {(facebook || instagram) && (
               <div class="galerie__bouton">
-                <Button
-                  variante="contour"
-                  taille="petite"
-                  libelle={LIBELLE_FACEBOOK}
-                  href={facebook}
-                  externe
-                />
+                {facebook && (
+                  <Button
+                    variante="contour"
+                    taille="petite"
+                    libelle={LIBELLE_FACEBOOK}
+                    href={facebook}
+                    externe
+                  />
+                )}
+                {instagram && (
+                  <Button
+                    variante="contour"
+                    taille="petite"
+                    libelle={LIBELLE_INSTAGRAM}
+                    href={instagram}
+                    externe
+                  />
+                )}
               </div>
             )}
           </div>
@@ -229,9 +242,12 @@ const mosaique = tuiles.length === MAX_TUILES;
           </div>
         </Reveal>
 
-        {facebook && (
+        {(facebook || instagram) && (
           <p class="galerie__lien-mobile">
-            <TextLink libelle={LIBELLE_FACEBOOK} href={facebook} externe ton="soft" />
+            {facebook && <TextLink libelle={LIBELLE_FACEBOOK} href={facebook} externe ton="soft" />}
+            {instagram && (
+              <TextLink libelle={LIBELLE_INSTAGRAM} href={instagram} externe ton="soft" />
+            )}
           </p>
         )}
       </div>
@@ -264,9 +280,17 @@ const mosaique = tuiles.length === MAX_TUILES;
     display: none;
   }
 
+  .galerie__bouton {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
   .galerie__lien-mobile {
     display: flex;
+    gap: 20px;
     justify-content: center;
+    flex-wrap: wrap;
     margin: 20px 0 0;
   }
 

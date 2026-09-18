@@ -53,7 +53,7 @@ colonnes:
       - libelle: Nous rejoindre
         url: '#rejoindre'
       - libelle: Adhésion
-        url: ''
+        url: https://www.helloasso.com/beta/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2026-2027
       - libelle: Nous écrire
         url: ''
       - libelle: HelloAsso
@@ -62,6 +62,8 @@ colonnes:
     liens:
       - libelle: Facebook
         url: https://www.facebook.com/63AMHE/
+      - libelle: Instagram
+        url: https://www.instagram.com/dfda.amhe/
       - libelle: HEMA Ratings
         url: https://hemaratings.com/clubs/details/1155/
       - libelle: USAM Clermont
