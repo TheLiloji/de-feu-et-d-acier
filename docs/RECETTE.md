@@ -64,10 +64,10 @@ recette pour autant.
 
 | # | Contrôle |
 |---|---|
-| 1 | Les 49 pages connues répondent 200 ; une adresse inventée répond 404. |
-| 2 | Zéro débordement horizontal à 390/820/1000/1440 px sur 8 gabarits représentatifs (dont le sommaire des questions d'armes et une page de question). |
+| 1 | Les 50 pages connues répondent 200 ; une adresse inventée répond 404. |
+| 2 | Zéro débordement horizontal à 390/820/1000/1440 px sur 9 gabarits représentatifs (dont le sommaire des questions d'armes, une page de question et la page de partenariat). |
 | 3 | Zéro `<script>`/`<noscript>` visible à l'écran (le piège classique : un `display: grid` posé trop largement dans le CSS peut rendre visibles des balises censées être invisibles par défaut). |
-| 4 | Un seul `<h1>` par page ; `sitemap.xml` compte autant d'URL que de pages HTML construites (404 exclue). |
+| 4 | Un seul `<h1>` par page ; `sitemap.xml` compte autant d'URL que de pages HTML construites (404 exclue). Exception : `/sponsors/`, volontairement orpheline et noindex, est construite mais hors sitemap (`PAGES_HORS_SITEMAP` dans `scripts/recette.mjs`). |
 | 5 | Sur chaque fiche de traité : autant de crédits affichés que de planches ; la mention « digitalisiert von Google » sur chaque crédit Marozzo ; le lien de licence CC BY 4.0 sur la fiche I.33. |
 | 6 | « Netflix » apparaît exactement une fois sur l'accueil (texte de l'encart d'adhésion) ; zéro tiret cadratin dans un paragraphe de prose, hors lignes de crédit et citations. |
 | 7 | Aucune image cassée (`naturalWidth === 0` après défilement complet) ; zéro violation `axe-core` en WCAG 2.1 AA. |

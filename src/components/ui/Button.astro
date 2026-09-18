@@ -54,6 +54,11 @@ interface Props {
   icone?: NomIcone | null;
   /** Lien sortant : nouvel onglet, `arrow-up-right`, mention pour lecteur d'écran. */
   externe?: boolean;
+  /** Le lien télécharge son fichier (`<a download>`) au lieu de l'ouvrir.
+      Ignoré sans `href`. Un fichier téléchargé s'ouvre dans l'application de
+      la personne, pas dans un onglet : `externe` n'a pas lieu d'être en même
+      temps. */
+  telechargement?: boolean;
   /** Occupe toute la largeur — c'est la règle sur mobile (design-spec §9.5). */
   pleineLargeur?: boolean;
   /** Bouton inactif (`<button>` uniquement). */
@@ -72,6 +77,7 @@ const {
   taille = 'normale',
   icone = 'arrow-right',
   externe = false,
+  telechargement = false,
   pleineLargeur = false,
   desactive = false,
   class: classe,
@@ -99,6 +105,7 @@ const Balise = href ? 'a' : 'button';
   disabled={href ? undefined : desactive || undefined}
   target={externe && href ? '_blank' : undefined}
   rel={externe && href ? 'noopener noreferrer' : undefined}
+  download={telechargement && href ? true : undefined}
   {...reste}
 >
   <span class="bouton__libelle"><slot>{libelle}</slot>{externe && <span class="hors-ecran"> (nouvel onglet)</span>}</span>

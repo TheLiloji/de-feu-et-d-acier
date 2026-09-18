@@ -20,6 +20,13 @@
  *
  * Volontairement absents : `/keystatic` et `/api/keystatic/*` (jamais
  * pré-rendus, donc aucune URL à publier) et la page 404.
+ *
+ * Volontairement absente aussi : `/sponsors/`, la page de partenariat —
+ * orpheline et noindex, montrée aux entreprises démarchées, jamais liée
+ * depuis le site. Elle est recensée dans `PAGES_HORS_SITEMAP`
+ * (scripts/recette.mjs), que le contrôle « sitemap vs pages HTML » soustrait
+ * de son comptage. Pour l'officialiser un jour, suivre le commentaire
+ * d'en-tête de `src/pages/sponsors.astro`.
  */
 import type { APIRoute } from 'astro';
 import {
