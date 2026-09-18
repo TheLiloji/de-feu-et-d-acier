@@ -66,6 +66,7 @@ const ROUTES_CONNUES = [
   '/',
   '/actualites/',
   '/actualites/le-site-fait-peau-neuve/',
+  '/actualites/les-inscriptions-sont-ouvertes/',
   '/armes/epee-longue/',
   '/armes/messer/',
   '/armes/combat-viking/',
