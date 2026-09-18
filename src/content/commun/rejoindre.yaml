@@ -32,6 +32,6 @@ blocAdhesion:
       Le reste (vestes, protections, armes), on en parle au fil du temps,
       souvent à prix d'ami chez nos partenaires.
   bouton:
-    libelle: S'inscrire en ligne
+    libelle: S’inscrire en ligne
     url: https://www.helloasso.com/beta/associations/usam-amhe-clermont-ferrand/adhesions/inscription-usam-amhe-clermont-2026-2027
 note: 'Une question avant de venir ? Écris-nous à {email} ou appelle le {telephone}.'
