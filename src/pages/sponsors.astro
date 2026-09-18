@@ -105,8 +105,8 @@ const CONTACT_TEXTE = T(
 // dans le viewport, easeOutCubic ~1,2 s) ; le HTML contient la valeur finale,
 // pour que sans JavaScript ou en mouvement réduit rien ne manque.
 const CHIFFRES = [
-  { valeur: 3, suffixe: '', libelle: T('disciplines enseignées') },
-  { valeur: 27, suffixe: '', libelle: T('nouveaux adhérents cette saison') },
+  { valeur: 60, suffixe: '', libelle: T('adhérents cette saison') },
+  { valeur: 27, suffixe: '', libelle: T('nouveaux à la rentrée') },
   { valeur: 80, suffixe: 'ᵉ', libelle: T('mondial, notre meilleur classement') },
   { valeur: 2, suffixe: '', libelle: T('titres de champion fédéral') },
 ];
@@ -162,7 +162,7 @@ const ATOUTS = [
   {
     titre: T('Votre logo sur nos supports'),
     texte: T(
-      'Affiches, bannières, réseaux sociaux et site du club : votre logo suit notre communication toute l’année.',
+      'Affiches, bannières, site du club et nos réseaux suivis par près de 900 abonnés : votre logo suit notre communication toute l’année.',
     ),
   },
   {
@@ -463,9 +463,18 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
         />
       </div>
       <p class="sp-contact__texte sp-reveal" style="transition-delay:180ms">{CONTACT_TEXTE}</p>
+      {/* L'action première est le contact : le rendez-vous vaut plus que le
+          téléchargement, le dossier reste à portée en bouton secondaire. */}
       <p class="sp-contact__action sp-reveal" style="transition-delay:270ms">
         <Button
           variante="pleine"
+          taille="grande"
+          libelle="Discutons-en"
+          href={`mailto:${EMAIL}`}
+          class="sp-contact__bouton"
+        />
+        <Button
+          variante="contour"
           taille="grande"
           libelle="Télécharger le dossier (PDF, 1,5 Mo)"
           href={PDF}
@@ -1150,8 +1159,10 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
 
   .sp-contact__action {
     display: flex;
+    flex-wrap: wrap;
     width: 100%;
     justify-content: center;
+    gap: 14px;
     margin: clamp(28px, 22px + 1.5vw, 40px) 0 0;
   }
 
@@ -1183,9 +1194,10 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
     color: var(--parch-mute);
   }
 
-  /* Sur mobile, le bouton de téléchargement prend toute la largeur, comme les
-     CTA de fin de fiche — et son libellé, long (« … (PDF, 1,5 Mo) »), a le
-     droit de se replier plutôt que de déborder d'un écran de 390 px. */
+  /* Sur mobile, les deux boutons prennent toute la largeur et s'empilent,
+     comme les CTA de fin de fiche — et le libellé long du téléchargement
+     (« … (PDF, 1,5 Mo) ») a le droit de se replier plutôt que de déborder
+     d'un écran de 390 px. */
   @media (max-width: 819.98px) {
     .sp-contact__action :global(.sp-contact__bouton) {
       display: flex;
