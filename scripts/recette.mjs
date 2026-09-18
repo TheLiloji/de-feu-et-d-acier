@@ -59,8 +59,11 @@ const VIEWPORT_DEFAUT = { width: 1440, height: 900 };
 
 // ── Le plan du site : à tenir à jour à la main, comme sitemap.xml.ts ───────
 //
-// 49 pages connues (toutes attendues à 200) + 1 adresse volontairement
-// inconnue (attendue à 404) = les 50 routes du cahier des charges.
+// 50 pages connues (toutes attendues à 200) + 1 adresse volontairement
+// inconnue (attendue à 404). Les 49 pages du cahier des charges, plus la
+// page de partenariat /sponsors/ — orpheline et noindex, donc hors sitemap
+// (cf. PAGES_HORS_SITEMAP ci-dessous), mais servie et contrôlée comme les
+// autres.
 
 const ROUTES_CONNUES = [
   '/',
@@ -112,7 +115,18 @@ const ROUTES_CONNUES = [
   '/questions/y-avait-il-des-ecoles-d-escrime-au-moyen-age/',
   '/mentions-legales/',
   '/confidentialite/',
+  '/sponsors/',
 ];
+
+/**
+ * Pages construites en HTML mais volontairement absentes du sitemap
+ * (chemins relatifs à dist/client/). Aujourd'hui : la page de partenariat,
+ * orpheline et noindex — montrée aux entreprises démarchées, jamais liée
+ * depuis le site. Le contrôle 4bis les soustrait du comptage ; le jour où une
+ * de ces pages est officialisée, la retirer d'ici ET l'ajouter à
+ * src/pages/sitemap.xml.ts (cf. le commentaire d'en-tête de sponsors.astro).
+ */
+const PAGES_HORS_SITEMAP = ['sponsors/index.html'];
 
 /** Ne correspond à aucune page : sert uniquement à vérifier le 404. */
 const ROUTE_INCONNUE = '/cette-page-n-existe-pas--recette-qa/';
@@ -123,12 +137,13 @@ const SLUGS_TRAITES = ROUTES_CONNUES.filter((r) => r.startsWith('/sources/') && 
 );
 
 /**
- * 8 gabarits représentatifs pour le contrôle de débordement (point 2) : le
- * passer sur les 49 pages coûterait cher pour peu de gain, ceux-là couvrent
+ * 9 gabarits représentatifs pour le contrôle de débordement (point 2) : le
+ * passer sur les 50 pages coûterait cher pour peu de gain, ceux-là couvrent
  * le hero de l'accueil, une fiche arme, une fiche prof, la liste
  * d'actualités, l'index des sources, une fiche de traité (la plus dense en
  * mise en page : galerie, encadré de numérisation, extrait), le sommaire des
- * questions d'armes et une page de question (encadré des sources, renvois).
+ * questions d'armes, une page de question (encadré des sources, renvois) et
+ * la page de partenariat (bandeau de chiffres, palmarès, cartes).
  */
 const PAGES_DEBORDEMENT = [
   '/',
@@ -139,6 +154,7 @@ const PAGES_DEBORDEMENT = [
   '/sources/talhoffer-1467/',
   '/questions/',
   '/questions/pourquoi-la-garde-s-appelle-vom-tag/',
+  '/sponsors/',
 ];
 const LARGEURS_DEBORDEMENT = [390, 820, 1000, 1440];
 
@@ -494,7 +510,13 @@ async function verifierSitemap(base) {
     console.log('ℹ  dist/client/ introuvable localement — contrôle ignoré (mode --url sans build local).');
     return;
   }
-  const fichiersHtml = listerHtml(DIST_CLIENT).filter((f) => path.basename(f) !== '404.html');
+  // La 404 n'a pas d'URL à publier ; les pages volontairement orphelines
+  // (PAGES_HORS_SITEMAP, en tête de fichier) non plus.
+  const fichiersHtml = listerHtml(DIST_CLIENT).filter(
+    (f) =>
+      path.basename(f) !== '404.html' &&
+      !PAGES_HORS_SITEMAP.includes(path.relative(DIST_CLIENT, f).split(path.sep).join('/')),
+  );
 
   let xml = '';
   try {
@@ -508,7 +530,7 @@ async function verifierSitemap(base) {
     '4-sitemap',
     'nombre d’URL du sitemap == nombre de pages HTML construites',
     nbLoc === fichiersHtml.length,
-    `sitemap ${nbLoc} vs dist/client ${fichiersHtml.length} fichier(s) html (404.html exclue)`,
+    `sitemap ${nbLoc} vs dist/client ${fichiersHtml.length} fichier(s) html (404.html et pages hors sitemap exclues)`,
   );
 }
 

@@ -1,0 +1,1202 @@
+---
+/**
+ * Page vitrine de partenariat — `/sponsors/`.
+ *
+ * ⚠️ **Page volontairement ORPHELINE et noindex.** Elle reprend le fond du
+ * dossier de partenariat PDF (public/documents/) dans la charte du site, pour
+ * être montrée à des entreprises démarchées : personne n'y arrive sans l'URL.
+ * Aucun lien ne doit pointer vers elle depuis le site — ni menu, ni pied de
+ * page, ni sitemap.
+ *
+ * Pour l'officialiser un jour :
+ *   1. retirer `noIndex` sur <Base> ci-dessous ;
+ *   2. l'ajouter à `src/pages/sitemap.xml.ts` ;
+ *   3. la retirer de `PAGES_HORS_SITEMAP` dans `scripts/recette.mjs` ;
+ *   4. la lier depuis le site (menu, pied de page ou section partenaires).
+ *
+ * Composition : hero photographique voilé d'encre (comme les heros de fiche),
+ * bandeau de chiffres à compteurs animés, le club, les trois armes, le
+ * palmarès — la seule section du site, avec les accroches dorées des fiches
+ * prof, où l'or (`--or`/`--or-clair`/`--or-eclat`) est permis, et il reprend
+ * ici leur balayage métallique —, les contreparties, les partenaires actuels
+ * (section de l'accueil réutilisée), puis le dossier PDF et le contact.
+ *
+ * Animations : apparitions au défilement, compteurs, filet du hero qui
+ * s'étire. Tous les états initiaux masqués n'existent que sous `html.js`
+ * (classe posée par le script inline du <head>) : sans JavaScript, tout est
+ * visible d'emblée. `prefers-reduced-motion: reduce` neutralise tout —
+ * compteurs à leur valeur finale, balayage doré figé sur son reflet central,
+ * comme sur les fiches prof.
+ */
+import { Picture } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import Footer from '../components/sections/Footer.astro';
+import Nav from '../components/sections/Nav.astro';
+import Partenaires from '../components/sections/Partenaires.astro';
+import Button from '../components/ui/Button.astro';
+import Filet from '../components/ui/Filet.astro';
+import MediaCard from '../components/ui/MediaCard.astro';
+import SectionLabel from '../components/ui/SectionLabel.astro';
+import SectionTitle from '../components/ui/SectionTitle.astro';
+import TabBar from '../components/ui/TabBar.astro';
+import { estNomIcone } from '../components/ui/icones';
+import {
+  lireDisciplines,
+  lireHero,
+  lireIdentite,
+  lireMenus,
+  lirePartenaires,
+  profsDe,
+} from '../lib/contenu';
+import { getEcolePrincipale } from '../lib/ecoles';
+import { largeursSrcset, resoudrePhoto } from '../lib/images';
+import { lien } from '../lib/liens';
+import { contexteDe } from '../lib/raccourcis';
+import { typographieFr } from '../lib/typographie';
+
+const ecole = await getEcolePrincipale();
+const [identite, hero, menus, disciplines, partenaires, profs] = await Promise.all([
+  lireIdentite(),
+  lireHero(),
+  lireMenus(),
+  lireDisciplines(),
+  lirePartenaires(),
+  profsDe(ecole),
+]);
+
+// Même comptage que l'accueil : les présentations de partenaires peuvent
+// contenir des raccourcis ({nb_armes}, {email}…), résolus par la section.
+const ctx = contexteDe(ecole.fiche, {
+  nbArmes: disciplines.filter((d) => d.entry.affichee).length,
+  nbProfs: profs.filter((p) => p.entry.visible).length,
+});
+
+// ── Textes de la page ───────────────────────────────────────────────────────
+// Copie fournie par le club, reprise verbatim ; `typographieFr` ne fait que
+// poser les insécables devant la ponctuation haute, comme partout sur le site.
+const T = typographieFr;
+
+const LEDE = T(
+  'De Feu et d’Acier enseigne les arts martiaux historiques européens à Clermont-Ferrand, au sein de l’USAM. Nos compétiteurs portent les couleurs du club, et celles de ses partenaires, des tournois régionaux aux rencontres internationales. Voici ce que votre entreprise y gagne.',
+);
+
+const CLUB_P1 = T(
+  'De Feu et d’Acier est la section AMHE de l’USAM Clermont-Ferrand, affiliée à la Fédération Française des Arts Martiaux Historiques Européens. On y redonne vie à l’escrime ancienne à partir des traités des maîtres d’armes, dans un cadre encadré et convivial.',
+);
+const CLUB_P2 = T(
+  'Entraînements hebdomadaires, stages ouverts au public, démonstrations lors d’événements locaux, tournois nationaux et internationaux : le club vit toute l’année, et il attire. Cette rentrée, vingt-sept nouveaux pratiquants ont rejoint ses rangs.',
+);
+
+const PALMARES_INTRO = T(
+  'Nos compétiteurs représentent le club toute l’année, en régional, en national et à l’international. Chaque podium fait rayonner le club, et donne un coup de projecteur à ses partenaires.',
+);
+const PALMARES_NOTE = T('Classements mondiaux HEMA Ratings, épée longue acier.');
+
+const POURQUOI_INTRO = T(
+  'Soutenir le club, c’est associer votre entreprise à un sport qui intrigue autant qu’il rassemble, et à des valeurs qui se voient sur le plateau : le respect, la rigueur, l’esprit d’équipe. C’est aussi toucher un public varié, du curieux croisé en démonstration aux compétiteurs venus de toute l’Europe.',
+);
+
+const CONTACT_TEXTE = T(
+  'Le dossier de partenariat complet est à votre disposition, et Matthieu Pelissier, notre responsable partenariats, répond à toutes vos questions. Chaque partenariat se construit sur mesure : le plus simple est d’en discuter.',
+);
+
+// ── Bandeau de chiffres ─────────────────────────────────────────────────────
+// La valeur numérique est portée par `data-compteur` (montée animée à l'entrée
+// dans le viewport, easeOutCubic ~1,2 s) ; le HTML contient la valeur finale,
+// pour que sans JavaScript ou en mouvement réduit rien ne manque.
+const CHIFFRES = [
+  { valeur: 3, suffixe: '', libelle: T('disciplines enseignées') },
+  { valeur: 27, suffixe: '', libelle: T('nouveaux adhérents cette saison') },
+  { valeur: 80, suffixe: 'ᵉ', libelle: T('mondial, notre meilleur classement') },
+  { valeur: 2, suffixe: '', libelle: T('titres de champion fédéral') },
+];
+
+// ── Les trois armes ─────────────────────────────────────────────────────────
+const ARMES = [
+  {
+    nom: 'Épée longue',
+    texte: T('L’escrime médiévale à deux mains, discipline reine des tournois.'),
+    photo: resoudrePhoto('/src/assets/photos/commun/arme-epee-longue.jpg'),
+    alt: 'Assaut à l’épée longue',
+  },
+  {
+    nom: 'Rapière',
+    texte: T('L’escrime fine de la Renaissance, tout en allonge et en précision.'),
+    photo: resoudrePhoto('/src/assets/photos/commun/arme-rapiere.jpg'),
+    alt: 'Assaut à la rapière',
+  },
+  {
+    nom: 'Messer',
+    texte: T('Le grand couteau des écoles allemandes, direct et percutant.'),
+    photo: resoudrePhoto('/src/assets/photos/commun/arme-messer.jpg'),
+    alt: 'Assaut au messer',
+  },
+];
+const ARMES_NOTE = T(
+  'L’épée et la bocle ainsi que le combat viking complètent la pratique au fil de l’année.',
+);
+
+// ── Palmarès ────────────────────────────────────────────────────────────────
+// Les tirets du dossier séparent des champs de données : ici ils deviennent de
+// la structure (lignes, points médians), jamais des tirets dans du texte.
+const PALMARES = [
+  {
+    nom: 'Gabriel Tardio',
+    rang: '80ᵉ mondial · 3ᵉ combattant français',
+    titres: T('Champion fédéral 2024-2025 et 2025-2026 · Fosse aux Lions 2026 : 1ʳᵉ place'),
+  },
+  {
+    nom: 'Gauthier Dietschi',
+    rang: '155ᵉ mondial · 7ᵉ combattant français',
+    titres: T('Vice-champion fédéral 2025-2026 · Burdigala Fédéral 2026 : 3ᵉ place'),
+  },
+  {
+    nom: 'Matthieu Pelissier',
+    rang: '247ᵉ mondial · 21ᵉ combattant français',
+    titres: T('Tournoi d’Angers 2026 : 1ʳᵉ place'),
+  },
+];
+
+// ── Contreparties ───────────────────────────────────────────────────────────
+const ATOUTS = [
+  {
+    titre: T('Votre logo sur nos supports'),
+    texte: T(
+      'Affiches, bannières, réseaux sociaux et site du club : votre logo suit notre communication toute l’année.',
+    ),
+  },
+  {
+    titre: T('Votre nom sur nos événements'),
+    texte: T(
+      'Tournois, stages, démonstrations : votre entreprise est mise en avant sur place, sur les affiches comme au micro.',
+    ),
+  },
+  {
+    titre: T('Vos produits entre de bonnes mains'),
+    texte: T(
+      'Dotations de tournoi et distributions lors d’événements : vos produits circulent dans une communauté curieuse et fidèle.',
+    ),
+  },
+  {
+    titre: T('Des événements sur mesure'),
+    texte: T(
+      'Initiations, démonstrations, team building autour des AMHE : le club organise des événements dédiés à votre entreprise.',
+    ),
+  },
+];
+
+// ── Dossier et contact ──────────────────────────────────────────────────────
+const PDF = '/documents/dossier-partenariat-de-feu-et-d-acier.pdf';
+const EMAIL = 'matthieupelissier9@gmail.com';
+const TELEPHONE_AFFICHE = '06 61 26 23 19';
+const TELEPHONE_LIEN = 'tel:+33661262319';
+
+// ── Photos ──────────────────────────────────────────────────────────────────
+const photoHero = resoudrePhoto('/src/assets/photos/commun/tournois-en-garde.jpg');
+const photoClub = resoudrePhoto('/src/assets/photos/clermont/article-rentree-gymnase.jpg');
+const photoPodium = resoudrePhoto('/src/assets/photos/commun/tournois-podium.jpg');
+
+// Chrome mobile : mêmes onglets que les pages légales, aucun actif — cette
+// page ne correspond à aucune des cinq destinations de la barre.
+const onglets = (menus.barreMobile ?? []).map((onglet) => ({
+  libelle: onglet.libelle,
+  href: lien(ecole, onglet.lien),
+  icone: estNomIcone(onglet.icone) ? onglet.icone : ('house' as const),
+  exergue: onglet.icone === 'swords',
+}));
+---
+
+<Base
+  ecole={ecole}
+  identite={identite}
+  titre="Devenir partenaire"
+  description="Dossier de partenariat du club AMHE De Feu et d'Acier à Clermont-Ferrand : palmarès, visibilité, contreparties et contact."
+  noIndex
+>
+  {/* La classe `js` conditionne tous les états initiaux masqués de la page :
+      posée avant le premier rendu, jamais après. */}
+  <script is:inline slot="head">
+    document.documentElement.classList.add('js');
+  </script>
+
+  <Nav
+    slot="entete"
+    ecole={ecole}
+    liens={menus.menuPrincipal}
+    cta={hero.boutonPrincipal}
+    identite={identite}
+    fond="solide"
+  />
+
+  {/* ── Hero : photo pleine largeur voilée d'encre ───────────────────────── */}
+  <header class="sp-hero" aria-labelledby="sp-hero-titre">
+    <div class="sp-hero__media">
+      {
+        photoHero && (
+          <Picture
+            src={photoHero}
+            alt="Deux tireurs en garde lors d’un tournoi"
+            formats={['avif', 'webp']}
+            widths={largeursSrcset(photoHero, { largeurs: [640, 960, 1280, 1600, 2048] })}
+            sizes="100vw"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+          />
+        )
+      }
+    </div>
+    <span class="sp-hero__voile" aria-hidden="true"></span>
+    <span class="sp-hero__assise" aria-hidden="true"></span>
+
+    <div class="sp-hero__contenu gouttiere">
+      <p class="sp-hero__surtitre">Dossier de partenariat</p>
+      <SectionTitle
+        lignes={[{ texte: 'Devenir' }, { texte: 'partenaire', accent: true }]}
+        balise="h1"
+        taille="fiche"
+        id="sp-hero-titre"
+        class="sp-hero__titre"
+      />
+      <span class="sp-hero__filet" aria-hidden="true"></span>
+      <p class="sp-hero__lede">{LEDE}</p>
+    </div>
+  </header>
+
+  {/* ── Bandeau de chiffres ──────────────────────────────────────────────── */}
+  <section class="section section--ink sp-chiffres" aria-label="Le club en chiffres">
+    <div class="gouttiere">
+      <ul class="sp-chiffres__liste" role="list">
+        {
+          CHIFFRES.map((chiffre, index) => (
+            <li class="sp-chiffre sp-reveal" style={`transition-delay:${index * 90}ms`}>
+              <span class="sp-chiffre__valeur">
+                <span
+                  class="sp-chiffre__nombre"
+                  data-compteur={chiffre.valeur}
+                  style={`min-inline-size:${String(chiffre.valeur).length}ch`}
+                >{chiffre.valeur}</span>{chiffre.suffixe && <span class="sp-chiffre__suffixe">{chiffre.suffixe}</span>}
+              </span>
+              <span class="sp-chiffre__libelle">{chiffre.libelle}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  {/* ── Le club ──────────────────────────────────────────────────────────── */}
+  <section class="section section--coal sp-club" aria-labelledby="sp-club-titre">
+    <div class="gouttiere">
+      <SectionLabel libelle="Le club" />
+      <div class="sp-club__split">
+        <div class="sp-club__corps sp-reveal">
+          <SectionTitle
+            lignes={[{ texte: 'Un club qui grandit' }, { texte: 'vite', accent: true }]}
+            taille="l"
+            id="sp-club-titre"
+          />
+          <p class="sp-club__texte">{CLUB_P1}</p>
+          <p class="sp-club__texte">{CLUB_P2}</p>
+        </div>
+        <figure class="sp-club__media sp-reveal" style="transition-delay:90ms">
+          {
+            photoClub && (
+              <Picture
+                src={photoClub}
+                alt="Le gymnase plein lors d’une séance du club"
+                formats={['avif', 'webp']}
+                widths={largeursSrcset(photoClub, { largeurs: [390, 588, 780, 1176, 1600] })}
+                sizes="(min-width: 820px) 48vw, calc(100vw - 44px)"
+                loading="lazy"
+                decoding="async"
+              />
+            )
+          }
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  {/* ── Les trois armes ──────────────────────────────────────────────────── */}
+  <section class="section section--ink sp-armes" aria-labelledby="sp-armes-titre">
+    <div class="gouttiere">
+      <SectionLabel libelle="Les disciplines" />
+      <div class="sp-armes__tete sp-reveal">
+        <SectionTitle
+          lignes={[{ texte: 'Trois armes' }, { texte: 'au programme', accent: true }]}
+          taille="l"
+          id="sp-armes-titre"
+        />
+      </div>
+      <ul class="sp-armes__grille" role="list">
+        {
+          ARMES.map((arme, index) => (
+            <li class="sp-reveal" style={`transition-delay:${index * 90}ms`}>
+              <MediaCard
+                image={arme.photo}
+                alt={arme.alt}
+                titre={arme.nom}
+                titreNiveau="h3"
+                sousTitre={arme.texte}
+                ratio="3 / 4"
+                voile="leger"
+                assise="forte"
+                rayon={2}
+                sizes="(min-width: 820px) 30vw, calc(100vw - 44px)"
+                largeurs={[390, 588, 780, 1176]}
+              />
+            </li>
+          ))
+        }
+      </ul>
+      <p class="sp-armes__note">{ARMES_NOTE}</p>
+    </div>
+  </section>
+
+  {/* ── Palmarès : la seule section de la page où l'or est permis ────────── */}
+  <section class="section section--coal sp-palmares" aria-labelledby="sp-palmares-titre">
+    <div class="gouttiere">
+      <SectionLabel libelle="Le palmarès" />
+      <div class="sp-palmares__grille">
+        <div class="sp-palmares__colonne">
+          <div class="sp-palmares__tete sp-reveal">
+            <SectionTitle
+              lignes={[{ texte: 'Des résultats' }, { texte: 'qui se voient', accent: true }]}
+              taille="l"
+              id="sp-palmares-titre"
+            />
+            <p class="sp-palmares__intro">{PALMARES_INTRO}</p>
+          </div>
+
+          <ol class="sp-palmares__liste" role="list">
+            {
+              PALMARES.map((ligne, index) => (
+                <li class="sp-palmares__ligne sp-reveal" style={`transition-delay:${index * 90}ms`}>
+                  <h3 class="sp-palmares__nom">{ligne.nom}</h3>
+                  <p class="sp-palmares__rang">
+                    <span class="sp-palmares__or">{ligne.rang}</span>
+                  </p>
+                  <p class="sp-palmares__titres">{ligne.titres}</p>
+                </li>
+              ))
+            }
+          </ol>
+
+          <p class="sp-palmares__note">{PALMARES_NOTE}</p>
+        </div>
+
+        <figure class="sp-palmares__media sp-reveal" style="transition-delay:180ms">
+          {
+            photoPodium && (
+              <Picture
+                src={photoPodium}
+                alt="Compétiteurs sur le podium d’un tournoi"
+                formats={['avif', 'webp']}
+                widths={largeursSrcset(photoPodium, { largeurs: [390, 640, 840, 1280] })}
+                sizes="(min-width: 820px) 420px, calc(100vw - 44px)"
+                loading="lazy"
+                decoding="async"
+              />
+            )
+          }
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  {/* ── Les contreparties ────────────────────────────────────────────────── */}
+  <section class="section section--ink sp-atouts" aria-labelledby="sp-atouts-titre">
+    <div class="gouttiere">
+      <SectionLabel libelle="Le partenariat" />
+      <div class="sp-atouts__tete sp-reveal">
+        <SectionTitle
+          lignes={[{ texte: 'Ce que le partenariat' }, { texte: 'vous apporte', accent: true }]}
+          taille="l"
+          id="sp-atouts-titre"
+        />
+        <p class="sp-atouts__intro">{POURQUOI_INTRO}</p>
+      </div>
+      <ul class="sp-atouts__grille" role="list">
+        {
+          ATOUTS.map((atout, index) => (
+            <li class="sp-reveal" style={`transition-delay:${index * 90}ms`}>
+              <div class="sp-atout">
+                <p class="sp-atout__num">
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <Filet largeur={28} ton="ember" />
+                </p>
+                <h3 class="sp-atout__titre">{atout.titre}</h3>
+                <p class="sp-atout__texte">{atout.texte}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  {/* ── Partenaires actuels : la section de l'accueil, réutilisée ────────── */}
+  <Partenaires
+    ecole={ecole}
+    partenaires={partenaires}
+    ctx={ctx}
+    id="sp-partenaires"
+    entete={{
+      eyebrow: 'Partenaires actuels',
+      titreLigne1: 'Ils nous accompagnent',
+      titreLigne2: 'déjà',
+      lede: null,
+    }}
+  />
+
+  {/* ── Dossier et contact ───────────────────────────────────────────────── */}
+  <section class="section section--ink sp-contact" aria-labelledby="sp-contact-titre">
+    <div class="gouttiere sp-contact__contenu">
+      <p class="sp-contact__surtitre sp-reveal">Dossier et contact</p>
+      <div class="sp-reveal" style="transition-delay:90ms">
+        <SectionTitle
+          lignes={[{ texte: 'Parlons-en', accent: true }]}
+          taille="l"
+          centre
+          id="sp-contact-titre"
+        />
+      </div>
+      <p class="sp-contact__texte sp-reveal" style="transition-delay:180ms">{CONTACT_TEXTE}</p>
+      <p class="sp-contact__action sp-reveal" style="transition-delay:270ms">
+        <Button
+          variante="pleine"
+          taille="grande"
+          libelle="Télécharger le dossier (PDF, 1,5 Mo)"
+          href={PDF}
+          telechargement
+          class="sp-contact__bouton"
+        />
+      </p>
+      <p class="sp-contact__coordonnees sp-reveal" style="transition-delay:360ms">
+        <a class="sp-contact__lien" href={`mailto:${EMAIL}`}>{EMAIL}</a>
+        <span class="sp-contact__point" aria-hidden="true">·</span>
+        <a class="sp-contact__lien" href={TELEPHONE_LIEN}>{TELEPHONE_AFFICHE}</a>
+      </p>
+    </div>
+  </section>
+
+  <Fragment slot="pied">
+    <Footer ecole={ecole} identite={identite} menus={menus} />
+    {/* La barre d'onglets rend sa propre cale : elle vient après le pied de
+        page, sinon celui-ci passerait dessous. */}
+    <TabBar onglets={onglets} libelle="Navigation rapide du site" />
+  </Fragment>
+</Base>
+
+<script>
+  // Toute l'animation de la page : apparitions au défilement et compteurs.
+  // La classe `js` est posée par le script inline du <head> — les états
+  // initiaux masqués n'existent que sous elle, donc sans JavaScript la page
+  // est entière d'emblée. En mouvement réduit, tout est visible tout de suite
+  // et les compteurs gardent leur valeur finale (déjà dans le HTML).
+  const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ── Apparitions au défilement (une seule fois, seuil bas) ──
+  const cibles = document.querySelectorAll<HTMLElement>('.sp-reveal');
+  if (reduit || !('IntersectionObserver' in window)) {
+    cibles.forEach((el) => el.classList.add('est-visible'));
+  } else {
+    const observateur = new IntersectionObserver(
+      (entrees) => {
+        for (const entree of entrees) {
+          if (!entree.isIntersecting) continue;
+          entree.target.classList.add('est-visible');
+          observateur.unobserve(entree.target);
+        }
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -60px 0px' },
+    );
+    cibles.forEach((el) => observateur.observe(el));
+  }
+
+  // ── Compteurs du bandeau de chiffres ──
+  // Montée 0 → valeur en ~1,2 s (easeOutCubic), déclenchée à l'entrée dans le
+  // viewport. Les chiffres sont tabulaires et la chasse finale est réservée
+  // (`min-inline-size`) : aucune mise en page ne bouge pendant la montée.
+  const compteurs = document.querySelectorAll<HTMLElement>('[data-compteur]');
+  if (!reduit && 'IntersectionObserver' in window) {
+    const sortieCubique = (t: number) => 1 - Math.pow(1 - t, 3);
+    const DUREE = 1200;
+
+    const observateurCompteurs = new IntersectionObserver(
+      (entrees) => {
+        for (const entree of entrees) {
+          if (!entree.isIntersecting) continue;
+          observateurCompteurs.unobserve(entree.target);
+
+          const el = entree.target as HTMLElement;
+          const fin = Number.parseInt(el.dataset.compteur ?? '0', 10);
+          if (!Number.isFinite(fin)) continue;
+
+          const depart = performance.now();
+          const pas = (instant: number) => {
+            const progression = Math.min((instant - depart) / DUREE, 1);
+            el.textContent = String(Math.round(sortieCubique(progression) * fin));
+            if (progression < 1) requestAnimationFrame(pas);
+          };
+          el.textContent = '0';
+          requestAnimationFrame(pas);
+        }
+      },
+      { threshold: 0.4 },
+    );
+    compteurs.forEach((el) => observateurCompteurs.observe(el));
+  }
+</script>
+
+<style>
+  /* ═══ Apparition au défilement ══════════════════════════════════════════ */
+  /* L'état masqué n'existe QUE sous `html.js` et hors mouvement réduit :
+     sans JavaScript ou en animations réduites, rien n'est jamais caché. */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html.js) .sp-reveal {
+      opacity: 0;
+      transform: translateY(14px);
+      transition:
+        opacity 620ms cubic-bezier(0.22, 0.61, 0.36, 1),
+        transform 620ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+
+    :global(html.js) .sp-reveal.est-visible {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* ═══ Hero ══════════════════════════════════════════════════════════════ */
+
+  .sp-hero {
+    position: relative;
+    display: grid;
+    align-content: end;
+    min-height: min(128vw, clamp(460px, 66svh, 640px));
+    overflow: hidden;
+    background: var(--ink);
+  }
+
+  .sp-hero__media {
+    position: absolute;
+    inset: 0;
+  }
+
+  .sp-hero__media :global(picture),
+  .sp-hero__media :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .sp-hero__media :global(img) {
+    object-fit: cover;
+    object-position: 50% 32%;
+  }
+
+  /* Voile d'encre + assise : les mêmes couches que les heros de fiche. */
+  .sp-hero__voile {
+    position: absolute;
+    inset: 0;
+    background: var(--veil-ink-50);
+  }
+
+  .sp-hero__assise {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 62%;
+    background: linear-gradient(to top, var(--veil-ink-85), var(--veil-ink-45) 62%, transparent);
+  }
+
+  .sp-hero__contenu {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-block: clamp(44px, 6vw, 84px) clamp(40px, 5vw, 72px);
+  }
+
+  /* Même dessin que le sur-titre du hero de l'accueil : parchemin adouci,
+     interlettrage large — l'ember tomberait sous 4,5:1 sur une photo. */
+  .sp-hero__surtitre {
+    margin: 0 0 clamp(16px, 13.6px + 0.6vw, 22px);
+    font-family: var(--font-eyebrow);
+    font-size: clamp(9.5px, 8.757px + 0.1905vw, 11.5px);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    letter-spacing: var(--ls-eyebrow-wide);
+    text-transform: uppercase;
+    color: var(--parch-soft);
+  }
+
+  /* Le filet s'étire de gauche à droite (~800 ms) après l'arrivée du titre.
+     Sans JavaScript ou en mouvement réduit : posé, immobile, visible. */
+  .sp-hero__filet {
+    display: block;
+    width: clamp(44px, 38.057px + 1.5238vw, 60px);
+    height: 1px;
+    margin-block: clamp(20px, 17px + 0.76vw, 28px);
+    background: var(--line-logo);
+    transform-origin: left center;
+  }
+
+  .sp-hero__lede {
+    max-width: 64ch;
+    margin: 0;
+    font-size: var(--fs-body-lede);
+    line-height: 1.6;
+    color: var(--parch-soft);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html.js) .sp-hero__surtitre,
+    :global(html.js) .sp-hero__contenu :global(.sp-hero__titre),
+    :global(html.js) .sp-hero__lede {
+      animation: sp-lever 620ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+
+    :global(html.js) .sp-hero__contenu :global(.sp-hero__titre) {
+      animation-delay: 90ms;
+    }
+
+    :global(html.js) .sp-hero__lede {
+      animation-delay: 480ms;
+    }
+
+    :global(html.js) .sp-hero__filet {
+      transform: scaleX(0);
+      animation: sp-etirer 800ms cubic-bezier(0.22, 0.61, 0.36, 1) 420ms forwards;
+    }
+  }
+
+  @keyframes sp-lever {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes sp-etirer {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  /* ═══ Bandeau de chiffres ═══════════════════════════════════════════════ */
+
+  /* Une bande, pas un chapitre : rythme vertical réduit. Le double sélecteur
+     l'emporte sur `.section` de global.css quel que soit l'ordre d'injection. */
+  .section.sp-chiffres {
+    padding-block: clamp(36px, 22.629px + 3.4286vw, 72px);
+  }
+
+  .sp-chiffres__liste {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(24px, 18px + 1.5vw, 40px) clamp(16px, 3vw, 24px);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sp-chiffre {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 10px;
+    padding-inline-start: clamp(14px, 3vw, 24px);
+    border-left: var(--filet);
+  }
+
+  .sp-chiffre__valeur {
+    display: flex;
+    align-items: baseline;
+    font-family: var(--font-display);
+    font-size: clamp(40px, 30.4px + 2.4571vw, 66px);
+    font-weight: 500;
+    line-height: 1;
+    color: var(--parch);
+  }
+
+  /* Chiffres tabulaires + chasse finale réservée (style en ligne `min-inline-size`) :
+     la montée du compteur ne fait bouger aucune mise en page. */
+  .sp-chiffre__nombre {
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  .sp-chiffre__suffixe {
+    color: var(--parch-soft);
+  }
+
+  .sp-chiffre__libelle {
+    max-width: 24ch;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  @media (min-width: 820px) {
+    .sp-chiffres__liste {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  /* ═══ Le club ═══════════════════════════════════════════════════════════ */
+
+  .sp-club__split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(28px, 20px + 2vw, 48px) clamp(40px, -39.355px + 9.6774vw, 100px);
+    margin-block-start: clamp(28px, 17.6px + 2.6667vw, 56px);
+  }
+
+  .sp-club__corps {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(18px, 14px + 1vw, 28px);
+  }
+
+  .sp-club__texte {
+    max-width: 58ch;
+    margin: 0;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--parch-soft);
+  }
+
+  .sp-club__texte + .sp-club__texte {
+    margin-block-start: -6px;
+    color: var(--parch-mute);
+  }
+
+  .sp-club__media {
+    margin: 0;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-2);
+    background: var(--char);
+  }
+
+  .sp-club__media :global(picture),
+  .sp-club__media :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .sp-club__media :global(img) {
+    object-fit: cover;
+  }
+
+  @media (min-width: 820px) {
+    .sp-club__split {
+      grid-template-columns: minmax(0, 540fr) minmax(0, 688fr);
+      align-items: center;
+    }
+
+    .sp-club__media {
+      border-radius: var(--radius-1);
+    }
+  }
+
+  /* ═══ Les trois armes ═══════════════════════════════════════════════════ */
+
+  .sp-armes__tete {
+    margin-block-start: clamp(28px, 17.6px + 2.6667vw, 56px);
+  }
+
+  .sp-armes__grille {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(14px, 10px + 1vw, 20px);
+    margin: clamp(28px, 14.629px + 3.4286vw, 64px) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sp-armes__note {
+    max-width: 68ch;
+    margin: clamp(20px, 16px + 1vw, 30px) 0 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+
+  @media (min-width: 820px) {
+    .sp-armes__grille {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  /* ═══ Palmarès — l'or est réservé à cette section ═══════════════════════ */
+
+  .sp-palmares__grille {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(28px, 20px + 2vw, 48px) clamp(48px, -20px + 8vw, 100px);
+    margin-block-start: clamp(28px, 17.6px + 2.6667vw, 56px);
+  }
+
+  .sp-palmares__intro {
+    max-width: 58ch;
+    margin: clamp(16px, 11.543px + 1.1429vw, 28px) 0 0;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--parch-soft);
+  }
+
+  .sp-palmares__liste {
+    margin: clamp(24px, 18px + 1.5vw, 40px) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sp-palmares__ligne {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-block: clamp(20px, 16px + 1vw, 30px);
+    border-top: var(--filet);
+  }
+
+  .sp-palmares__ligne:last-child {
+    border-bottom: var(--filet);
+  }
+
+  .sp-palmares__nom {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(24px, 19.543px + 1.1429vw, 36px);
+    font-weight: 400;
+    line-height: var(--lh-display);
+    color: var(--parch);
+  }
+
+  /*
+   * La ligne de classement — lettres d'or et balayage métallique, repris des
+   * accroches de palmarès des fiches prof (ProfHero.astro) : mêmes bornes de
+   * dégradé (`--or` aux deux extrémités, la fenêtre au repos est un or plein,
+   * 9,75:1 sur $coal), même passe unique rejouée au survol via un second nom
+   * d'animation. La passe part quand la ligne devient visible (`.est-visible`,
+   * posée par l'observateur des apparitions), pas au chargement de la page —
+   * la section est sous la ligne de flottaison.
+   */
+  .sp-palmares__rang {
+    margin: 0;
+    font-size: clamp(13px, 11.886px + 0.2857vw, 16px);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+  }
+
+  .sp-palmares__rang::before {
+    content: '';
+    display: inline-block;
+    width: clamp(15px, 1.4vw, 22px);
+    height: 1px;
+    margin-inline-end: 10px;
+    vertical-align: middle;
+    background: var(--or);
+  }
+
+  /* L'or plein : ce que voit un navigateur sans `background-clip: text`. */
+  .sp-palmares__or {
+    color: var(--or);
+  }
+
+  @supports ((background-clip: text) or (-webkit-background-clip: text)) {
+    .sp-palmares__or {
+      background-image: linear-gradient(
+        100deg,
+        var(--or) 0%,
+        var(--or) 36%,
+        var(--or-clair) 46%,
+        var(--or-eclat) 50%,
+        var(--or-clair) 54%,
+        var(--or) 64%,
+        var(--or) 100%
+      );
+      background-repeat: no-repeat;
+      background-size: 400% 100%;
+      background-position: 100% 0;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Une passe quand la ligne apparaît… */
+    :global(html.js) .sp-palmares__ligne.est-visible .sp-palmares__or {
+      animation: sp-or-balayage 1500ms cubic-bezier(0.32, 0, 0.24, 1) 350ms 1 forwards;
+    }
+
+    /* …rejouée au survol : changer de nom d'animation la relance depuis le
+       début, sans une ligne de JavaScript (même mécanique que ProfHero). */
+    :global(html.js) .sp-palmares__ligne.est-visible:hover .sp-palmares__or {
+      animation-name: sp-or-balayage-bis;
+      animation-delay: 0ms;
+    }
+  }
+
+  /* Deux noms, un seul dessin — cf. ProfHero.astro pour le pourquoi. */
+  @keyframes sp-or-balayage {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: 0 0;
+    }
+  }
+
+  @keyframes sp-or-balayage-bis {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: 0 0;
+    }
+  }
+
+  /* Moins d'animations : pas de balayage, le reflet se fige au centre — le
+     même parti que les fiches prof (dégradé statique plutôt qu'or plat). */
+  @media (prefers-reduced-motion: reduce) {
+    .sp-palmares__or,
+    :global(html.js) .sp-palmares__ligne.est-visible .sp-palmares__or,
+    :global(html.js) .sp-palmares__ligne.est-visible:hover .sp-palmares__or {
+      animation: none !important;
+      background-position: 50% 0;
+    }
+  }
+
+  .sp-palmares__titres {
+    margin: 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--parch-soft);
+  }
+
+  .sp-palmares__note {
+    margin: clamp(14px, 11px + 0.76vw, 20px) 0 0;
+    font-size: var(--fs-body-xxs);
+    line-height: var(--lh-body-tight);
+    color: var(--parch-mute);
+  }
+
+  .sp-palmares__media {
+    margin: 0;
+    overflow: hidden;
+    aspect-ratio: 3 / 4;
+    border-radius: var(--radius-2);
+    background: var(--char);
+  }
+
+  .sp-palmares__media :global(picture),
+  .sp-palmares__media :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .sp-palmares__media :global(img) {
+    object-fit: cover;
+    object-position: 50% 30%;
+  }
+
+  @media (min-width: 820px) {
+    .sp-palmares__grille {
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+      align-items: stretch;
+    }
+
+    .sp-palmares__media {
+      aspect-ratio: auto;
+      border-radius: var(--radius-1);
+      align-self: stretch;
+    }
+  }
+
+  /* ═══ Les contreparties ═════════════════════════════════════════════════ */
+
+  .sp-atouts__tete {
+    margin-block-start: clamp(28px, 17.6px + 2.6667vw, 56px);
+  }
+
+  .sp-atouts__intro {
+    max-width: 760px;
+    margin: clamp(16px, 11.543px + 1.1429vw, 28px) 0 0;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--parch-soft);
+  }
+
+  .sp-atouts__grille {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(14px, 10px + 1vw, 20px);
+    margin: clamp(28px, 14.629px + 3.4286vw, 64px) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* La carte est un enfant de l'élément `.sp-reveal` : son élévation au survol
+     et l'apparition au défilement ne se disputent jamais le même transform. */
+  .sp-atout {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    gap: clamp(12px, 9.77px + 0.5714vw, 18px);
+    padding: clamp(24px, 18px + 1.5vw, 40px);
+    border: var(--filet);
+    border-radius: var(--radius-1);
+    background: var(--surface-1);
+    transition:
+      transform var(--transition),
+      border-color var(--transition);
+  }
+
+  .sp-atout:hover {
+    transform: translateY(-2px);
+    border-color: var(--ember-border);
+  }
+
+  .sp-atout__num {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: clamp(10px, 9.81px + 0.0476vw, 10.5px);
+    font-weight: 600;
+    letter-spacing: 0.32em;
+    line-height: 1;
+    color: var(--ember);
+  }
+
+  .sp-atout__titre {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(22px, 17.543px + 1.1429vw, 34px);
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--parch);
+  }
+
+  .sp-atout__texte {
+    max-width: 46ch;
+    margin: 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--parch-mute);
+  }
+
+  @media (min-width: 820px) {
+    .sp-atouts__grille {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sp-atout:hover {
+      transform: none;
+    }
+  }
+
+  /* ═══ Dossier et contact ════════════════════════════════════════════════ */
+
+  /* La section finale respire plus que les autres : c'est elle qui conclut. */
+  .section.sp-contact {
+    padding-block: clamp(64px, 42px + 5.6vw, 144px) clamp(72px, 48px + 6.2vw, 160px);
+  }
+
+  .sp-contact__contenu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .sp-contact__surtitre {
+    margin: 0 0 clamp(16px, 13px + 0.76vw, 22px);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    letter-spacing: var(--ls-eyebrow-label);
+    text-transform: uppercase;
+    color: var(--ember);
+  }
+
+  .sp-contact__texte {
+    max-width: 58ch;
+    margin: clamp(18px, 14px + 1vw, 26px) 0 0;
+    font-size: var(--fs-body-lede);
+    line-height: 1.6;
+    color: var(--parch-soft);
+  }
+
+  .sp-contact__action {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    margin: clamp(28px, 22px + 1.5vw, 40px) 0 0;
+  }
+
+  .sp-contact__coordonnees {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: 12px;
+    margin: clamp(20px, 16px + 1vw, 28px) 0 0;
+    font-size: var(--fs-body);
+    color: var(--parch);
+  }
+
+  .sp-contact__lien {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    transition: color var(--transition);
+  }
+
+  .sp-contact__lien:hover,
+  .sp-contact__lien:focus-visible {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  .sp-contact__point {
+    color: var(--parch-mute);
+  }
+
+  /* Sur mobile, le bouton de téléchargement prend toute la largeur, comme les
+     CTA de fin de fiche — et son libellé, long (« … (PDF, 1,5 Mo) »), a le
+     droit de se replier plutôt que de déborder d'un écran de 390 px. */
+  @media (max-width: 819.98px) {
+    .sp-contact__action :global(.sp-contact__bouton) {
+      display: flex;
+      width: 100%;
+      height: auto;
+      min-height: 52px;
+      padding-block: 14px;
+      padding-inline: 12px;
+      white-space: normal;
+      line-height: 1.5;
+      text-align: center;
+    }
+  }
+</style>
