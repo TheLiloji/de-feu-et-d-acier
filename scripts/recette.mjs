@@ -59,8 +59,8 @@ const VIEWPORT_DEFAUT = { width: 1440, height: 900 };
 
 // ── Le plan du site : à tenir à jour à la main, comme sitemap.xml.ts ───────
 //
-// 34 pages connues (toutes attendues à 200) + 1 adresse volontairement
-// inconnue (attendue à 404) = les 35 routes du cahier des charges.
+// 49 pages connues (toutes attendues à 200) + 1 adresse volontairement
+// inconnue (attendue à 404) = les 50 routes du cahier des charges.
 
 const ROUTES_CONNUES = [
   '/',
@@ -95,6 +95,21 @@ const ROUTES_CONNUES = [
   '/questions/comment-sait-on-comment-combattaient-les-vikings/',
   '/questions/l-amhe-c-est-de-la-reconstitution/',
   '/questions/peut-on-apprendre-a-se-battre-dans-des-livres-de-500-ans/',
+  '/questions/qu-est-ce-que-le-zettel/',
+  '/questions/qui-etait-sigmund-ringeck/',
+  '/questions/qui-etait-hans-talhoffer/',
+  '/questions/qu-est-ce-que-la-societe-de-liechtenauer/',
+  '/questions/qui-etait-johannes-leckuchner/',
+  '/questions/d-ou-viennent-les-noms-des-coups-du-messer/',
+  '/questions/qui-etait-achille-marozzo/',
+  '/questions/qui-etait-salvator-fabris/',
+  '/questions/avec-quelles-armes-se-battaient-les-vikings/',
+  '/questions/que-veut-dire-amhe/',
+  '/questions/hema-et-amhe-est-ce-la-meme-chose/',
+  '/questions/qu-est-ce-qu-un-traite-d-escrime/',
+  '/questions/quel-est-le-plus-ancien-traite-d-escrime/',
+  '/questions/y-a-t-il-des-femmes-dans-les-traites-d-escrime/',
+  '/questions/y-avait-il-des-ecoles-d-escrime-au-moyen-age/',
   '/mentions-legales/',
   '/confidentialite/',
 ];
@@ -109,7 +124,7 @@ const SLUGS_TRAITES = ROUTES_CONNUES.filter((r) => r.startsWith('/sources/') && 
 
 /**
  * 8 gabarits représentatifs pour le contrôle de débordement (point 2) : le
- * passer sur les 34 pages coûterait cher pour peu de gain, ceux-là couvrent
+ * passer sur les 49 pages coûterait cher pour peu de gain, ceux-là couvrent
  * le hero de l'accueil, une fiche arme, une fiche prof, la liste
  * d'actualités, l'index des sources, une fiche de traité (la plus dense en
  * mise en page : galerie, encadré de numérisation, extrait), le sommaire des

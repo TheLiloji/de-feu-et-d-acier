@@ -64,7 +64,7 @@ recette pour autant.
 
 | # | Contrôle |
 |---|---|
-| 1 | Les 34 pages connues répondent 200 ; une adresse inventée répond 404. |
+| 1 | Les 49 pages connues répondent 200 ; une adresse inventée répond 404. |
 | 2 | Zéro débordement horizontal à 390/820/1000/1440 px sur 8 gabarits représentatifs (dont le sommaire des questions d'armes et une page de question). |
 | 3 | Zéro `<script>`/`<noscript>` visible à l'écran (le piège classique : un `display: grid` posé trop largement dans le CSS peut rendre visibles des balises censées être invisibles par défaut). |
 | 4 | Un seul `<h1>` par page ; `sitemap.xml` compte autant d'URL que de pages HTML construites (404 exclue). |
