@@ -1,0 +1,1302 @@
+---
+/**
+ * Film d'ouverture de la page /sponsors/ — un générique automatique de ~15 s
+ * qui résume la page en cinq scènes, puis s'efface sur le hero.
+ *
+ * La couche est posée en `position: fixed` au-dessus de la page entière :
+ * elle ne participe pas à la mise en page, donc sa disparition ne décale pas
+ * un pixel. Elle n'existe que si TOUT est réuni : JavaScript passé (classe
+ * `html.js`), mouvement non réduit (`prefers-reduced-motion`), et module
+ * d'animation réellement démarré (attribut `data-pret`, posé par le script
+ * ci-dessous). Dans tous les autres cas, la page s'ouvre sur son hero,
+ * exactement comme avant ce composant.
+ *
+ * ── Découpage (temps absolus, ms) ────────────────────────────────────────
+ *
+ *   Scène 1      0 → 3200   le logotype « De Feu et d'Acier » (traitement du
+ *                           site : Feu plein, Acier en métal + balayage),
+ *                           sur-ligne AMHE · Clermont-Ferrand, filet braise.
+ *   Scène 2   3200 → 6400   « Un club qui grandit vite » — photo du gymnase
+ *                           révélée par clip-path, compteurs 60 et 27.
+ *   Scène 3   6400 → 9800   « Des résultats qui se voient » — podium, lignes
+ *                           de palmarès. LA SEULE scène où l'or est permis
+ *                           (même règle que la section palmarès de la page).
+ *   Scène 4   9800 → 12800  « Votre logo sur nos couleurs » — l'équipe sous
+ *                           les couleurs du club, quatre mots-clés en cascade.
+ *   Scène 5  12800 → 15400  « Devenez partenaire » — les deux vrais boutons
+ *                           (mail + dossier PDF), invite à défiler, Revoir.
+ *                           Cette scène reste posée : le film ne boucle pas.
+ *
+ * Transitions par fondu croisé (la scène sortante s'efface pendant que la
+ * suivante se révèle), un seul easing de sortie pour tout le dessin, et trois
+ * propriétés animées seulement : transform, opacity, clip-path. Le détail des
+ * délais vit dans le tableau SPECS du script.
+ *
+ * ── Mécanique de contrôle ────────────────────────────────────────────────
+ *
+ *   - « Passer » (premier élément focalisable de la page pendant le film,
+ *     le reste du document est `inert`) coupe au hero et pose le focus sur
+ *     le H1 ; Échap et le moindre défilement font pareil ;
+ *   - onglet masqué = tout le film en pause (Web Animations API), reprise au
+ *     retour ;
+ *   - en fin de film, « Revoir » rejoue depuis le début, et un clic sur le
+ *     fond (hors liens) fait entrer dans la page ;
+ *   - un petit script `is:inline` sert de filet de sécurité : si le module
+ *     d'animation ne démarre jamais (réseau, erreur), Passer / Échap /
+ *     défilement retirent quand même la couche — personne ne reste bloqué
+ *     devant un écran d'encre.
+ *
+ * Le film prévient la page quand il se retire (évènement
+ * `film-ouverture:fin`) : les apparitions au défilement et les compteurs de
+ * la page attendent ce signal pour ne pas se jouer derrière la couche.
+ *
+ * Accessibilité : les scènes 1 à 4 sont de l'aria-hidden pur (du décor) ;
+ * la scène 5 est la seule annoncée, ses boutons sont de vrais liens. Aucun
+ * titre hiérarchique dans le film — le H1 unique reste celui du hero.
+ */
+import { Picture } from 'astro:assets';
+import Button from '../ui/Button.astro';
+import { largeursSrcset, resoudrePhoto } from '../../lib/images';
+
+// Les mêmes cibles que la section « Dossier et contact » de la page.
+const PDF = '/documents/dossier-partenariat-de-feu-et-d-acier.pdf';
+const EMAIL = 'matthieupelissier9@gmail.com';
+
+// Photos de la bibliothèque du site, déjà employées ailleurs — aucune image
+// nouvelle, aucun droit à vérifier.
+const photoClub = resoudrePhoto('/src/assets/photos/clermont/article-rentree-gymnase.jpg');
+const photoPodium = resoudrePhoto('/src/assets/photos/commun/tournois-podium.jpg');
+const photoCouleurs = resoudrePhoto('/src/assets/photos/commun/club-equipe-piste.jpg');
+// La photo du hero de la page : la scène finale s'ouvre dessus, le fondu de
+// sortie du film tombe donc sur la même image — l'entrée dans la page se fait
+// sans rupture.
+const photoFinale = resoudrePhoto('/src/assets/photos/commun/tournois-en-garde.jpg');
+---
+
+<div class="film" data-film-ouverture>
+  {/* Premier focalisable de la page pendant le film (le reste est inert). */}
+  <button type="button" class="film__passer" data-passer aria-label="Passer l’introduction">
+    Passer
+  </button>
+
+  {/* ── Scène 1 : le logotype ─────────────────────────────────────────── */}
+  <div class="film__scene film__scene--marque" data-scene="1" aria-hidden="true">
+    <div class="film__compo film__compo--marque">
+      <p class="film__surligne" data-anime="surligne">
+        Arts martiaux historiques européens · Clermont-Ferrand
+      </p>
+      {/* La structure et les couleurs du logotype du site (Logotype.astro) :
+          Feu en couleur pleine, Acier en métal. Le balayage est un double du
+          mot, clair, découpé par une fenêtre de clip-path qui traverse —
+          aucune position de dégradé n'est animée. */}
+      <p class="film__logotype">
+        <span class="film__masque film__masque--logo">
+          <span class="film__logoligne" data-anime="logo-1">
+            <span class="film__mot film__mot--parch">De</span>
+            <span class="film__mot film__mot--feu">Feu</span>
+          </span>
+        </span>
+        <span class="film__masque film__masque--logo">
+          <span class="film__logoligne" data-anime="logo-2">
+            <span class="film__mot film__mot--connecteur">et d’</span><span
+              class="film__mot film__mot--acier"
+              >Acier<span class="film__balayage film__balayage--acier" data-anime="balayage-acier"
+                >Acier</span
+              ></span
+            >
+          </span>
+        </span>
+      </p>
+      <span class="film__filet" data-anime="filet-1"></span>
+    </div>
+  </div>
+
+  {/* ── Scène 2 : un club qui grandit vite ────────────────────────────── */}
+  <div class="film__scene film__scene--essor" data-scene="2" aria-hidden="true">
+    <div class="film__compo film__compo--panneau">
+      <div class="film__cadre film__cadre--essor" data-cadre="2">
+        {
+          photoClub && (
+            <Picture
+              src={photoClub}
+              alt=""
+              formats={['avif', 'webp']}
+              widths={largeursSrcset(photoClub, { largeurs: [640, 960, 1280] })}
+              sizes="(min-width: 820px) 48vw, 92vw"
+              loading="eager"
+              decoding="async"
+            />
+          )
+        }
+        <span class="film__voile"></span>
+      </div>
+      <div class="film__bloc">
+        <p class="film__losange" data-anime="losange-2">◆</p>
+        <p class="film__titre">
+          <span class="film__masque"><span class="film__ligne" data-anime="titre-2a">Un club qui grandit</span></span>
+          <span class="film__masque"><span class="film__ligne film__ligne--accent" data-anime="titre-2b">vite</span></span>
+        </p>
+        <div class="film__chiffres">
+          <p class="film__chiffre" data-anime="chiffre-60">
+            <span class="film__nombre" data-compte="60" style="min-inline-size:2ch">60</span>
+            <span class="film__libelle">adhérents</span>
+          </p>
+          <p class="film__chiffre" data-anime="chiffre-27">
+            <span class="film__nombre" data-compte="27" style="min-inline-size:2ch">27</span>
+            <span class="film__libelle">nouveaux cette rentrée</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* ── Scène 3 : le palmarès — l'or n'est permis qu'ici ──────────────── */}
+  <div class="film__scene film__scene--palmares" data-scene="3" aria-hidden="true">
+    <div class="film__compo film__compo--panneau film__compo--palmares">
+      <div class="film__cadre film__cadre--palmares" data-cadre="3">
+        {
+          photoPodium && (
+            <Picture
+              src={photoPodium}
+              alt=""
+              formats={['avif', 'webp']}
+              widths={largeursSrcset(photoPodium, { largeurs: [480, 720, 960] })}
+              sizes="(min-width: 820px) 360px, 92vw"
+              loading="eager"
+              decoding="async"
+            />
+          )
+        }
+        <span class="film__voile"></span>
+      </div>
+      <div class="film__bloc">
+        <p class="film__titre">
+          <span class="film__masque"><span class="film__ligne" data-anime="titre-3a">Des résultats</span></span>
+          <span class="film__masque"><span class="film__ligne film__ligne--accent" data-anime="titre-3b">qui se voient</span></span>
+        </p>
+        <span class="film__filet film__filet--or" data-anime="filet-3"></span>
+        <p class="film__or-rang" data-anime="or-1">
+          <span class="film__or">80ᵉ mondial · 3ᵉ combattant français<span
+              class="film__balayage film__balayage--or"
+              data-anime="balayage-or"
+              >80ᵉ mondial · 3ᵉ combattant français</span
+            ></span>
+        </p>
+        <p class="film__or-titres" data-anime="or-2">2 titres de champion fédéral</p>
+      </div>
+    </div>
+  </div>
+
+  {/* ── Scène 4 : votre logo sur nos couleurs ─────────────────────────── */}
+  <div class="film__scene film__scene--couleurs" data-scene="4" aria-hidden="true">
+    <div class="film__compo film__compo--panneau">
+      <div class="film__cadre film__cadre--couleurs" data-cadre="4">
+        {
+          photoCouleurs && (
+            <Picture
+              src={photoCouleurs}
+              alt=""
+              formats={['avif', 'webp']}
+              widths={largeursSrcset(photoCouleurs, { largeurs: [520, 780, 1050] })}
+              sizes="(min-width: 820px) 48vw, 92vw"
+              loading="eager"
+              decoding="async"
+            />
+          )
+        }
+        <span class="film__voile"></span>
+      </div>
+      <div class="film__bloc">
+        <p class="film__titre">
+          <span class="film__masque"><span class="film__ligne" data-anime="titre-4a">Votre logo</span></span>
+          <span class="film__masque"><span class="film__ligne film__ligne--accent" data-anime="titre-4b">sur nos couleurs</span></span>
+        </p>
+        <p class="film__mots">
+          <span class="film__masque film__masque--mot"><span class="film__motcle" data-anime="mot-1"><span class="film__motcle-losange">◆</span>affiches</span></span>
+          <span class="film__masque film__masque--mot"><span class="film__motcle" data-anime="mot-2"><span class="film__motcle-losange">◆</span>bannières</span></span>
+          <span class="film__masque film__masque--mot"><span class="film__motcle" data-anime="mot-3"><span class="film__motcle-losange">◆</span>réseaux</span></span>
+          <span class="film__masque film__masque--mot"><span class="film__motcle" data-anime="mot-4"><span class="film__motcle-losange">◆</span>événements</span></span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {/* ── Scène 5 : devenez partenaire — la seule scène annoncée ────────── */}
+  <div class="film__scene film__scene--finale" data-scene="5">
+    <div class="film__fond" aria-hidden="true" data-anime="fond-5">
+      {
+        photoFinale && (
+          <Picture
+            src={photoFinale}
+            alt=""
+            formats={['avif', 'webp']}
+            widths={largeursSrcset(photoFinale, { largeurs: [768, 1280, 1920] })}
+            sizes="100vw"
+            loading="eager"
+            decoding="async"
+          />
+        )
+      }
+      <span class="film__voile film__voile--fort"></span>
+    </div>
+    <div class="film__compo film__compo--finale">
+      <p class="film__titre film__titre--centre">
+        <span class="film__masque"><span class="film__ligne" data-anime="titre-5a">Devenez</span></span>
+        <span class="film__masque"><span class="film__ligne film__ligne--accent" data-anime="titre-5b">partenaire</span></span>
+      </p>
+      <span class="film__filet" data-anime="filet-5" aria-hidden="true"></span>
+      <p class="film__actions">
+        <Button
+          variante="pleine"
+          taille="grande"
+          libelle="Discutons-en"
+          href={`mailto:${EMAIL}`}
+          class="film__bouton"
+          data-anime="bouton-1"
+        />
+        <Button
+          variante="contour"
+          taille="grande"
+          libelle="Télécharger le dossier (PDF, 1,5 Mo)"
+          href={PDF}
+          telechargement
+          class="film__bouton"
+          data-anime="bouton-2"
+        />
+      </p>
+      <div class="film__coda" data-anime="coda">
+        <span class="film__invite-trait" data-anime="invite-trait" aria-hidden="true"></span>
+        <p class="film__invite">Faites défiler pour découvrir la page</p>
+        <button type="button" class="film__revoir" data-revoir>Revoir</button>
+      </div>
+    </div>
+  </div>
+
+  {/* ── Progression : cinq segments fins, un par scène ────────────────── */}
+  <div class="film__progression" aria-hidden="true">
+    <span class="film__segment"><span class="film__segment-rempli" data-segment="1"></span></span>
+    <span class="film__segment"><span class="film__segment-rempli" data-segment="2"></span></span>
+    <span class="film__segment"><span class="film__segment-rempli" data-segment="3"></span></span>
+    <span class="film__segment"><span class="film__segment-rempli" data-segment="4"></span></span>
+    <span class="film__segment"><span class="film__segment-rempli" data-segment="5"></span></span>
+  </div>
+</div>
+
+<script is:inline>
+  // Filet de sécurité, volontairement bête : si le module d'animation ne
+  // démarre jamais (fichier non chargé, erreur d'exécution), la couche du
+  // film resterait un écran d'encre posé sur la page. Ces trois gestes la
+  // retirent alors sans lui. Dès que le module a démarré (data-pret), ils ne
+  // font plus rien : c'est lui qui gère la fermeture, en fondu.
+  (function () {
+    var film = document.querySelector('[data-film-ouverture]');
+    if (!film) return;
+    var retirer = function () {
+      if (!film.dataset.pret && film.isConnected) film.remove();
+    };
+    var passer = film.querySelector('[data-passer]');
+    if (passer) passer.addEventListener('click', retirer);
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') retirer();
+    });
+    window.addEventListener('scroll', retirer, { passive: true });
+  })();
+</script>
+
+<script>
+  // ── Le chef d'orchestre du film ──────────────────────────────────────────
+  // Tout passe par la Web Animations API : chaque élément reçoit sa propre
+  // animation (délai absolu sur une même origine), une animation « maître »
+  // sert d'horloge pour ce qui ne s'anime pas tout seul (fenêtres de
+  // visibilité des scènes, compteurs), et la liste complète se met en pause
+  // d'un bloc quand l'onglet est masqué.
+
+  const film = document.querySelector<HTMLElement>('[data-film-ouverture]');
+  const mediaReduit = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  if (film && (mediaReduit.matches || !('animate' in Element.prototype))) {
+    // Mouvement réduit (ou navigateur sans WAAPI, où le film serait figé) :
+    // pas de film du tout. La CSS le masque déjà ; on retire la couche et on
+    // libère la page tout de suite.
+    film.remove();
+    window.dispatchEvent(new Event('film-ouverture:fin'));
+  } else if (film) {
+    demarrer(film);
+  }
+
+  function demarrer(couche: HTMLElement) {
+    // Le module est vivant : le filet de sécurité inline s'efface.
+    couche.dataset.pret = '1';
+
+    const DUREE_TOTALE = 15400;
+    const E1 = 'cubic-bezier(0.22, 0.61, 0.36, 1)'; // la courbe de sortie maison
+    const E2 = 'cubic-bezier(0.32, 0, 0.24, 1)'; // celle des balayages métalliques
+
+    // ── Dessins de mouvement partagés ──
+    // 135 % : assez pour que la ligne soit entièrement sous la fenêtre du
+    // masque avant de monter (la fenêtre déborde de 0,3 em sous l'élément).
+    const LEVER: Keyframe[] = [{ transform: 'translateY(135%)' }, { transform: 'translateY(0%)' }];
+    const POSER: Keyframe[] = [
+      { opacity: 0, transform: 'translateY(18px)' },
+      { opacity: 1, transform: 'translateY(0)' },
+    ];
+    // L'interlettrage qui se resserre : un scaleX qui se pose, jamais de
+    // letter-spacing animé.
+    const POSER_SERRER: Keyframe[] = [
+      { opacity: 0, transform: 'translateY(0.9em) scaleX(1.08)' },
+      { opacity: 1, transform: 'translateY(0) scaleX(1)' },
+    ];
+    const MOT_POSER: Keyframe[] = [
+      { opacity: 0, transform: 'translateY(135%) scale(1.05)' },
+      { opacity: 1, transform: 'translateY(0) scale(1)' },
+    ];
+    const TRACER: Keyframe[] = [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }];
+    const PIVOTER: Keyframe[] = [
+      { opacity: 0, transform: 'rotate(-90deg) scale(0.4)' },
+      { opacity: 1, transform: 'rotate(0deg) scale(1)' },
+    ];
+    const FONDU: Keyframe[] = [{ opacity: 0 }, { opacity: 1 }];
+    // La respiration du trait d'invite : UNE inspiration, puis le repos
+    // (l'état de départ et d'arrivée est celui de la CSS). Finie, jamais en
+    // boucle : la fin du film reste figée au pixel près.
+    const RESPIRER: Keyframe[] = [
+      { opacity: 0.45, transform: 'scaleY(0.6)' },
+      { opacity: 1, transform: 'scaleY(1)', offset: 0.5 },
+      { opacity: 0.45, transform: 'scaleY(0.6)' },
+    ];
+    const ZOOM_POSER: Keyframe[] = [{ transform: 'scale(1.07)' }, { transform: 'scale(1)' }];
+    const SORTIE_SCENE: Keyframe[] = [
+      { opacity: 1, transform: 'translateY(0)' },
+      { opacity: 0, transform: 'translateY(-14px)' },
+    ];
+    // La fenêtre de lumière qui traverse le mot : seule la découpe bouge
+    // (et l'opacité aux extrémités), le texte et son dégradé restent posés.
+    const BALAYAGE: Keyframe[] = [
+      { clipPath: 'inset(0% 76% 0% -8%)', opacity: 0 },
+      { opacity: 0.9, offset: 0.2 },
+      { opacity: 0.9, offset: 0.8 },
+      { clipPath: 'inset(0% -8% 0% 76%)', opacity: 0 },
+    ];
+    const OUVRIR_HAUTEUR: Keyframe[] = [
+      { clipPath: 'inset(50% 0% 50% 0%)' },
+      { clipPath: 'inset(0% 0% 0% 0%)' },
+    ];
+    const OUVRIR_COTE: Keyframe[] = [
+      { clipPath: 'inset(0% 100% 0% 0%)' },
+      { clipPath: 'inset(0% 0% 0% 0%)' },
+    ];
+    const OUVRIR_BAS: Keyframe[] = [
+      { clipPath: 'inset(0% 0% 100% 0%)' },
+      { clipPath: 'inset(0% 0% 0% 0%)' },
+    ];
+
+    // ── La partition : un élément, un délai absolu, une durée ──
+    interface Spec {
+      sel: string;
+      delai: number;
+      duree: number;
+      images: Keyframe[];
+      easing?: string;
+    }
+
+    const SPECS: Spec[] = [
+      // Scène 1 — base 0 : le logotype se lève, le filet se trace, la
+      // sur-ligne se pose en se resserrant, puis la lame prend la lumière.
+      { sel: '[data-anime="logo-1"]', delai: 200, duree: 800, images: LEVER },
+      { sel: '[data-anime="logo-2"]', delai: 360, duree: 800, images: LEVER },
+      { sel: '[data-anime="filet-1"]', delai: 900, duree: 700, images: TRACER },
+      { sel: '[data-anime="surligne"]', delai: 1050, duree: 700, images: POSER_SERRER },
+      { sel: '[data-anime="balayage-acier"]', delai: 1600, duree: 1100, images: BALAYAGE, easing: E2 },
+      { sel: '[data-scene="1"]', delai: 2750, duree: 600, images: SORTIE_SCENE },
+
+      // Scène 2 — base 3200 : la photo s'ouvre en hauteur et se pose en
+      // zoom, le losange pivote, le titre monte, les compteurs grimpent.
+      { sel: '[data-cadre="2"]', delai: 3200, duree: 900, images: OUVRIR_HAUTEUR },
+      { sel: '[data-cadre="2"] img', delai: 3200, duree: 2600, images: ZOOM_POSER },
+      { sel: '[data-anime="losange-2"]', delai: 3350, duree: 700, images: PIVOTER },
+      { sel: '[data-anime="titre-2a"]', delai: 3480, duree: 760, images: LEVER },
+      { sel: '[data-anime="titre-2b"]', delai: 3620, duree: 760, images: LEVER },
+      { sel: '[data-anime="chiffre-60"]', delai: 4250, duree: 620, images: POSER },
+      { sel: '[data-anime="chiffre-27"]', delai: 4400, duree: 620, images: POSER },
+      { sel: '[data-scene="2"]', delai: 6050, duree: 600, images: SORTIE_SCENE },
+
+      // Scène 3 — base 6400 : le podium s'ouvre de côté, le filet d'or se
+      // trace, les deux lignes de palmarès montent, l'or prend la lumière.
+      { sel: '[data-cadre="3"]', delai: 6400, duree: 900, images: OUVRIR_COTE },
+      { sel: '[data-cadre="3"] img', delai: 6400, duree: 2600, images: ZOOM_POSER },
+      { sel: '[data-anime="titre-3a"]', delai: 6680, duree: 760, images: LEVER },
+      { sel: '[data-anime="titre-3b"]', delai: 6820, duree: 760, images: LEVER },
+      { sel: '[data-anime="filet-3"]', delai: 7350, duree: 700, images: TRACER },
+      { sel: '[data-anime="or-1"]', delai: 7550, duree: 650, images: POSER },
+      { sel: '[data-anime="or-2"]', delai: 7850, duree: 650, images: POSER },
+      { sel: '[data-anime="balayage-or"]', delai: 8300, duree: 1200, images: BALAYAGE, easing: E2 },
+      { sel: '[data-scene="3"]', delai: 9450, duree: 600, images: SORTIE_SCENE },
+
+      // Scène 4 — base 9800 : l'équipe se découvre par le haut, le titre
+      // monte, les quatre mots-clés se posent en cascade.
+      { sel: '[data-cadre="4"]', delai: 9800, duree: 900, images: OUVRIR_BAS },
+      { sel: '[data-cadre="4"] img', delai: 9800, duree: 2600, images: ZOOM_POSER },
+      // Le titre suit la photo de près et la cascade enchaîne : en desktop,
+      // la colonne de texte ne laisse jamais sa moitié d'écran vide pendant
+      // le fondu croisé 3→4.
+      { sel: '[data-anime="titre-4a"]', delai: 9850, duree: 760, images: LEVER },
+      { sel: '[data-anime="titre-4b"]', delai: 9990, duree: 760, images: LEVER },
+      { sel: '[data-anime="mot-1"]', delai: 10700, duree: 640, images: MOT_POSER },
+      { sel: '[data-anime="mot-2"]', delai: 10940, duree: 640, images: MOT_POSER },
+      { sel: '[data-anime="mot-3"]', delai: 11180, duree: 640, images: MOT_POSER },
+      { sel: '[data-anime="mot-4"]', delai: 11420, duree: 640, images: MOT_POSER },
+      { sel: '[data-scene="4"]', delai: 12450, duree: 600, images: SORTIE_SCENE },
+
+      // Scène 5 — base 12800 : la photo du hero en fondu sous voile fort,
+      // le titre, le filet, les deux boutons, puis l'invite. Pas de sortie :
+      // la scène reste posée jusqu'au geste du visiteur. Le fond et le titre
+      // partent AVEC la sortie de la scène 4 (12450) : un vrai fondu croisé,
+      // sans creux d'écran quasi vide autour de 13 s. Le trait d'invite
+      // respire une seule fois (fini à 16350 ms : fin figée au pixel près).
+      { sel: '[data-anime="fond-5"]', delai: 12450, duree: 1200, images: FONDU },
+      { sel: '[data-anime="titre-5a"]', delai: 12800, duree: 800, images: LEVER },
+      { sel: '[data-anime="titre-5b"]', delai: 12950, duree: 800, images: LEVER },
+      { sel: '[data-anime="filet-5"]', delai: 13800, duree: 700, images: TRACER },
+      { sel: '[data-anime="bouton-1"]', delai: 14050, duree: 620, images: POSER },
+      { sel: '[data-anime="bouton-2"]', delai: 14200, duree: 620, images: POSER },
+      { sel: '[data-anime="coda"]', delai: 14550, duree: 700, images: FONDU },
+      { sel: '[data-anime="invite-trait"]', delai: 14550, duree: 1800, images: RESPIRER, easing: 'ease-in-out' },
+
+      // Progression : chaque segment se remplit linéairement sur sa scène.
+      { sel: '[data-segment="1"]', delai: 0, duree: 3200, images: TRACER, easing: 'linear' },
+      { sel: '[data-segment="2"]', delai: 3200, duree: 3200, images: TRACER, easing: 'linear' },
+      { sel: '[data-segment="3"]', delai: 6400, duree: 3400, images: TRACER, easing: 'linear' },
+      { sel: '[data-segment="4"]', delai: 9800, duree: 3000, images: TRACER, easing: 'linear' },
+      { sel: '[data-segment="5"]', delai: 12800, duree: 1800, images: TRACER, easing: 'linear' },
+    ];
+
+    // Fenêtres de visibilité des scènes (élargies de part et d'autre pour
+    // couvrir les fondus croisés). Hors fenêtre, `visibility: hidden` : la
+    // scène n'est ni peinte, ni focalisable, ni annoncée.
+    const FENETRES: Array<[number, number]> = [
+      [0, 3400],
+      [3150, 6700],
+      [6350, 10100],
+      [9750, 13100],
+      [12400, Number.POSITIVE_INFINITY],
+    ];
+
+    // Compteurs : montée 0 → valeur en 1,2 s (easeOutCubic), pilotée par
+    // l'horloge maître — la pause de l'onglet les fige donc avec le reste.
+    const COMPTEURS = Array.from(couche.querySelectorAll<HTMLElement>('[data-compte]')).map(
+      (el, index) => ({
+        el,
+        fin: Number.parseInt(el.dataset.compte ?? '0', 10),
+        debut: index === 0 ? 4350 : 4500,
+        duree: 1200,
+        courant: -1,
+      }),
+    );
+
+    const scenes = Array.from(couche.querySelectorAll<HTMLElement>('[data-scene]'));
+
+    let animations: Animation[] = [];
+    let maitre: Animation | null = null;
+    let enPause: Animation[] = [];
+    let rafId = 0;
+    let ferme = false;
+
+    // ── La page sous le film est gelée (inert) pendant la lecture ──
+    // « Passer » devient ainsi le premier focalisable du document, et aucun
+    // parcours clavier ou lecteur d'écran ne se perd derrière la couche.
+    const geles: HTMLElement[] = [];
+    const contenant = couche.parentElement;
+    for (const el of Array.from(document.body.children)) {
+      if (!(el instanceof HTMLElement) || el.tagName === 'SCRIPT' || el.contains(couche)) continue;
+      el.inert = true;
+      geles.push(el);
+    }
+    if (contenant) {
+      for (const el of Array.from(contenant.children)) {
+        if (!(el instanceof HTMLElement) || el === couche || el.tagName === 'SCRIPT') continue;
+        el.inert = true;
+        geles.push(el);
+      }
+    }
+    const degeler = () => {
+      for (const el of geles) el.inert = false;
+      geles.length = 0;
+    };
+
+    // ── L'horloge : visibilité des scènes et compteurs ──
+    const sortieCubique = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    const battre = () => {
+      const t = maitre?.currentTime != null ? Number(maitre.currentTime) : 0;
+
+      scenes.forEach((scene, i) => {
+        const [debut, fin] = FENETRES[i] ?? [0, 0];
+        scene.style.visibility = t >= debut && t < fin ? 'visible' : 'hidden';
+      });
+
+      for (const c of COMPTEURS) {
+        const progression = Math.min(Math.max((t - c.debut) / c.duree, 0), 1);
+        const valeur = Math.round(sortieCubique(progression) * c.fin);
+        if (valeur !== c.courant) {
+          c.courant = valeur;
+          c.el.textContent = String(valeur);
+        }
+      }
+
+      if (maitre?.playState === 'finished') {
+        rafId = 0;
+        return;
+      }
+      rafId = requestAnimationFrame(battre);
+    };
+
+    // ── (Re)jouer le film depuis le début ──
+    const jouer = () => {
+      for (const a of animations) a.cancel();
+      animations = [];
+      enPause = [];
+      if (rafId) cancelAnimationFrame(rafId);
+
+      maitre = couche.animate([{ opacity: 1 }, { opacity: 1 }], {
+        duration: DUREE_TOTALE,
+        fill: 'forwards',
+      });
+      animations.push(maitre);
+
+      for (const spec of SPECS) {
+        const el = couche.querySelector<HTMLElement>(spec.sel);
+        if (!el) continue;
+        animations.push(
+          el.animate(spec.images, {
+            delay: spec.delai,
+            duration: spec.duree,
+            easing: spec.easing ?? E1,
+            fill: 'both',
+          }),
+        );
+      }
+
+      for (const c of COMPTEURS) c.courant = -1;
+      battre();
+    };
+
+    // ── Fermer : fondu court, puis la page reprend ses droits ──
+    const fermer = (versTitre = false) => {
+      if (ferme || !couche.isConnected) return;
+      ferme = true;
+      degeler();
+      window.removeEventListener('scroll', surDefilement);
+      window.removeEventListener('keydown', surClavier);
+      document.removeEventListener('visibilitychange', surVisibilite);
+      // La page peut lancer ses propres apparitions dès maintenant, pendant
+      // que la couche s'efface.
+      window.dispatchEvent(new Event('film-ouverture:fin'));
+      couche.style.pointerEvents = 'none';
+      const fondu = couche.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: 420,
+        easing: 'ease-out',
+        fill: 'forwards',
+      });
+      fondu.onfinish = () => {
+        if (rafId) cancelAnimationFrame(rafId);
+        for (const a of animations) a.cancel();
+        couche.remove();
+        if (versTitre) {
+          // Fermeture au clavier (Passer, Échap) : le focus se pose sur le
+          // H1 du hero, là où la lecture reprend. Sans défilement : on y est.
+          const titre = document.getElementById('sp-hero-titre');
+          if (titre) {
+            titre.setAttribute('tabindex', '-1');
+            titre.focus({ preventScroll: true });
+          }
+        }
+      };
+    };
+
+    // ── Les gestes ──
+    // Défiler = passer. La position de départ est mémorisée : si le
+    // navigateur restaure un défilement au chargement, ce n'est pas un geste.
+    const y0 = window.scrollY;
+    const surDefilement = () => {
+      if (Math.abs(window.scrollY - y0) > 2) fermer();
+    };
+    const surClavier = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') fermer(true);
+    };
+    // Onglet masqué : tout en pause ; au retour, seules les animations que la
+    // pause a suspendues repartent (rejouer une animation finie la relancerait).
+    const surVisibilite = () => {
+      if (!couche.isConnected) return;
+      if (document.hidden) {
+        enPause = animations.filter((a) => a.playState === 'running');
+        for (const a of enPause) a.pause();
+      } else {
+        for (const a of enPause) if (a.playState === 'paused') a.play();
+        enPause = [];
+      }
+    };
+
+    window.addEventListener('scroll', surDefilement, { passive: true });
+    window.addEventListener('keydown', surClavier);
+    document.addEventListener('visibilitychange', surVisibilite);
+
+    couche.querySelector('[data-passer]')?.addEventListener('click', () => fermer(true));
+    couche.querySelector('[data-revoir]')?.addEventListener('click', () => jouer());
+
+    // Film terminé : un clic sur le fond (hors liens et boutons) fait entrer
+    // dans la page, en plus du défilement.
+    couche.addEventListener('click', (e) => {
+      if (maitre?.playState !== 'finished') return;
+      if (e.target instanceof Element && e.target.closest('a, button')) return;
+      fermer();
+    });
+
+    // Si la personne réduit les animations pendant la lecture, on coupe.
+    mediaReduit.addEventListener('change', (e) => {
+      if (e.matches) fermer();
+    });
+
+    jouer();
+  }
+</script>
+
+<style>
+  /*
+   * La couche n'existe que si le JavaScript est passé ET que le mouvement
+   * n'est pas réduit : dans tous les autres cas, `display: none` et la page
+   * s'ouvre sur son hero. Le z-index passe au-dessus de tout le chrome du
+   * site (nav 50, menu mobile 90, lien d'évitement 100).
+   */
+  .film {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    overflow: hidden;
+    background: var(--ink);
+
+    /* Rampes propres au film, interpolées 390 → 1440 comme les jetons. Le
+       plafond du titre (64 px) garde chaque ligne entière dans sa colonne
+       desktop : une ligne de masque qui se replie casserait la montée. */
+    --film-titre-fs: clamp(36px, 25.6px + 2.6667vw, 64px);
+    --film-nombre-fs: clamp(46px, 31.89px + 3.619vw, 84px);
+    --film-motcle-fs: clamp(26px, 20.8px + 1.3333vw, 40px);
+    --film-or-fs: clamp(15px, 13.14px + 0.4762vw, 20px);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html.js) .film {
+      display: grid;
+    }
+  }
+
+  /* ═══ Les scènes : empilées sur la même cellule, une seule visible ══════ */
+
+  .film__scene {
+    grid-area: 1 / 1;
+    position: relative;
+    display: grid;
+    place-items: center;
+    visibility: hidden;
+    overflow: hidden;
+    padding: calc(env(safe-area-inset-top, 0px) + 76px) var(--gouttiere)
+      calc(env(safe-area-inset-bottom, 0px) + 72px);
+  }
+
+  .film__compo {
+    width: 100%;
+    max-width: 1160px;
+  }
+
+  /* ── Révélations sous masque ──
+     Le parent porte une fenêtre de clip fixe (les marges négatives absorbent
+     ascendantes, descendantes et débord italique — au repos il ne rogne
+     rien), l'enfant monte dessous en translateY. Même mécanique que le hero
+     de la page. */
+  /* ⚠️ Pas de `.film__masque > *` générique : avec le scopage Astro, il
+     l'emporterait sur les display propres des enfants (flex du logotype…).
+     Chaque coulisseau déclare le sien : .film__ligne, .film__logoligne,
+     .film__motcle. */
+  .film__masque {
+    display: block;
+    clip-path: inset(-0.4em -0.35em -0.3em);
+  }
+
+  .film__ligne {
+    display: inline-block;
+  }
+
+  /* ═══ Scène 1 : le logotype ═════════════════════════════════════════════ */
+
+  .film__compo--marque {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  /* Le dessin du sur-titre de hero (parchemin adouci, interlettrage large). */
+  .film__surligne {
+    max-width: 30ch;
+    margin: 0 0 clamp(20px, 17px + 0.76vw, 28px);
+    font-family: var(--font-eyebrow);
+    font-size: clamp(9.5px, 8.757px + 0.1905vw, 11.5px);
+    font-weight: 600;
+    line-height: 2;
+    letter-spacing: var(--ls-eyebrow-wide);
+    text-transform: uppercase;
+    text-wrap: balance;
+    color: var(--parch-soft);
+    transform-origin: 50% 50%;
+  }
+
+  @media (min-width: 820px) {
+    .film__surligne {
+      max-width: none;
+    }
+  }
+
+  /* La structure du logotype du site : deux lignes empilées, interligne 0,9,
+     gouttières internes identiques à Logotype.astro. */
+  .film__logotype {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(6px, 5.257px + 0.1905vw, 8px);
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-display-hero);
+    line-height: var(--lh-display-tight);
+    text-wrap: nowrap;
+  }
+
+  .film__logoligne {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(15px, 11.657px + 0.8571vw, 24px);
+  }
+
+  .film__masque--logo:last-child .film__logoligne {
+    gap: clamp(8px, 7.257px + 0.1905vw, 10px);
+  }
+
+  .film__mot--parch {
+    color: var(--parch);
+    font-weight: 500;
+  }
+
+  .film__mot--feu {
+    color: var(--feu);
+    font-weight: 500;
+  }
+
+  .film__mot--connecteur {
+    color: var(--parch);
+    font-weight: 300;
+    font-style: italic;
+  }
+
+  /* « Acier » : l'acier plein en repli, le métal au repos (lueur posée au
+     milieu du mot, comme toutes les occurrences du logotype hors hero). */
+  .film__mot--acier {
+    position: relative;
+    color: var(--acier);
+    font-weight: 500;
+  }
+
+  @supports ((background-clip: text) or (-webkit-background-clip: text)) {
+    .film__mot--acier {
+      background-image: linear-gradient(
+        100deg,
+        var(--acier) 0%,
+        var(--acier) 36%,
+        var(--acier-clair) 50%,
+        var(--acier) 64%,
+        var(--acier) 100%
+      );
+      background-repeat: no-repeat;
+      background-size: 400% 100%;
+      background-position: 50% 0;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+  }
+
+  /* Le double de balayage : même texte posé au même endroit, en clair, dont
+     seule la fenêtre de clip-path traverse (aucun dégradé animé). Invisible
+     au repos. */
+  .film__balayage {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+  }
+
+  .film__balayage--acier {
+    color: var(--acier-clair);
+    -webkit-text-fill-color: var(--acier-clair);
+  }
+
+  .film__balayage--or {
+    color: var(--or-eclat);
+    -webkit-text-fill-color: var(--or-eclat);
+  }
+
+  /* ═══ Filets braise (et le filet d'or de la scène 3) ════════════════════ */
+
+  .film__filet {
+    display: block;
+    width: clamp(44px, 38.057px + 1.5238vw, 60px);
+    height: 1px;
+    margin-block-start: clamp(22px, 19px + 0.76vw, 30px);
+    background: var(--ember);
+    transform-origin: left center;
+  }
+
+  .film__filet--or {
+    background: var(--or);
+    margin-block-start: clamp(18px, 15px + 0.76vw, 24px);
+  }
+
+  /* ═══ Scènes à panneau photo (2, 3, 4) ══════════════════════════════════ */
+
+  /*
+   * Portrait d'abord : une vraie colonne — photo en panneau sur toute la
+   * largeur, texte dessous, composition calée au centre de l'écran. Le
+   * panneau reste en retrait du bord (jamais pleine largeur de fenêtre) :
+   * c'est le cadre qui donne le ton « générique », et le zoom de pose
+   * (scale ≤ 1,07) ne sort jamais du viewport.
+   */
+  .film__compo--panneau {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(24px, 4svh, 40px);
+    align-items: center;
+  }
+
+  .film__cadre {
+    position: relative;
+    width: 100%;
+    height: clamp(180px, 32svh, 320px);
+    overflow: hidden;
+    border-radius: var(--radius-2);
+    background: var(--char);
+  }
+
+  .film__cadre--palmares {
+    height: clamp(200px, 36svh, 360px);
+  }
+
+  .film__cadre--couleurs {
+    height: clamp(170px, 30svh, 300px);
+  }
+
+  .film__cadre :global(picture),
+  .film__cadre :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .film__cadre :global(img) {
+    object-fit: cover;
+    object-position: 50% 32%;
+  }
+
+  .film__cadre--palmares :global(img) {
+    object-position: 50% 26%;
+  }
+
+  /* Le voile d'encre des photos du site : jamais une photo nue — et assez
+     d'encre pour que le panneau reste une image du film, pas un projecteur. */
+  .film__voile {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, var(--veil-ink-85), var(--veil-ink-65) 60%, var(--veil-ink-50));
+  }
+
+  .film__bloc {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .film__losange {
+    margin: 0 0 clamp(12px, 10px + 0.5vw, 18px);
+    font-size: clamp(11px, 10px + 0.25vw, 14px);
+    line-height: 1;
+    color: var(--ember);
+  }
+
+  .film__titre {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--film-titre-fs);
+    font-weight: 400;
+    line-height: var(--lh-display);
+    color: var(--parch);
+  }
+
+  .film__titre--centre {
+    align-items: center;
+    text-align: center;
+  }
+
+  /* La ligne accentuée des titres du site : ember, italique, graisse 300. */
+  .film__ligne--accent {
+    color: var(--ember);
+    font-style: italic;
+    font-weight: 300;
+  }
+
+  /* ── Scène 2 : les compteurs ── */
+
+  .film__chiffres {
+    display: flex;
+    gap: clamp(28px, 22px + 1.5vw, 56px);
+    margin-block-start: clamp(26px, 4svh, 44px);
+  }
+
+  .film__chiffre {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding-inline-start: clamp(14px, 3vw, 24px);
+    border-left: var(--filet);
+  }
+
+  .film__nombre {
+    display: inline-block;
+    font-family: var(--font-display);
+    font-size: var(--film-nombre-fs);
+    font-weight: 500;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+    color: var(--parch);
+  }
+
+  .film__libelle {
+    /* 20ch : « nouveaux cette rentrée » se replie en deux lignes, jamais
+       trois (l'interlettrage large compte dans la chasse). */
+    max-width: 20ch;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: var(--lh-body-tight);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  /* ── Scène 3 : les lignes d'or ── */
+
+  .film__or-rang {
+    margin: clamp(18px, 15px + 0.76vw, 26px) 0 0;
+    font-size: var(--film-or-fs);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+  }
+
+  /* L'or plein en repli ; le dégradé au repos est la lueur posée au centre,
+     exactement la section palmarès de la page en mouvement réduit. */
+  .film__or {
+    position: relative;
+    display: inline-block;
+    color: var(--or);
+  }
+
+  @supports ((background-clip: text) or (-webkit-background-clip: text)) {
+    .film__or {
+      background-image: linear-gradient(
+        100deg,
+        var(--or) 0%,
+        var(--or) 36%,
+        var(--or-clair) 46%,
+        var(--or-eclat) 50%,
+        var(--or-clair) 54%,
+        var(--or) 64%,
+        var(--or) 100%
+      );
+      background-repeat: no-repeat;
+      background-size: 400% 100%;
+      background-position: 50% 0;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+  }
+
+  .film__or-titres {
+    margin: clamp(10px, 8px + 0.5vw, 16px) 0 0;
+    font-size: var(--fs-body-s);
+    line-height: 1.6;
+    color: var(--or);
+  }
+
+  /* ── Scène 4 : la cascade de mots-clés ── */
+
+  .film__mots {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(10px, 1.6svh, 16px);
+    margin: clamp(24px, 3.4svh, 40px) 0 0;
+  }
+
+  .film__masque--mot {
+    clip-path: inset(-0.3em -0.35em -0.25em);
+  }
+
+  .film__motcle {
+    display: inline-flex;
+    align-items: baseline;
+    gap: clamp(12px, 10px + 0.5vw, 18px);
+    font-family: var(--font-display);
+    font-size: var(--film-motcle-fs);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--parch);
+    transform-origin: left center;
+  }
+
+  .film__motcle-losange {
+    font-size: 0.4em;
+    color: var(--ember);
+  }
+
+  /* ═══ Scène 5 : la finale ═══════════════════════════════════════════════ */
+
+  .film__fond {
+    position: absolute;
+    inset: 0;
+  }
+
+  .film__fond :global(picture),
+  .film__fond :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .film__fond :global(img) {
+    object-fit: cover;
+    object-position: 50% 32%;
+  }
+
+  /* Voile fort : les boutons se posent sur de l'encre, pas sur la photo. */
+  .film__voile--fort {
+    background: linear-gradient(to top, var(--veil-ink-85), var(--veil-ink-85) 40%, var(--veil-ink-65));
+  }
+
+  .film__compo--finale {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .film__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    margin: clamp(28px, 4svh, 44px) 0 0;
+  }
+
+  .film__actions :global(.film__bouton) {
+    width: min(100%, 400px);
+  }
+
+  /* Le libellé long du téléchargement a le droit de se replier sur un écran
+     de 390 px — même règle que les CTA de la page. */
+  @media (max-width: 819.98px) {
+    .film__actions :global(.film__bouton) {
+      display: flex;
+      height: auto;
+      min-height: 52px;
+      padding-block: 14px;
+      padding-inline: 12px;
+      white-space: normal;
+      line-height: 1.5;
+      text-align: center;
+    }
+  }
+
+  .film__coda {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-block-start: clamp(26px, 4svh, 48px);
+  }
+
+  /* L'invite : un trait braise vertical. Il respire UNE fois, par la
+     partition WAAPI (dessin RESPIRER), puis repose dans l'état ci-dessous :
+     la fin du film est figée au pixel près, rien ne boucle à l'écran. */
+  .film__invite-trait {
+    display: block;
+    width: 1px;
+    height: 20px;
+    background: var(--ember);
+    transform-origin: top center;
+    opacity: 0.45;
+    transform: scaleY(0.6);
+  }
+
+  .film__invite {
+    margin: 0;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+  }
+
+  .film__revoir {
+    padding: 6px 10px;
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 600;
+    letter-spacing: var(--ls-eyebrow-s);
+    text-transform: uppercase;
+    color: var(--parch-mute);
+    text-decoration: underline;
+    text-decoration-color: var(--parch-line);
+    text-underline-offset: 0.3em;
+    transition: color var(--transition);
+  }
+
+  .film__revoir:hover,
+  .film__revoir:focus-visible {
+    color: var(--ember-hot);
+    text-decoration-color: currentColor;
+  }
+
+  /* ═══ Contrôles : Passer et la progression ══════════════════════════════ */
+
+  .film__passer {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
+    right: var(--gouttiere);
+    z-index: 2;
+    min-height: 40px;
+    padding: 10px 18px;
+    border: 1px solid var(--btn-border);
+    border-radius: var(--radius-1);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-button);
+    font-weight: 500;
+    letter-spacing: 0.157em;
+    text-transform: uppercase;
+    color: var(--parch-soft);
+    background: var(--veil-ink-50);
+    transition:
+      color var(--transition),
+      border-color var(--transition);
+  }
+
+  .film__passer:hover,
+  .film__passer:focus-visible {
+    color: var(--parch);
+    border-color: var(--ember-hot);
+  }
+
+  .film__progression {
+    position: absolute;
+    inset-inline: 0;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .film__segment {
+    display: block;
+    width: clamp(30px, 8vw, 52px);
+    height: 2px;
+    overflow: hidden;
+    background: var(--parch-line);
+  }
+
+  .film__segment-rempli {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--ember);
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+
+  /* ═══ Desktop (≥ 820 px) : plus d'air, photo et texte côte à côte ═══════ */
+
+  @media (min-width: 820px) {
+    .film__scene {
+      padding-inline: clamp(22px, 9.371px + 3.2381vw, 96px);
+    }
+
+    .film__compo--panneau {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: clamp(40px, 6vw, 88px);
+    }
+
+    .film__cadre {
+      height: auto;
+      aspect-ratio: 4 / 3;
+      max-height: 62svh;
+      border-radius: var(--radius-1);
+    }
+
+    /* Scène 3 : texte à gauche, le podium en panneau portrait à droite. */
+    .film__compo--palmares {
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    }
+
+    .film__compo--palmares .film__cadre {
+      order: 2;
+      aspect-ratio: 3 / 4;
+    }
+
+    .film__compo--palmares .film__bloc {
+      order: 1;
+    }
+
+    /* Scène 4 : la cascade reste une colonne, même en desktop — quatre mots
+       en ligne déborderaient la demi-colonne, et la lecture de haut en bas
+       est ce qui fait la cascade. */
+
+    /* Scène 5 : les deux boutons côte à côte, comme la fin de page. */
+    .film__actions {
+      flex-direction: row;
+      justify-content: center;
+    }
+
+    .film__actions :global(.film__bouton) {
+      width: auto;
+    }
+  }
+
+  /*
+   * Ceinture et bretelles : la règle globale de global.css fige déjà toutes
+   * les animations CSS en mouvement réduit, et le script retire la couche —
+   * mais si une CSS arrive avant le script, autant que la couche n'existe
+   * jamais à l'écran.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .film {
+      display: none !important;
+    }
+  }
+</style>
