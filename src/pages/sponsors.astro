@@ -21,12 +21,16 @@
  * ici leur balayage métallique —, les contreparties, les partenaires actuels
  * (section de l'accueil réutilisée), puis le dossier PDF et le contact.
  *
- * Animations : apparitions au défilement, compteurs, filet du hero qui
- * s'étire. Tous les états initiaux masqués n'existent que sous `html.js`
- * (classe posée par le script inline du <head>) : sans JavaScript, tout est
- * visible d'emblée. `prefers-reduced-motion: reduce` neutralise tout —
- * compteurs à leur valeur finale, balayage doré figé sur son reflet central,
- * comme sur les fiches prof.
+ * Animations : une séquence d'ouverture sur le hero (une seule fois, au
+ * chargement, ~1,4 s — fondu de la photo avec un zoom qui se pose, lignes de
+ * texte révélées par masque, filet braise qui se trace ; le découpage exact
+ * est commenté sur le bloc « Séquence d'ouverture » de la CSS), puis des
+ * apparitions au défilement et des compteurs pour le reste de la page. Tous
+ * les états initiaux masqués n'existent que sous `html.js` (classe posée par
+ * le script inline du <head>) : sans JavaScript, tout est visible d'emblée.
+ * `prefers-reduced-motion: reduce` neutralise tout — hero posé, compteurs à
+ * leur valeur finale, balayage doré figé sur son reflet central, comme sur
+ * les fiches prof.
  */
 import { Picture } from 'astro:assets';
 import Base from '../layouts/Base.astro';
@@ -249,8 +253,12 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
     <span class="sp-hero__voile" aria-hidden="true"></span>
     <span class="sp-hero__assise" aria-hidden="true"></span>
 
+    {/* Les <span class="sp-hero__masque"> ne changent pas un caractère des
+        textes : ce sont les coulisseaux des révélations par masque (le parent
+        porte le clip, l'enfant monte dessous). Sans JavaScript, ils sont de
+        simples spans inertes. */}
     <div class="sp-hero__contenu gouttiere">
-      <p class="sp-hero__surtitre">Dossier de partenariat</p>
+      <p class="sp-hero__surtitre"><span class="sp-hero__masque">Dossier de partenariat</span></p>
       <SectionTitle
         lignes={[{ texte: 'Devenir' }, { texte: 'partenaire', accent: true }]}
         balise="h1"
@@ -259,7 +267,7 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
         class="sp-hero__titre"
       />
       <span class="sp-hero__filet" aria-hidden="true"></span>
-      <p class="sp-hero__lede">{LEDE}</p>
+      <p class="sp-hero__lede"><span class="sp-hero__masque">{LEDE}</span></p>
     </div>
   </header>
 
@@ -641,14 +649,15 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
     color: var(--parch-soft);
   }
 
-  /* Le filet s'étire de gauche à droite (~800 ms) après l'arrivée du titre.
+  /* Le filet braise : la seule note chaude du hero, tracée de gauche à droite
+     pendant la séquence (scaleX, origine gauche — bloc « Séquence » plus bas).
      Sans JavaScript ou en mouvement réduit : posé, immobile, visible. */
   .sp-hero__filet {
     display: block;
     width: clamp(44px, 38.057px + 1.5238vw, 60px);
     height: 1px;
     margin-block: clamp(20px, 17px + 0.76vw, 28px);
-    background: var(--line-logo);
+    background: var(--ember);
     transform-origin: left center;
   }
 
@@ -660,31 +669,137 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
     color: var(--parch-soft);
   }
 
+  /*
+   * ── Composition portrait (téléphone tenu droit, < 820 px) ───────────────
+   * Le hero remplit le premier écran : 100svh moins l'en-tête collant qui le
+   * surmonte — la première vue est donc exactement nav + hero, rien ne
+   * dépasse. L'eyebrow monte seul en haut de la photo (marge auto), le bloc
+   * titre + filet + lede s'assoit en bas sur l'assise d'encre : une vraie
+   * colonne, pensée pour la capture d'écran verticale, pas un desktop
+   * compressé. Le display est recalibré (52→60 px) : à cette hauteur d'écran,
+   * la rampe `fiche` (36 px à 390) flotterait. La réserve basse laisse la
+   * barre d'onglets fixe (~80 px) se poser sans couvrir le lede.
+   */
+  @media (max-width: 819.98px) and (orientation: portrait) {
+    .sp-hero {
+      min-height: calc(100svh - var(--hauteur-entete, 66px));
+      grid-template-rows: 1fr;
+      align-content: stretch;
+    }
+
+    .sp-hero__contenu {
+      justify-content: flex-end;
+      padding-block: clamp(20px, 5vw, 28px) calc(92px + env(safe-area-inset-bottom));
+    }
+
+    .sp-hero__surtitre {
+      margin-block-end: auto;
+    }
+
+    .sp-hero__contenu :global(.sp-hero__titre) {
+      --titre-fs: clamp(52px, 13.5vw, 60px);
+    }
+  }
+
+  /*
+   * ── Séquence d'ouverture ─────────────────────────────────────────────────
+   * Une seule fois, au chargement, puis plus rien ne bouge. Un seul easing
+   * (la courbe de sortie maison, cubic-bezier(0.22, 0.61, 0.36, 1)), des
+   * décalages de 120-140 ms, tout en transform / opacity / clip-path — aucune
+   * propriété de mise en page, donc aucun décalage de contenu.
+   *
+   *     0 → 1200 ms   photo : fondu + zoom qui se pose (1.035 → 1, < 4 %)
+   *   120 →  820 ms   eyebrow : montée sous masque + fondu (700 ms)
+   *   260 → 1020 ms   « Devenir » : montée sous masque, sans fondu (760 ms)
+   *   400 → 1160 ms   « partenaire » : même masque, un cran derrière (760 ms)
+   *   540 → 1340 ms   filet braise : se trace, scaleX origine gauche (800 ms)
+   *   660 → 1400 ms   lede : montée sous masque + fondu (740 ms)
+   *
+   * Mécanique des masques : le parent porte un clip-path fixe (ses marges
+   * négatives absorbent ascendantes, descendantes et débord italique — au
+   * repos il ne rogne rien), l'enfant `.sp-hero__masque` — ou les fragments
+   * du titre — monte dessous en translateY. Tout ce bloc n'existe que sous
+   * `html.js` ET hors mouvement réduit : sans JavaScript ou en animations
+   * réduites, pas d'état initial, pas de délai, page posée d'emblée.
+   */
   @media (prefers-reduced-motion: no-preference) {
+    :global(html.js) .sp-hero__media {
+      transform-origin: 50% 35%;
+      animation: sp-photo-poser 1200ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+
     :global(html.js) .sp-hero__surtitre,
-    :global(html.js) .sp-hero__contenu :global(.sp-hero__titre),
     :global(html.js) .sp-hero__lede {
-      animation: sp-lever 620ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+      clip-path: inset(0 -0.25em);
     }
 
-    :global(html.js) .sp-hero__contenu :global(.sp-hero__titre) {
-      animation-delay: 90ms;
+    :global(html.js) .sp-hero__surtitre .sp-hero__masque,
+    :global(html.js) .sp-hero__lede .sp-hero__masque {
+      display: inline-block;
+      animation: sp-masque-poser 700ms cubic-bezier(0.22, 0.61, 0.36, 1) 120ms both;
     }
 
-    :global(html.js) .sp-hero__lede {
-      animation-delay: 480ms;
+    :global(html.js) .sp-hero__lede .sp-hero__masque {
+      animation-duration: 740ms;
+      animation-delay: 660ms;
+    }
+
+    /* Les deux lignes du H1 : clip sur la ligne, montée des fragments. Le débord
+       autorisé (−0.35em haut, −0.2em bas) couvre les ascendantes du Cormorant à
+       interligne 0.9 et la descendante italique de « partenaire ». */
+    :global(html.js) .sp-hero__contenu :global(.sp-hero__titre .titre-section__ligne) {
+      clip-path: inset(-0.35em -0.25em -0.2em);
+    }
+
+    :global(html.js) .sp-hero__contenu :global(.sp-hero__titre .titre-section__ligne > *) {
+      display: inline-block;
+      animation: sp-masque-lever 760ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+
+    :global(html.js)
+      .sp-hero__contenu
+      :global(.sp-hero__titre .titre-section__ligne:nth-child(1) > *) {
+      animation-delay: 260ms;
+    }
+
+    :global(html.js)
+      .sp-hero__contenu
+      :global(.sp-hero__titre .titre-section__ligne:nth-child(2) > *) {
+      animation-delay: 400ms;
     }
 
     :global(html.js) .sp-hero__filet {
       transform: scaleX(0);
-      animation: sp-etirer 800ms cubic-bezier(0.22, 0.61, 0.36, 1) 420ms forwards;
+      animation: sp-etirer 800ms cubic-bezier(0.22, 0.61, 0.36, 1) 540ms forwards;
     }
   }
 
-  @keyframes sp-lever {
+  @keyframes sp-photo-poser {
     from {
       opacity: 0;
-      transform: translateY(16px);
+      transform: scale(1.035);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Montée pure, sans fondu : le display sort du masque d'un bloc, net. */
+  @keyframes sp-masque-lever {
+    from {
+      transform: translateY(1.6em);
+    }
+    to {
+      transform: none;
+    }
+  }
+
+  /* Pour les petits corps (eyebrow, lede) : la même montée, adoucie d'un fondu. */
+  @keyframes sp-masque-poser {
+    from {
+      opacity: 0;
+      transform: translateY(1.4em);
     }
     to {
       opacity: 1;
