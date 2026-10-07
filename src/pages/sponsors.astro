@@ -198,27 +198,37 @@ const ATOUTS = [
 // « VOTRE LOGO » sur une banderole de bord d'aire, le dos du t-shirt du club
 // et un roll-up d'événement. Images de synthèse assumées comme maquettes
 // (l'alt le dit) : aucun crédit photographique, il n'y a pas de photographe.
-// Les cadrages (`position`) gardent la case « VOTRE LOGO » dans le cadre 3:4.
+// Chaque maquette garde un cadre adapté à son orientation : la banderole,
+// paysage, s'étale en pleine rangée (ratio natif 3:2 en pile téléphone, format
+// large 21:9 à partir de 820 px — surclassé dans le CSS de la page) ; les deux
+// portraits restent en 3:4 côte à côte. Les cadrages gardent la case
+// « VOTRE LOGO » dans le cadre.
 const MAQUETTES = [
   {
     photo: resoudrePhoto('/src/assets/photos/commun/maquette-banderole-partenaires.jpg'),
     alt: 'Maquette : banderole de bord d’aire de tournoi avec l’emplacement « Votre logo »',
     legende: T('Banderole de tournoi'),
-    position: '86% 50%',
+    ratio: '3 / 2',
+    position: '50% 72%',
+    sizes: '(min-width: 820px) min(100vw - 112px, 1328px), calc(100vw - 44px)',
     largeurs: [768, 1152, 1536],
   },
   {
     photo: resoudrePhoto('/src/assets/photos/commun/maquette-tshirt-partenaires.jpg'),
     alt: 'Maquette : dos du t-shirt du club avec l’emplacement « Votre logo »',
     legende: T('T-shirt du club'),
+    ratio: '3 / 4',
     position: '50% 28%',
+    sizes: '(min-width: 820px) 45vw, calc(100vw - 44px)',
     largeurs: [512, 768, 1024],
   },
   {
     photo: resoudrePhoto('/src/assets/photos/commun/maquette-kakemono-partenaires.jpg'),
     alt: 'Maquette : roll-up d’événement avec l’emplacement « Votre logo »',
     legende: T('Roll-up d’événement'),
+    ratio: '3 / 4',
     position: '50% 34%',
+    sizes: '(min-width: 820px) 45vw, calc(100vw - 44px)',
     largeurs: [512, 768, 1024],
   },
 ];
@@ -486,12 +496,12 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
                 alt={maquette.alt}
                 variante="tuile"
                 legende={maquette.legende}
-                ratio="3 / 4"
+                ratio={maquette.ratio}
                 voile="nul"
                 assise="bandeau"
                 rayon={2}
                 objectPosition={maquette.position}
-                sizes="(min-width: 820px) 30vw, calc(100vw - 44px)"
+                sizes={maquette.sizes}
                 largeurs={maquette.largeurs}
               />
             </li>
@@ -1312,8 +1322,20 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
   }
 
   @media (min-width: 820px) {
+    /* Orientations mélangées : la banderole (paysage) prend la rangée entière
+       en format large, les deux portraits se partagent la rangée du dessous —
+       la composition du film, transposée à la page. Le `!important` surclasse
+       la variable de ratio que MediaCard pose en style inline. */
     .sp-atouts__maquettes {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sp-atouts__maquettes li:first-child {
+      grid-column: 1 / -1;
+    }
+
+    .sp-atouts__maquettes li:first-child :global(.media-card) {
+      --media-ratio: 21 / 9 !important;
     }
 
     .sp-atouts__grille {
