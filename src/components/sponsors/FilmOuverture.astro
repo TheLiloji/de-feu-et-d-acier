@@ -11,7 +11,8 @@
  *   1. le nom ........... le logotype, sa passe de lumière sur « Acier », la ville ;
  *   2. le club .......... les adhérents et les nouveaux de la rentrée ;
  *   3. le palmarès ...... rang mondial, rang français, titres — en or ;
- *   4. le partenariat ... où paraît le logo d'un partenaire ;
+ *   4. le partenariat ... le montage des trois maquettes (banderole, t-shirt,
+ *                         roll-up) où paraît le logo d'un partenaire ;
  *   5. la fin posée ..... « Devenez partenaire », les deux boutons de la page,
  *                         et deux invites : « Revoir » et « Découvrir la page ».
  *
@@ -23,8 +24,12 @@
  * paraît que sur le carton du palmarès.
  *
  * Les compositions sont elles aussi celles du site : la pile centrée du hero
- * de l'accueil (cartons 1 et 5), et la photo voilée à contenu ancré en bas à
- * gauche du hero de la page et des heros de fiche (cartons 2 à 4).
+ * de l'accueil (cartons 1 et 5), la photo voilée à contenu ancré en bas à
+ * gauche du hero de la page et des heros de fiche (cartons 2 et 3), et une
+ * grille de cartes photo à la manière des galeries pour le carton du
+ * partenariat — là, les maquettes sont le sujet, pas une ambiance : aucune
+ * n'est voilée, chacune est cadrée sur la rangée des logos et la case
+ * « VOTRE LOGO ».
  *
  * Rien n'est recopié
  * ------------------
@@ -281,15 +286,15 @@ function fond(
 }
 
 /*
- * Trois fonds, aucun en double et aucun repris du hero de la page (le tireur
- * en garde reste à la page, le film ne le redouble pas) : le gymnase est la
- * photo de la section « Le club » de la page, les deux images de tournoi sont
- * celles de la fiche du compétiteur dont le carton cite le palmarès, et le
- * carton partenariat porte deux maquettes dédiées (banderole en paysage,
- * t-shirt en portrait) que la page ne montre nulle part. Les largeurs
- * reprennent autant que possible celles que ces pages génèrent déjà — mêmes
- * dérivés, donc presque rien de plus dans `dist/`, et un fichier déjà en
- * cache quand la page le redemande.
+ * Deux fonds et trois panneaux, aucun en double et aucun repris du hero de la
+ * page (le tireur en garde reste à la page, le film ne le redouble pas) : le
+ * gymnase est la photo de la section « Le club » de la page, les deux images
+ * de tournoi sont celles de la fiche du compétiteur dont le carton cite le
+ * palmarès, et le carton partenariat porte les trois maquettes de supports
+ * (banderole, t-shirt, roll-up) que la section partenariat de la page montre
+ * aussi. Les largeurs reprennent autant que possible celles que ces pages
+ * génèrent déjà — mêmes dérivés, donc presque rien de plus dans `dist/`, et
+ * un fichier déjà en cache quand la page le redemande.
  *
  * `sizes` en portrait : un fond plein écran recadré dans une photo plus large
  * que lui ne « mesure » pas 100 vw mais une fraction de la **hauteur** — la
@@ -297,17 +302,18 @@ function fond(
  * (l'équipe, photo paysage sans variante verticale). Les valeurs ci-dessous
  * sont réglées pour qu'un téléphone dPR 3 reçoive 1,4 à 2 pixels de fichier
  * par pixel CSS dessiné quand le master le permet : assez pour que rien ne
- * paraisse mou, sans jamais dépasser ce que l'écran peut montrer. Les trois
- * fonds (AVIF) sont demandés en priorité basse sauf le premier.
+ * paraisse mou, sans jamais dépasser ce que l'écran peut montrer. Les fonds
+ * et panneaux (AVIF) sont demandés en priorité basse sauf le premier.
  */
-const [gymnase, tournoiPortrait, tournoiPaysage, banderole, tshirt] = await Promise.all([
+const [gymnase, tournoiPortrait, tournoiPaysage, banderole, tshirt, kakemono] = await Promise.all([
   derives('/src/assets/photos/clermont/article-rentree-gymnase.jpg', [780, 1176, 1600, 2400]),
   derives('/src/assets/photos/clermont/prof-gabriel-tardio-tournoi.jpg', [540, 810, 1200]),
   derives('/src/assets/photos/clermont/gabriel-tournoi-video-vignette.jpg', [960, 1280, 1600, 2400]),
-  // Les deux maquettes générées pour le carton partenariat (masters 1536 et
+  // Les trois maquettes générées pour le carton partenariat (masters 1536 et
   // 1024 px : on ne suréchantillonne jamais, les dérivés s'arrêtent au master).
   derives('/src/assets/photos/commun/maquette-banderole-partenaires.jpg', [768, 1152, 1536]),
   derives('/src/assets/photos/commun/maquette-tshirt-partenaires.jpg', [512, 768, 1024]),
+  derives('/src/assets/photos/commun/maquette-kakemono-partenaires.jpg', [512, 768, 1024]),
 ]);
 
 const FOND_CLUB = fond(gymnase, null, {
@@ -338,27 +344,85 @@ const FOND_PALMARES = fond(tournoiPaysage, tournoiPortrait, {
   plan: 'avance',
 });
 
-const FOND_PARTENARIAT = fond(banderole, tshirt, {
-  // Le carton parle de visibilité : on la MONTRE. Deux maquettes générées
-  // (et validées par le client) qui composent le logo du club au-dessus de la
-  // rangée des partenaires actuels, avec la case « VOTRE LOGO » à la même
-  // hauteur que les voisins : la banderole de tournoi en paysage, le dos du
-  // t-shirt du club en portrait. Images de synthèse assumées comme maquettes
-  // (l'alt le dit), donc aucun crédit photographique : il n'y a pas de
-  // photographe à créditer.
-  tailles: `${MEDIA_PORTRAIT} 67vh, 100vw`,
-  taillesPortrait: '67vh',
-  alt: 'Maquette d’un support partenaire du club avec l’emplacement « Votre logo »',
-  cadrePaysage: '50% 40%',
-  cadrePortrait: '71% 40%',
-  creditPaysage: '',
-  creditPortrait: '',
-  plan: 'avance',
-});
+/*
+ * Les trois panneaux du carton partenariat. Le carton parle de visibilité :
+ * on la MONTRE — trois maquettes générées (et validées par le client) qui
+ * composent le logo du club au-dessus de la rangée des partenaires actuels,
+ * avec la case « VOTRE LOGO » à la même hauteur que les voisins : la
+ * banderole de bord d'aire en paysage, le dos du t-shirt du club et le
+ * roll-up d'événement en portrait. Aucun voile dessus (les maquettes sont le
+ * sujet de la scène, pas une ambiance) et des cadrages (`object-position`)
+ * réglés pour que la rangée des logos et la case « VOTRE LOGO » restent dans
+ * le cadre à tous les formats. Images de synthèse assumées comme maquettes
+ * (l'alt le dit), donc aucun crédit photographique : il n'y a pas de
+ * photographe à créditer.
+ *
+ * Deux partitions de temps (relatives à l'entrée du carton) :
+ *   - `entree` (data-film-t) : la cascade du triptyque, à partir de 820 px —
+ *     les trois panneaux se révèlent l'un après l'autre, à 280 ms d'écart ;
+ *   - `entreeTelephone` (data-film-tp) : le défilé, sous 820 px — un seul
+ *     cadre où les trois se succèdent, la banderole en dernier parce que
+ *     c'est elle qui montre la case « VOTRE LOGO » le plus grand : elle
+ *     reste posée jusqu'à la levée du carton.
+ */
+interface Panneau {
+  id: 'banderole' | 'tshirt' | 'kakemono';
+  image: Derives;
+  alt: string;
+  /** `sizes` du panneau — sous 820 px le cadrage dessine jusqu'à ~1,85 vw/px. */
+  tailles: string;
+  /** `object-position` du triptyque (à partir de 820 px). */
+  cadre: string;
+  /** `object-position` du défilé téléphone (sous 820 px). */
+  cadreTelephone: string;
+  entree: number;
+  entreeTelephone: number;
+}
+
+/** Un panneau ; rien si la maquette n'est pas déposée (comme `fond()`). */
+function panneau(image: Derives | null, reste: Omit<Panneau, 'image'>): Panneau[] {
+  return image ? [{ image, ...reste }] : [];
+}
+
+const PANNEAUX: Panneau[] = [
+  ...panneau(banderole, {
+    id: 'banderole',
+    alt: 'Maquette : banderole de bord d’aire de tournoi avec l’emplacement « Votre logo »',
+    tailles: '(min-width: 1100px) 50vw, (min-width: 820px) 92vw, 185vw',
+    // Paysage 3:2 dans un cadre 21:9 : plein cadre sur la banderole
+    // (rangée + case comprises), les tireurs en amorce au-dessus.
+    cadre: '50% 76%',
+    // Téléphone : le cadre debout retient la moitié droite — Faits d'Armes,
+    // Black Armoury et la case « VOTRE LOGO », bien grande.
+    cadreTelephone: '90% 50%',
+    entree: 260,
+    entreeTelephone: 2200,
+  }),
+  ...panneau(tshirt, {
+    id: 'tshirt',
+    alt: 'Maquette : dos du t-shirt du club avec l’emplacement « Votre logo »',
+    tailles: '(min-width: 1100px) 25vw, (min-width: 820px) 45vw, 100vw',
+    cadre: '50% 24%',
+    cadreTelephone: '50% 28%',
+    entree: 540,
+    entreeTelephone: 150,
+  }),
+  ...panneau(kakemono, {
+    id: 'kakemono',
+    alt: 'Maquette : roll-up d’événement avec l’emplacement « Votre logo »',
+    tailles: '(min-width: 1100px) 25vw, (min-width: 820px) 45vw, 100vw',
+    cadre: '50% 34%',
+    cadreTelephone: '50% 38%',
+    entree: 820,
+    entreeTelephone: 1250,
+  }),
+];
 
 /**
- * Les trois cartons à photo, dans l'ordre du film. `duree` : temps à l'écran
- * avant que le carton ne se lève, en millisecondes.
+ * Les deux cartons à photo (le club, le palmarès), dans l'ordre du film.
+ * `duree` : temps à l'écran avant que le carton ne se lève, en millisecondes.
+ * Le carton du partenariat ne passe plus par ici : sa composition (montage de
+ * panneaux, pas de photo pleine page) est écrite à part, plus bas.
  */
 const CARTONS_PHOTO: {
   libelle: string;
@@ -366,11 +430,9 @@ const CARTONS_PHOTO: {
   fond: Fond | null;
   registre?: Rang[];
   or?: boolean;
-  lignes?: { texte: string; accent?: boolean }[];
 }[] = [
   { libelle: 'Le club', duree: 2900, fond: FOND_CLUB, registre: REGISTRE_CLUB },
   { libelle: 'Le palmarès', duree: 3400, fond: FOND_PALMARES, registre: REGISTRE_PALMARES, or: true },
-  { libelle: 'Le partenariat', duree: 3000, fond: FOND_PARTENARIAT, lignes: LIGNES_PARTENARIAT },
 ];
 
 ---
@@ -418,7 +480,7 @@ const CARTONS_PHOTO: {
     <span class="film__fil" aria-hidden="true"></span>
   </div>
 
-  {/* ── 2 à 4 · Le club, le palmarès, le partenariat ─────────────────────── */}
+  {/* ── 2 et 3 · Le club, le palmarès ────────────────────────────────────── */}
   {
     CARTONS_PHOTO.map((carton, index) => (
       <div
@@ -520,23 +582,73 @@ const CARTONS_PHOTO: {
               </ul>
             )}
 
-            {carton.lignes && (
-              <SectionTitle
-                class="film__titre"
-                lignes={carton.lignes}
-                balise="p"
-                taille="fiche"
-                data-film-titre
-                data-film-t="160"
-                data-film-pas="230"
-              />
-            )}
           </div>
         </div>
         <span class="film__fil" aria-hidden="true" />
       </div>
     ))
   }
+
+  {/* ── 4 · Le partenariat : le montage des trois maquettes ──────────────── */}
+  {/* Pas de photo pleine page voilée ici : les maquettes sont le sujet. À
+      partir de 820 px en paysage, texte à gauche et triptyque à droite
+      (banderole en large, t-shirt et roll-up dessous), révélé en cascade ;
+      à partir de 820 px en portrait (tablette), texte en haut et triptyque
+      dessous ; sous 820 px, un seul cadre où les trois défilent — les temps
+      du défilé sont `data-film-tp`, lus par le pilote sous 820 px. */}
+  <div class="film__carton film__carton--montage" style="--rang:2" data-film-carton data-film-duree="4000">
+    <div class="film__scene gouttiere">
+      <div class="film__scene-texte">
+        <div class="film__masque film__masque--label">
+          <SectionLabel libelle="Le partenariat" numero={false} filet={false} data-film-geste="monte" data-film-t="0" />
+        </div>
+        <SectionTitle
+          class="film__titre film__titre--montage"
+          lignes={LIGNES_PARTENARIAT}
+          balise="p"
+          taille="fiche"
+          data-film-titre
+          data-film-t="160"
+          data-film-pas="190"
+        />
+      </div>
+      {
+        PANNEAUX.length > 0 && (
+          <ul class="film__montage" role="list">
+            {PANNEAUX.map((p) => (
+              <li
+                class:list={['film__panneau', `film__panneau--${p.id}`]}
+                style={`--panneau-cadre:${p.cadre};--panneau-cadre-tel:${p.cadreTelephone}`}
+                data-film-photo
+              >
+                <div
+                  class="film__panneau-cadre"
+                  data-film-geste="panneau"
+                  data-film-t={p.entree}
+                  data-film-tp={p.entreeTelephone}
+                >
+                  <picture>
+                    <source type="image/avif" srcset={p.image.avif.srcSet.attribute} sizes={p.tailles} />
+                    <img
+                      src={p.image.webp.src}
+                      srcset={p.image.webp.srcSet.attribute}
+                      sizes={p.tailles}
+                      alt={p.alt}
+                      width={p.image.photo.width}
+                      height={p.image.photo.height}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+    <span class="film__fil" aria-hidden="true"></span>
+  </div>
 
   {/* ── 5 · La fin posée ─────────────────────────────────────────────────── */}
   {/* `inert` tant que le carton est sous les autres : ses deux liens ne
@@ -637,6 +749,12 @@ const CARTONS_PHOTO: {
     var COURBE_PASSE = 'cubic-bezier(0.32, 0, 0.24, 1)';
 
     var reduit = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    // Sous 820 px, le carton du partenariat ne joue pas sa cascade mais son
+    // défilé : les gestes qui portent un `data-film-tp` lisent alors ce
+    // temps-là au lieu de `data-film-t` — même grammaire, autre partition.
+    // Le seuil est celui de la feuille de style du montage (819.98 px).
+    var telephone = window.matchMedia('(max-width: 819.98px)');
 
     /**
      * Le film ne se joue que là où TOUT ce qu'il emploie existe : sans
@@ -849,7 +967,9 @@ const CARTONS_PHOTO: {
       };
 
       chaque(carton.querySelectorAll('[data-film-geste]'), function (el) {
-        var quand = entree + nombre(el, 'data-film-t');
+        var attribut =
+          telephone.matches && el.hasAttribute('data-film-tp') ? 'data-film-tp' : 'data-film-t';
+        var quand = entree + nombre(el, attribut);
         var geste = el.getAttribute('data-film-geste');
         if (geste === 'monte') {
           monter(el, quand);
@@ -871,6 +991,17 @@ const CARTONS_PHOTO: {
             easing: COURBE_ENTREE,
             fill: 'both',
           });
+        } else if (geste === 'panneau') {
+          // Un panneau du montage : fondu et courte montée, d'un trait.
+          // Réservé aux images, comme `fondu`. Une seule image clé, l'arrivée :
+          // le départ est l'état de la feuille de style.
+          jouer(el, [{ opacity: 1, transform: 'translateY(0)' }], {
+            delay: quand,
+            duration: 700,
+            easing: COURBE_ENTREE,
+            fill: 'forwards',
+          });
+          noter(quand, 700);
         }
       });
 
@@ -950,7 +1081,9 @@ const CARTONS_PHOTO: {
             { delay: decouverte, duration: duree + LEVEE + 200, easing: 'linear', fill: 'both' },
           );
         }
-        var photo = carton.querySelector('[data-film-photo]');
+        // Seule la photo pleine page finit de monter pendant la levée du
+        // carton du dessus : les panneaux du montage, eux, ont leur geste.
+        var photo = carton.querySelector('.film__photo');
         if (photo) {
           jouer(photo, [{ transform: 'translateY(5%)' }, { transform: 'translateY(0)' }], {
             delay: decouverte,
@@ -1691,6 +1824,13 @@ const CARTONS_PHOTO: {
     opacity: 0;
   }
 
+  /* Le départ d'un panneau du montage : en dessous et éteint. Réservé aux
+     images, comme `fondu` — aucun texte ne change jamais d'opacité. */
+  .film [data-film-geste='panneau'] {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
   /* ═══ Cartons 1 et 5 : la pile ══════════════════════════════════════════ */
 
   /* Un peu plus de marge en bas qu'en haut : le centre optique est au-dessus
@@ -1790,7 +1930,7 @@ const CARTONS_PHOTO: {
     color: var(--parch);
   }
 
-  /* ═══ Cartons 2 à 4 : le contenu ════════════════════════════════════════ */
+  /* ═══ Cartons 2 et 3 : le contenu ═══════════════════════════════════════ */
 
   .film__entete {
     display: flex;
@@ -1958,6 +2098,154 @@ const CARTONS_PHOTO: {
     display: inline-block;
   }
 
+  /* ═══ Carton 4 : le montage des maquettes ═══════════════════════════════ */
+
+  /* La scène occupe le carton et s'y centre ; la réserve haute laisse le
+     bouton « Passer » (14 + 44 px, et un peu d'air) hors de son chemin. */
+  .film__scene {
+    display: grid;
+    align-content: center;
+    row-gap: clamp(14px, 2.6vh, 26px);
+    min-height: 100%;
+    padding-block: calc(max(14px, env(safe-area-inset-top)) + 52px) clamp(18px, 4vh, 44px);
+  }
+
+  .film__scene-texte {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(10px, 2vh, 18px);
+  }
+
+  /* Le titre partage la scène avec le triptyque : il descend d'un cran sous
+     la rampe de fiche, ses cinq lignes restent une colonne compacte. */
+  .film :global(.titre-section.film__titre--montage) {
+    --titre-fs: clamp(27px, 10px + 2.6vw, 56px);
+  }
+
+  /* Le montage : la banderole en large, le t-shirt et le roll-up dessous. */
+  .film__montage {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(10px, 1.6vh, 14px);
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Un panneau : une maquette cadrée (cover) sur la rangée des logos et la
+     case « VOTRE LOGO » — aucun voile, un filet, le rayon des cartes. Comme
+     les fonds, il ne paraît qu'une fois sa maquette chargée ET décodée
+     (`est-prete`, posée par le pilote). */
+  .film__panneau {
+    position: relative;
+    overflow: clip;
+    border: 1px solid var(--line-logo);
+    border-radius: var(--radius-1);
+    background: var(--char);
+    opacity: 0;
+    transition: opacity 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  .film__panneau.est-prete {
+    opacity: 1;
+  }
+
+  /* 21:9 : la banderole plein cadre (rangée et case comprises), les tireurs
+     en amorce — cf. `cadre` dans le frontmatter, qui fait foi. */
+  .film__panneau--banderole {
+    grid-column: 1 / -1;
+    aspect-ratio: 21 / 9;
+  }
+
+  .film__panneau--tshirt,
+  .film__panneau--kakemono {
+    aspect-ratio: 4 / 5;
+  }
+
+  /* Le coulisseau du geste `panneau`. */
+  .film__panneau-cadre {
+    position: absolute;
+    inset: 0;
+  }
+
+  .film__panneau-cadre picture,
+  .film__panneau-cadre img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+  }
+
+  .film__panneau-cadre img {
+    object-fit: cover;
+    object-position: var(--panneau-cadre, 50% 50%);
+  }
+
+  /* À partir de 820 px en paysage : texte à gauche, triptyque à droite. Le
+     plafond retient la hauteur du triptyque (≈ 1,054 × sa largeur, banderole
+     plus rangée basse) sous celle de la fenêtre, réserves comprises. */
+  @media (min-width: 820px) and (orientation: landscape) {
+    .film__scene {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+      column-gap: clamp(32px, 4vw, 64px);
+      align-items: center;
+    }
+
+    .film__montage {
+      max-width: min(100%, calc(95vh - 150px));
+    }
+  }
+
+  /* À partir de 820 px en portrait (tablette) : texte en haut, triptyque
+     dessous, centré. Même plafond, moins la place du texte au-dessus. */
+  @media (min-width: 820px) and (orientation: portrait) {
+    .film__montage {
+      max-width: min(100%, calc(95vh - 315px));
+      justify-self: center;
+    }
+  }
+
+  /* Sous 820 px : le défilé. Un seul cadre — les trois panneaux empilés sur
+     la même cellule — où t-shirt, roll-up puis banderole se succèdent
+     (partition `data-film-tp`). La banderole, au-dessus de la pile, ferme le
+     défilé et reste posée : c'est son cadrage qui montre la case
+     « VOTRE LOGO » le plus grand. */
+  @media (max-width: 819.98px) {
+    .film__montage {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .film__panneau {
+      grid-area: 1 / 1;
+      width: 100%;
+      aspect-ratio: 8 / 11;
+      max-height: 56vh;
+      /* Empilés, les panneaux se voient à travers : le fond opaque du panneau
+         du dessus cacherait le défilé des panneaux du dessous. */
+      background: transparent;
+    }
+
+    .film__panneau--tshirt {
+      z-index: 1;
+    }
+
+    .film__panneau--kakemono {
+      z-index: 2;
+    }
+
+    .film__panneau--banderole {
+      z-index: 3;
+    }
+
+    .film__panneau-cadre img {
+      object-position: var(--panneau-cadre-tel, 50% 50%);
+    }
+  }
+
   /* ═══ Carton 5 : la fin posée ═══════════════════════════════════════════ */
 
   .film :global(.film__titre--fin) {
@@ -2094,6 +2382,15 @@ const CARTONS_PHOTO: {
 
     .film :global(.titre-section.film__titre) {
       --titre-fs: min(var(--fs-display-fiche-arme), 11vh);
+    }
+
+    /* Le titre du montage garde sa propre rampe, compactée de même. */
+    .film :global(.titre-section.film__titre--montage) {
+      --titre-fs: min(27px, 8vh);
+    }
+
+    .film__scene {
+      row-gap: 2vh;
     }
 
     .film__assise {

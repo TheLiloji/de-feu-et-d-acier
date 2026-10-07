@@ -192,6 +192,37 @@ const ATOUTS = [
   },
 ];
 
+// ── Les maquettes de supports ───────────────────────────────────────────────
+// Trois maquettes générées (et validées par le club) qui montrent où paraît le
+// logo d'un partenaire : la rangée des partenaires actuels et la case
+// « VOTRE LOGO » sur une banderole de bord d'aire, le dos du t-shirt du club
+// et un roll-up d'événement. Images de synthèse assumées comme maquettes
+// (l'alt le dit) : aucun crédit photographique, il n'y a pas de photographe.
+// Les cadrages (`position`) gardent la case « VOTRE LOGO » dans le cadre 3:4.
+const MAQUETTES = [
+  {
+    photo: resoudrePhoto('/src/assets/photos/commun/maquette-banderole-partenaires.jpg'),
+    alt: 'Maquette : banderole de bord d’aire de tournoi avec l’emplacement « Votre logo »',
+    legende: T('Banderole de tournoi'),
+    position: '86% 50%',
+    largeurs: [768, 1152, 1536],
+  },
+  {
+    photo: resoudrePhoto('/src/assets/photos/commun/maquette-tshirt-partenaires.jpg'),
+    alt: 'Maquette : dos du t-shirt du club avec l’emplacement « Votre logo »',
+    legende: T('T-shirt du club'),
+    position: '50% 28%',
+    largeurs: [512, 768, 1024],
+  },
+  {
+    photo: resoudrePhoto('/src/assets/photos/commun/maquette-kakemono-partenaires.jpg'),
+    alt: 'Maquette : roll-up d’événement avec l’emplacement « Votre logo »',
+    legende: T('Roll-up d’événement'),
+    position: '50% 34%',
+    largeurs: [512, 768, 1024],
+  },
+];
+
 // ── Dossier et contact ──────────────────────────────────────────────────────
 const PDF = '/documents/dossier-partenariat-de-feu-et-d-acier.pdf';
 const EMAIL = 'matthieupelissier9@gmail.com';
@@ -443,6 +474,30 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
         />
         <p class="sp-atouts__intro">{POURQUOI_INTRO}</p>
       </div>
+      {/* Les trois maquettes de supports : on montre où paraît le logo d'un
+          partenaire avant de détailler les contreparties. Tuiles de galerie
+          (MediaCard), voile nul — les maquettes sont faites pour être vues. */}
+      <ul class="sp-atouts__maquettes" role="list">
+        {
+          MAQUETTES.map((maquette, index) => (
+            <li class="sp-reveal" style={`transition-delay:${index * 90}ms`}>
+              <MediaCard
+                image={maquette.photo}
+                alt={maquette.alt}
+                variante="tuile"
+                legende={maquette.legende}
+                ratio="3 / 4"
+                voile="nul"
+                assise="bandeau"
+                rayon={2}
+                objectPosition={maquette.position}
+                sizes="(min-width: 820px) 30vw, calc(100vw - 44px)"
+                largeurs={maquette.largeurs}
+              />
+            </li>
+          ))
+        }
+      </ul>
       <ul class="sp-atouts__grille" role="list">
         {
           ATOUTS.map((atout, index) => (
@@ -1184,6 +1239,17 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
     color: var(--parch-soft);
   }
 
+  /* Les maquettes de supports : la grille des trois armes, à l'identique —
+     empilées sur téléphone, côte à côte à partir de 820 px. */
+  .sp-atouts__maquettes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(14px, 10px + 1vw, 20px);
+    margin: clamp(28px, 14.629px + 3.4286vw, 64px) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
   .sp-atouts__grille {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -1246,6 +1312,10 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
   }
 
   @media (min-width: 820px) {
+    .sp-atouts__maquettes {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .sp-atouts__grille {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
