@@ -1,1021 +1,1923 @@
 ---
 /**
- * Film d'ouverture de la page /sponsors/ — un générique automatique de ~15 s
- * qui résume la page en cinq scènes, puis s'efface sur le hero.
+ * Film d'ouverture de la page `/sponsors/`.
  *
- * La couche est posée en `position: fixed` au-dessus de la page entière :
- * elle ne participe pas à la mise en page, donc sa disparition ne décale pas
- * un pixel. Elle n'existe que si TOUT est réuni : JavaScript passé (classe
- * `html.js`), mouvement non réduit (`prefers-reduced-motion`), et module
- * d'animation réellement démarré (attribut `data-pret`, posé par le script
- * ci-dessous). Dans tous les autres cas, la page s'ouvre sur son hero,
- * exactement comme avant ce composant.
+ * Un générique plein écran, de moins de vingt secondes, qui résume la page
+ * avant de la laisser paraître : cinq **cartons** empilés comme les
+ * cartons-titres d'un film, que l'on soulève l'un après l'autre. Le dernier
+ * soulèvement est celui du film entier, et ce qu'il découvre est la page
+ * elle-même — elle est le carton suivant.
  *
- * ── Découpage (temps absolus, ms) ────────────────────────────────────────
+ *   1. le nom ........... le logotype, sa passe de lumière sur « Acier », la ville ;
+ *   2. le club .......... les adhérents et les nouveaux de la rentrée ;
+ *   3. le palmarès ...... rang mondial, rang français, titres — en or ;
+ *   4. le partenariat ... où paraît le logo d'un partenaire ;
+ *   5. la fin posée ..... « Devenez partenaire », les deux boutons de la page,
+ *                         et deux invites : « Revoir » et « Découvrir la page ».
  *
- *   Scène 1      0 → 3200   le logotype « De Feu et d'Acier » (traitement du
- *                           site : Feu plein, Acier en métal + balayage),
- *                           sur-ligne AMHE · Clermont-Ferrand, filet braise.
- *   Scène 2   3200 → 6400   « Un club qui grandit vite » — photo du gymnase
- *                           révélée par clip-path, compteurs 60 et 27.
- *   Scène 3   6400 → 9800   « Des résultats qui se voient » — podium, lignes
- *                           de palmarès. LA SEULE scène où l'or est permis
- *                           (même règle que la section palmarès de la page).
- *   Scène 4   9800 → 12800  « Votre logo sur nos couleurs » — l'équipe sous
- *                           les couleurs du club, quatre mots-clés en cascade.
- *   Scène 5  12800 → 15400  « Devenez partenaire » — les deux vrais boutons
- *                           (mail + dossier PDF), invite à défiler, Revoir.
- *                           Cette scène reste posée : le film ne boucle pas.
+ * Une seule grammaire de mouvement, empruntée au site : **tout monte**. Les
+ * lignes sortent de leur masque, les filets s'étirent (le `sp-etirer` du hero),
+ * les cartons se lèvent. Les deux seuls « effets » sont ceux que la charte
+ * possède déjà : la lueur sur le métal d'« Acier » (`Logotype.astro`) et le
+ * balayage de l'or du palmarès (`sponsors.astro`, `ProfHero.astro`). L'or ne
+ * paraît que sur le carton du palmarès.
  *
- * Transitions par fondu croisé (la scène sortante s'efface pendant que la
- * suivante se révèle), un seul easing de sortie pour tout le dessin, et trois
- * propriétés animées seulement : transform, opacity, clip-path. Le détail des
- * délais vit dans le tableau SPECS du script.
+ * Les compositions sont elles aussi celles du site : la pile centrée du hero
+ * de l'accueil (cartons 1 et 5), et la photo voilée à contenu ancré en bas à
+ * gauche du hero de la page et des heros de fiche (cartons 2 à 4).
  *
- * ── Mécanique de contrôle ────────────────────────────────────────────────
+ * Rien n'est recopié
+ * ------------------
+ * Le film ne porte aucun chiffre en dur : il lit le bandeau de chiffres et le
+ * palmarès de la page (`chiffres`, `palmares`), le nom dans l'identité du site,
+ * la ville dans la fiche de l'école, les adresses des deux boutons dans les
+ * constantes de la page. Changer « 60 » dans `sponsors.astro` le change ici.
+ * Si une entrée attendue disparaît, le build échoue avec un message clair
+ * plutôt que de projeter un carton vide.
  *
- *   - « Passer » (premier élément focalisable de la page pendant le film,
- *     le reste du document est `inert`) coupe au hero et pose le focus sur
- *     le H1 ; Échap et le moindre défilement font pareil ;
- *   - onglet masqué = tout le film en pause (Web Animations API), reprise au
- *     retour ;
- *   - en fin de film, « Revoir » rejoue depuis le début, et un clic sur le
- *     fond (hors liens) fait entrer dans la page ;
- *   - un petit script `is:inline` sert de filet de sécurité : si le module
- *     d'animation ne démarre jamais (réseau, erreur), Passer / Échap /
- *     défilement retirent quand même la couche — personne ne reste bloqué
- *     devant un écran d'encre.
+ * Qui voit le film
+ * ----------------
+ * Uniquement un navigateur qui exécute JavaScript **et** n'a pas demandé moins
+ * d'animations. Le film attend dans un `<template>` : tant que le pilote ne
+ * l'en sort pas, il n'existe pas — ni nœud dans la page, ni lien en double, ni
+ * image demandée — et la page est posée d'emblée, exactement comme avant. La
+ * feuille de style tient la même règle de son côté (le film n'est rendu que
+ * sous `html.js` et `prefers-reduced-motion: no-preference`) : ceinture et
+ * bretelles.
  *
- * Le film prévient la page quand il se retire (évènement
- * `film-ouverture:fin`) : les apparitions au défilement et les compteurs de
- * la page attendent ce signal pour ne pas se jouer derrière la couche.
+ * Quatre autres cas voient la page d'emblée, sans film :
+ *   - une adresse à ancre (`/sponsors/#…`) : qui vise un endroit de la page
+ *     veut cet endroit ;
+ *   - un retour sur la page (« Précédent », « Suivant », onglet restauré) : on
+ *     retrouve la page où on l'avait laissée, pas le film une seconde fois.
+ *     Un rechargement, lui, rejoue le film — c'est une nouvelle arrivée ;
+ *   - une fenêtre trop petite pour ses cartons (écran partagé, zoom à 400 %) :
+ *     la page, elle, se replie à toutes les largeurs ;
+ *   - un navigateur à qui il manque l'une des pièces que le film emploie
+ *     (`capable()` dans le pilote) : il ne verra jamais un film bancal.
  *
- * Accessibilité : les scènes 1 à 4 sont de l'aria-hidden pur (du décor) ;
- * la scène 5 est la seule annoncée, ses boutons sont de vrais liens. Aucun
- * titre hiérarchique dans le film — le H1 unique reste celui du hero.
+ * Le pilote est un script **en ligne**, volontairement : le film recouvre la
+ * page, il ne doit pas dépendre d'un fichier qui pourrait ne pas arriver. Tout
+ * y passe par un `try` : au moindre incident le film se retire et rend la page.
+ *
+ * Technique
+ * ---------
+ * CSS et Web Animations API, rien d'autre. Chaque geste est une animation
+ * posée sur l'horloge du document avec son délai absolu — aucune minuterie :
+ * le film se met en pause quand l'onglet passe à l'arrière-plan, et s'arrête
+ * net au bouton « Passer ».
+ *
+ * Aucun texte ne change jamais d'opacité : les entrées sont des translations
+ * sous masque. À tout instant, un texte visible est donc à son contraste
+ * plein — un audit automatique (axe) rend le même verdict quel que soit
+ * l'instant du film où il tombe.
+ *
+ * ⚠️ Recette : `scripts/recette.mjs` mesure `/sponsors/` pendant le film. Son
+ * audit axe y juge donc le film ; la page, inerte et hors cadre, n'est vue ni
+ * par lui ni par le contrôle de débordement. Pour que la recette mesure la
+ * page, lui faire passer le film d'abord (touche Échap, puis attendre que
+ * `[data-film]` ait quitté le document).
+ *
+ * Pendant le film, la page est **tenue** : hors d'atteinte (`inert` — ni focus
+ * ni lecture d'écran derrière le rideau), défilement verrouillé, animations
+ * CSS en pause, et posée sous le bord bas de la fenêtre pour que ses
+ * observateurs de défilement ne voient rien entrer. Rien de ce qu'elle joue à
+ * l'ouverture ne se joue donc derrière le film : la séquence du hero, les
+ * apparitions et les compteurs du premier écran partent quand il se lève,
+ * comme à un chargement normal.
+ *
+ * Exemple d'assemblage (`sponsors.astro`) :
+ *   <FilmOuverture slot="bandeau" ecole={ecole} identite={identite} hero={hero}
+ *                  ctx={ctx} chiffres={CHIFFRES} palmares={PALMARES}
+ *                  pdf={PDF} email={EMAIL} />
  */
-import { Picture } from 'astro:assets';
+import { getImage, Image } from 'astro:assets';
 import Button from '../ui/Button.astro';
-import { largeursSrcset, resoudrePhoto } from '../../lib/images';
+import Icon from '../ui/Icon.astro';
+import Logotype from '../ui/Logotype.astro';
+import SectionLabel from '../ui/SectionLabel.astro';
+import SectionTitle from '../ui/SectionTitle.astro';
+import type { Ecole } from '../../lib/ecoles';
+import { creditAffiche, largeursSrcset, resoudrePhoto } from '../../lib/images';
+import { resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
+import { typographieFr } from '../../lib/typographie';
 
-// Les mêmes cibles que la section « Dossier et contact » de la page.
-const PDF = '/documents/dossier-partenariat-de-feu-et-d-acier.pdf';
-const EMAIL = 'matthieupelissier9@gmail.com';
+/** Une tuile du bandeau de chiffres de la page (`CHIFFRES`). */
+interface Chiffre {
+  valeur: number;
+  suffixe: string;
+  libelle: string;
+}
 
-// Photos de la bibliothèque du site, déjà employées ailleurs — aucune image
-// nouvelle, aucun droit à vérifier.
-const photoClub = resoudrePhoto('/src/assets/photos/clermont/article-rentree-gymnase.jpg');
-const photoPodium = resoudrePhoto('/src/assets/photos/commun/tournois-podium.jpg');
-const photoCouleurs = resoudrePhoto('/src/assets/photos/commun/club-equipe-piste.jpg');
-// La photo du hero de la page : la scène finale s'ouvre dessus, le fondu de
-// sortie du film tombe donc sur la même image — l'entrée dans la page se fait
-// sans rupture.
-const photoFinale = resoudrePhoto('/src/assets/photos/commun/tournois-en-garde.jpg');
+/** Une ligne du palmarès de la page (`PALMARES`). */
+interface LignePalmares {
+  nom: string;
+  rang: string;
+  titres: string;
+}
+
+interface MarqueCms {
+  debut?: string | null;
+  feu?: string | null;
+  connecteur?: string | null;
+  acier?: string | null;
+}
+
+interface Props {
+  /** École servie par la page — pour la ville du premier carton. */
+  ecole: Ecole;
+  /** Singleton « Identité du site » — pour le logotype. */
+  identite?: { marque?: MarqueCms | null } | null;
+  /** Singleton « Accueil · En-tête » — pour le sur-titre du premier carton. */
+  hero?: { surTitre?: string | null } | null;
+  /** Contexte de raccourcis de la page (`contexteDe(...)`). */
+  ctx: ContexteRaccourcis;
+  /** Le bandeau de chiffres de la page, tel quel. */
+  chiffres: readonly Chiffre[];
+  /** Le palmarès de la page, tel quel : le film cite sa première ligne. */
+  palmares: readonly LignePalmares[];
+  /** Adresse du dossier PDF — celle du bouton de la page. */
+  pdf: string;
+  /** Adresse de contact — celle du bouton de la page. */
+  email: string;
+}
+
+const { ecole, identite, hero, ctx, chiffres, palmares, pdf, email } = Astro.props;
+
+const T = typographieFr;
+
+// ── Carton 1 : le nom ───────────────────────────────────────────────────────
+// La pile centrée du hero de l'accueil, à l'identique : blason, sur-titre,
+// logotype, filet, ville. Mêmes sources que `Hero.astro`.
+const marque = identite?.marque ?? null;
+// Le sur-titre de l'accueil dit ce qu'est le club. Sur l'accueil il peut être
+// vidé dans l'admin ; le film, lui, ne peut pas s'en passer : sans lui, le nom
+// seul ne dit plus de quoi l'on parle à une entreprise qui découvre le club.
+const surTitre =
+  resoudre(hero?.surTitre, ctx, 'src/content/commun/hero.yaml') ||
+  T('Arts martiaux historiques européens');
+const ville = ecole.fiche.lieu?.ville || ecole.fiche.ville || ecole.ville;
+const ligneLieu = ville ? `à ${ville}` : '';
+const blason = resoudrePhoto('/src/assets/photos/commun/logo-de-feu-et-d-acier.png');
+
+// ── Cartons 2 et 3 : les chiffres de la page ────────────────────────────────
+/** Retrouve une tuile du bandeau par son libellé. Lève si elle a disparu. */
+function chiffre(motif: RegExp, quoi: string): Chiffre {
+  const trouve = chiffres.find((c) => motif.test(c.libelle));
+  if (!trouve) {
+    throw new Error(
+      `FilmOuverture.astro : le bandeau de chiffres de la page ne contient plus « ${quoi} ».\n` +
+        `Libellés reçus : ${chiffres.map((c) => `« ${c.libelle} »`).join(', ') || 'aucun'}.\n` +
+        'Le film lit CHIFFRES de src/pages/sponsors.astro : adapter le motif cherché ici, ou rétablir la tuile.',
+    );
+  }
+  return trouve;
+}
+
+const adherents = chiffre(/adh[ée]rent/i, 'les adhérents');
+const nouveaux = chiffre(/nouveau/i, 'les nouveaux de la rentrée');
+const titres = chiffre(/titre/i, 'les titres fédéraux');
+
+interface Rang {
+  nombre: string;
+  mention: string;
+}
+
+const REGISTRE_CLUB: Rang[] = [adherents, nouveaux].map((c) => ({
+  nombre: `${c.valeur}${c.suffixe}`,
+  mention: c.libelle,
+}));
+
+// « 80ᵉ mondial · 3ᵉ combattant français » : le point médian sépare deux
+// classements, la première espace sépare le rang de ce qu'il classe.
+const classements: Rang[] = (palmares[0]?.rang ?? '')
+  .split('·')
+  .map((fragment) => fragment.trim())
+  .filter(Boolean)
+  .map((fragment) => {
+    const coupe = fragment.indexOf(' ');
+    return coupe === -1
+      ? { nombre: fragment, mention: '' }
+      : { nombre: fragment.slice(0, coupe), mention: fragment.slice(coupe + 1) };
+  });
+
+if (classements.length === 0) {
+  throw new Error(
+    'FilmOuverture.astro : la première ligne du palmarès de la page n’a pas de classement ' +
+      '(champ « rang » de PALMARES, attendu sous la forme « 80ᵉ mondial · 3ᵉ combattant français »).',
+  );
+}
+
+const REGISTRE_PALMARES: Rang[] = [
+  ...classements,
+  { nombre: `${titres.valeur}${titres.suffixe}`, mention: titres.libelle },
+];
+
+// ── Carton 4 : le partenariat ───────────────────────────────────────────────
+// Les supports cités par les deux premières contreparties de la page (« Votre
+// logo sur nos supports », « Votre nom sur nos événements »), en une phrase
+// qui se complète ligne à ligne.
+const LIGNES_PARTENARIAT = [
+  { texte: T('Votre logo') },
+  { texte: T('sur nos affiches,'), accent: true },
+  { texte: T('nos bannières,'), accent: true },
+  { texte: T('nos réseaux,'), accent: true },
+  { texte: T('nos événements.'), accent: true },
+];
+
+// ── Carton 5 : la fin ───────────────────────────────────────────────────────
+// Le texte de contact de la page, réduit à sa proposition centrale (verbatim).
+const PHRASE_FIN = T('Chaque partenariat se construit sur mesure.');
+
+// ── Photos ──────────────────────────────────────────────────────────────────
+/**
+ * Variante portrait des fonds : dès que la fenêtre est plus haute que large.
+ * Recopiée dans la CSS du bas (cadrages) — cette constante fait foi.
+ */
+const MEDIA_PORTRAIT = '(orientation: portrait)';
+
+/** Les deux formats des `<Picture>` du site, pour une photo et ses largeurs. */
+async function derives(chemin: string, largeurs: number[]) {
+  const photo = resoudrePhoto(chemin);
+  if (!photo) return null;
+  const widths = largeursSrcset(photo, { largeurs });
+  const [avif, webp] = await Promise.all([
+    getImage({ src: photo, widths, format: 'avif' }),
+    getImage({ src: photo, widths, format: 'webp' }),
+  ]);
+  return { photo, avif, webp };
+}
+
+type Derives = NonNullable<Awaited<ReturnType<typeof derives>>>;
+
+interface Fond {
+  /** Photo de référence (cadrage paysage), et repli quand il n'y a pas de portrait. */
+  paysage: Derives;
+  /** Cadrage portrait, facultatif — fenêtres plus hautes que larges. */
+  portrait: Derives | null;
+  /** `sizes` de chaque variante. */
+  tailles: string;
+  taillesPortrait: string;
+  alt: string;
+  /** `object-position` de chaque variante. */
+  cadrePaysage: string;
+  cadrePortrait: string;
+  /** Crédit de chaque variante, déjà mis en forme (« © Nom ») ; vide s'il n'y en a pas. */
+  creditPaysage: string;
+  creditPortrait: string;
+  /** Mouvement du plan : avance lente, ou travelling latéral. */
+  plan: 'avance' | 'travelling';
+}
+
+/** Assemble un fond ; `null` si aucune des deux photos n'est déposée. */
+function fond(
+  paysage: Derives | null,
+  portrait: Derives | null,
+  reste: Omit<Fond, 'paysage' | 'portrait'>,
+): Fond | null {
+  const reference = paysage ?? portrait;
+  if (!reference) return null;
+  return { paysage: reference, portrait: paysage ? portrait : null, ...reste };
+}
+
+/*
+ * Trois fonds, aucun en double et aucun repris du hero de la page (le tireur
+ * en garde reste à la page, le film ne le redouble pas) : le gymnase est la
+ * photo de la section « Le club » de la page, les deux images de tournoi sont
+ * celles de la fiche du compétiteur dont le carton cite le palmarès, et
+ * l'équipe alignée sur la piste vient de la bibliothèque commune — la seule
+ * photo du film que la page ne montre pas. Les largeurs reprennent autant que
+ * possible celles que ces pages génèrent déjà — mêmes dérivés, donc presque
+ * rien de plus dans `dist/`, et un fichier déjà en cache quand la page le
+ * redemande.
+ *
+ * `sizes` en portrait : un fond plein écran recadré dans une photo plus large
+ * que lui ne « mesure » pas 100 vw mais une fraction de la **hauteur** — la
+ * largeur réellement dessinée va de 73 vh (le compétiteur) à 165 vh
+ * (l'équipe, photo paysage sans variante verticale). Les valeurs ci-dessous
+ * sont réglées pour qu'un téléphone dPR 3 reçoive 1,4 à 2 pixels de fichier
+ * par pixel CSS dessiné quand le master le permet : assez pour que rien ne
+ * paraisse mou, sans jamais dépasser ce que l'écran peut montrer. Les trois
+ * fonds (AVIF) sont demandés en priorité basse sauf le premier.
+ */
+const [gymnase, tournoiPortrait, tournoiPaysage, equipe] = await Promise.all([
+  derives('/src/assets/photos/clermont/article-rentree-gymnase.jpg', [780, 1176, 1600, 2400]),
+  derives('/src/assets/photos/clermont/prof-gabriel-tardio-tournoi.jpg', [540, 810, 1200]),
+  derives('/src/assets/photos/clermont/gabriel-tournoi-video-vignette.jpg', [960, 1280, 1600, 2400]),
+  derives('/src/assets/photos/commun/club-equipe-piste.jpg', [640, 960, 1050]),
+]);
+
+const FOND_CLUB = fond(gymnase, null, {
+  // Pas de variante verticale : en portrait, la photo paysage est dessinée
+  // sur 146 vh de large. C'est le plan le plus fouillé du film — des dizaines
+  // de silhouettes au fond d'un gymnase —, celui où un fichier trop petit se
+  // voit le plus (essai à 1176 px sur un écran dPR 3 : les pratiquants
+  // bavent). 75 vh fait retenir le master sur un téléphone dPR 3.
+  tailles: `${MEDIA_PORTRAIT} 75vh, 100vw`,
+  taillesPortrait: '75vh',
+  alt: 'Le gymnase plein lors d’une séance du club',
+  cadrePaysage: '50% 56%',
+  cadrePortrait: '46% 50%',
+  creditPaysage: '',
+  creditPortrait: '',
+  plan: 'travelling',
+});
+
+const FOND_PALMARES = fond(tournoiPaysage, tournoiPortrait, {
+  tailles: '100vw',
+  taillesPortrait: '42vh',
+  alt: 'Un compétiteur du club en veste jaune, drapeau français sur l’épaule, en tournoi',
+  cadrePaysage: '50% 30%',
+  cadrePortrait: '50% 28%',
+  // Les crédits de la fiche du compétiteur (galerie de `gabriel-tardio.mdoc`).
+  creditPaysage: '',
+  creditPortrait: tournoiPaysage && tournoiPortrait ? creditAffiche('Enzo Cirillo') : '',
+  plan: 'avance',
+});
+
+const FOND_PARTENARIAT = fond(equipe, null, {
+  // Le carton parle de visibilité : l'équipe alignée sous les tenues du club
+  // est exactement le support où vivrait le logo d'un partenaire — pas un
+  // tireur masqué. Pas de variante verticale, et un master de 1050 px :
+  // quelle que soit la fenêtre, c'est lui qui est retenu (en portrait, le
+  // fond est dessiné sur 165 vh de large). Le cadre portrait ne montre que le
+  // centre du groupe : le tireur en jaune, un genou à terre, et deux de ses
+  // camarades. Aucun crédit nominatif pour cette photo dans le dépôt (ni
+  // manifeste des photos, ni contenus) : pas de mention.
+  tailles: `${MEDIA_PORTRAIT} 165vh, 100vw`,
+  taillesPortrait: '165vh',
+  alt: 'L’équipe du club alignée sur la piste, armes en main',
+  cadrePaysage: '50% 35%',
+  cadrePortrait: '50% 40%',
+  creditPaysage: '',
+  creditPortrait: '',
+  plan: 'avance',
+});
+
+/**
+ * Les trois cartons à photo, dans l'ordre du film. `duree` : temps à l'écran
+ * avant que le carton ne se lève, en millisecondes.
+ */
+const CARTONS_PHOTO: {
+  libelle: string;
+  duree: number;
+  fond: Fond | null;
+  registre?: Rang[];
+  or?: boolean;
+  lignes?: { texte: string; accent?: boolean }[];
+}[] = [
+  { libelle: 'Le club', duree: 2900, fond: FOND_CLUB, registre: REGISTRE_CLUB },
+  { libelle: 'Le palmarès', duree: 3400, fond: FOND_PALMARES, registre: REGISTRE_PALMARES, or: true },
+  { libelle: 'Le partenariat', duree: 3000, fond: FOND_PARTENARIAT, lignes: LIGNES_PARTENARIAT },
+];
+
 ---
 
-<div class="film" data-film-ouverture>
-  {/* Premier focalisable de la page pendant le film (le reste est inert). */}
-  <button type="button" class="film__passer" data-passer aria-label="Passer l’introduction">
-    Passer
-  </button>
+{/* Le film attend dans un `<template>` : tant que le pilote ne l'en sort pas,
+    il n'existe pas — ni nœud, ni lien, ni image demandée. */}
+<template data-film-gabarit>
+<section class="film" aria-label="Film d’ouverture" data-film>
+  {/* Premier dans l'ordre de tabulation, visible dès la première image. */}
+  <Button class="film__passer" variante="contour" taille="petite" icone={null} data-film-passer>
+    Passer<span class="visuellement-cache"> le film d’ouverture</span>
+  </Button>
 
-  {/* ── Scène 1 : le logotype ─────────────────────────────────────────── */}
-  <div class="film__scene film__scene--marque" data-scene="1" aria-hidden="true">
-    <div class="film__compo film__compo--marque">
-      <p class="film__surligne" data-anime="surligne">
-        Arts martiaux historiques européens · Clermont-Ferrand
-      </p>
-      {/* La structure et les couleurs du logotype du site (Logotype.astro) :
-          Feu en couleur pleine, Acier en métal. Le balayage est un double du
-          mot, clair, découpé par une fenêtre de clip-path qui traverse —
-          aucune position de dégradé n'est animée. */}
-      <p class="film__logotype">
-        <span class="film__masque film__masque--logo">
-          <span class="film__logoligne" data-anime="logo-1">
-            <span class="film__mot film__mot--parch">De</span>
-            <span class="film__mot film__mot--feu">Feu</span>
-          </span>
-        </span>
-        <span class="film__masque film__masque--logo">
-          <span class="film__logoligne" data-anime="logo-2">
-            <span class="film__mot film__mot--connecteur">et d’</span><span
-              class="film__mot film__mot--acier"
-              >Acier<span class="film__balayage film__balayage--acier" data-anime="balayage-acier"
-                >Acier</span
-              ></span
-            >
-          </span>
-        </span>
-      </p>
-      <span class="film__filet" data-anime="filet-1"></span>
-    </div>
-  </div>
+  {/* Les temps `data-film-t` sont en millisecondes, relatifs à l'entrée du
+      carton ; `data-film-duree` est son temps à l'écran avant qu'il se lève. */}
 
-  {/* ── Scène 2 : un club qui grandit vite ────────────────────────────── */}
-  <div class="film__scene film__scene--essor" data-scene="2" aria-hidden="true">
-    <div class="film__compo film__compo--panneau">
-      <div class="film__cadre film__cadre--essor" data-cadre="2">
-        {
-          photoClub && (
-            <Picture
-              src={photoClub}
-              alt=""
-              formats={['avif', 'webp']}
-              widths={largeursSrcset(photoClub, { largeurs: [640, 960, 1280] })}
-              sizes="(min-width: 820px) 48vw, 92vw"
-              loading="eager"
-              decoding="async"
-            />
-          )
-        }
-        <span class="film__voile"></span>
-      </div>
-      <div class="film__bloc">
-        <p class="film__losange" data-anime="losange-2">◆</p>
-        <p class="film__titre">
-          <span class="film__masque"><span class="film__ligne" data-anime="titre-2a">Un club qui grandit</span></span>
-          <span class="film__masque"><span class="film__ligne film__ligne--accent" data-anime="titre-2b">vite</span></span>
-        </p>
-        <div class="film__chiffres">
-          <p class="film__chiffre" data-anime="chiffre-60">
-            <span class="film__nombre" data-compte="60" style="min-inline-size:2ch">60</span>
-            <span class="film__libelle">adhérents</span>
-          </p>
-          <p class="film__chiffre" data-anime="chiffre-27">
-            <span class="film__nombre" data-compte="27" style="min-inline-size:2ch">27</span>
-            <span class="film__libelle">nouveaux cette rentrée</span>
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {/* ── Scène 3 : le palmarès — l'or n'est permis qu'ici ──────────────── */}
-  <div class="film__scene film__scene--palmares" data-scene="3" aria-hidden="true">
-    <div class="film__compo film__compo--panneau film__compo--palmares">
-      <div class="film__cadre film__cadre--palmares" data-cadre="3">
-        {
-          photoPodium && (
-            <Picture
-              src={photoPodium}
-              alt=""
-              formats={['avif', 'webp']}
-              widths={largeursSrcset(photoPodium, { largeurs: [480, 720, 960] })}
-              sizes="(min-width: 820px) 360px, 92vw"
-              loading="eager"
-              decoding="async"
-            />
-          )
-        }
-        <span class="film__voile"></span>
-      </div>
-      <div class="film__bloc">
-        <p class="film__titre">
-          <span class="film__masque"><span class="film__ligne" data-anime="titre-3a">Des résultats</span></span>
-          <span class="film__masque"><span class="film__ligne film__ligne--accent" data-anime="titre-3b">qui se voient</span></span>
-        </p>
-        <span class="film__filet film__filet--or" data-anime="filet-3"></span>
-        <p class="film__or-rang" data-anime="or-1">
-          <span class="film__or">80ᵉ mondial · 3ᵉ combattant français<span
-              class="film__balayage film__balayage--or"
-              data-anime="balayage-or"
-              >80ᵉ mondial · 3ᵉ combattant français</span
-            ></span>
-        </p>
-        <p class="film__or-titres" data-anime="or-2">2 titres de champion fédéral</p>
-      </div>
-    </div>
-  </div>
-
-  {/* ── Scène 4 : votre logo sur nos couleurs ─────────────────────────── */}
-  <div class="film__scene film__scene--couleurs" data-scene="4" aria-hidden="true">
-    <div class="film__compo film__compo--panneau">
-      <div class="film__cadre film__cadre--couleurs" data-cadre="4">
-        {
-          photoCouleurs && (
-            <Picture
-              src={photoCouleurs}
-              alt=""
-              formats={['avif', 'webp']}
-              widths={largeursSrcset(photoCouleurs, { largeurs: [520, 780, 1050] })}
-              sizes="(min-width: 820px) 48vw, 92vw"
-              loading="eager"
-              decoding="async"
-            />
-          )
-        }
-        <span class="film__voile"></span>
-      </div>
-      <div class="film__bloc">
-        <p class="film__titre">
-          <span class="film__masque"><span class="film__ligne" data-anime="titre-4a">Votre logo</span></span>
-          <span class="film__masque"><span class="film__ligne film__ligne--accent" data-anime="titre-4b">sur nos couleurs</span></span>
-        </p>
-        <p class="film__mots">
-          <span class="film__masque film__masque--mot"><span class="film__motcle" data-anime="mot-1"><span class="film__motcle-losange">◆</span>affiches</span></span>
-          <span class="film__masque film__masque--mot"><span class="film__motcle" data-anime="mot-2"><span class="film__motcle-losange">◆</span>bannières</span></span>
-          <span class="film__masque film__masque--mot"><span class="film__motcle" data-anime="mot-3"><span class="film__motcle-losange">◆</span>réseaux</span></span>
-          <span class="film__masque film__masque--mot"><span class="film__motcle" data-anime="mot-4"><span class="film__motcle-losange">◆</span>événements</span></span>
-        </p>
-      </div>
-    </div>
-  </div>
-
-  {/* ── Scène 5 : devenez partenaire — la seule scène annoncée ────────── */}
-  <div class="film__scene film__scene--finale" data-scene="5">
-    <div class="film__fond" aria-hidden="true" data-anime="fond-5">
+  {/* ── 1 · Le nom ───────────────────────────────────────────────────────── */}
+  <div class="film__carton film__carton--pile" style="--rang:5" data-film-carton data-film-duree="2800">
+    <div class="film__pile">
       {
-        photoFinale && (
-          <Picture
-            src={photoFinale}
-            alt=""
-            formats={['avif', 'webp']}
-            widths={largeursSrcset(photoFinale, { largeurs: [768, 1280, 1920] })}
-            sizes="100vw"
-            loading="eager"
-            decoding="async"
-          />
+        blason && (
+          <div class="film__blason" data-film-geste="fondu" data-film-t="0">
+            {/* Mêmes dérivés que le blason de l'en-tête : déjà en cache. */}
+            <Image src={blason} alt="" width={80} densities={[1, 2]} loading="lazy" decoding="async" />
+          </div>
         )
       }
-      <span class="film__voile film__voile--fort"></span>
+      {
+        surTitre && (
+          <p class="film__surtitre">
+            <span class="film__masque"><span data-film-geste="monte" data-film-t="220">{surTitre}</span></span>
+          </p>
+        )
+      }
+      <Logotype class="film__logotype" marque={marque} taille="hero" balise="p" data-film-logotype data-film-t="420" />
+      <span class="film__filet" aria-hidden="true"></span>
+      {
+        ligneLieu && (
+          <p class="film__lieu">
+            <span class="film__masque"><span data-film-geste="monte" data-film-t="1350">{ligneLieu}</span></span>
+          </p>
+        )
+      }
     </div>
-    <div class="film__compo film__compo--finale">
-      <p class="film__titre film__titre--centre">
-        <span class="film__masque"><span class="film__ligne" data-anime="titre-5a">Devenez</span></span>
-        <span class="film__masque"><span class="film__ligne film__ligne--accent" data-anime="titre-5b">partenaire</span></span>
-      </p>
-      <span class="film__filet" data-anime="filet-5" aria-hidden="true"></span>
-      <p class="film__actions">
-        <Button
-          variante="pleine"
-          taille="grande"
-          libelle="Discutons-en"
-          href={`mailto:${EMAIL}`}
-          class="film__bouton"
-          data-anime="bouton-1"
-        />
-        <Button
-          variante="contour"
-          taille="grande"
-          libelle="Télécharger le dossier (PDF, 1,5 Mo)"
-          href={PDF}
-          telechargement
-          class="film__bouton"
-          data-anime="bouton-2"
-        />
-      </p>
-      <div class="film__coda" data-anime="coda">
-        <span class="film__invite-trait" data-anime="invite-trait" aria-hidden="true"></span>
-        <p class="film__invite">Faites défiler pour découvrir la page</p>
-        <button type="button" class="film__revoir" data-revoir>Revoir</button>
+    <span class="film__fil" aria-hidden="true"></span>
+  </div>
+
+  {/* ── 2 à 4 · Le club, le palmarès, le partenariat ─────────────────────── */}
+  {
+    CARTONS_PHOTO.map((carton, index) => (
+      <div
+        class="film__carton film__carton--photo"
+        style={`--rang:${4 - index}`}
+        data-film-carton
+        data-film-duree={carton.duree}
+      >
+        {carton.fond && (
+          <div
+            class="film__photo"
+            style={`--cadre-paysage:${carton.fond.cadrePaysage};--cadre-portrait:${carton.fond.cadrePortrait}`}
+            data-film-photo
+          >
+            <picture class="film__plan" data-film-plan={carton.fond.plan}>
+              {carton.fond.portrait && (
+                <source
+                  media={MEDIA_PORTRAIT}
+                  type="image/avif"
+                  srcset={carton.fond.portrait.avif.srcSet.attribute}
+                  sizes={carton.fond.taillesPortrait}
+                  width={carton.fond.portrait.photo.width}
+                  height={carton.fond.portrait.photo.height}
+                />
+              )}
+              {carton.fond.portrait && (
+                <source
+                  media={MEDIA_PORTRAIT}
+                  type="image/webp"
+                  srcset={carton.fond.portrait.webp.srcSet.attribute}
+                  sizes={carton.fond.taillesPortrait}
+                  width={carton.fond.portrait.photo.width}
+                  height={carton.fond.portrait.photo.height}
+                />
+              )}
+              <source
+                type="image/avif"
+                srcset={carton.fond.paysage.avif.srcSet.attribute}
+                sizes={carton.fond.tailles}
+                width={carton.fond.paysage.photo.width}
+                height={carton.fond.paysage.photo.height}
+              />
+              <img
+                src={carton.fond.paysage.webp.src}
+                srcset={carton.fond.paysage.webp.srcSet.attribute}
+                sizes={carton.fond.tailles}
+                alt={carton.fond.alt}
+                width={carton.fond.paysage.photo.width}
+                height={carton.fond.paysage.photo.height}
+                loading="lazy"
+                decoding="async"
+              />
+            </picture>
+          </div>
+        )}
+        <span class="film__voile" aria-hidden="true" />
+        <span class="film__assise-haute" aria-hidden="true" />
+
+        <div class="film__assise">
+          <div class="film__contenu gouttiere">
+            {/* Le label de section de la page, et le crédit de la photo quand
+                elle en porte un — celui de la variante affichée. */}
+            <div class="film__entete">
+              <div class="film__masque film__masque--label">
+                <SectionLabel libelle={carton.libelle} numero={false} filet={false} data-film-geste="monte" data-film-t="0" />
+              </div>
+              {[
+                { variante: 'paysage', credit: carton.fond?.creditPaysage },
+                { variante: 'portrait', credit: carton.fond?.creditPortrait },
+              ].map(
+                ({ variante, credit }) =>
+                  credit && (
+                    <p class:list={['film__credit', `film__credit--${variante}`]}>
+                      <span class="film__masque"><span data-film-geste="monte" data-film-t="80">{credit}</span></span>
+                    </p>
+                  ),
+              )}
+            </div>
+
+            {carton.registre && (
+              <ul class:list={['film__registre', { 'film__registre--or': carton.or }]} role="list">
+                {carton.registre.map((rang, ligne) => (
+                  <li class="film__rang">
+                    <span class="film__rang-filet" aria-hidden="true" data-film-geste="trace" data-film-t={120 + ligne * 220} />
+                    {/* Le geste sur un porteur, la matière sur le chiffre : l'or
+                        est un fond découpé sur le texte, et c'est un ancêtre
+                        qui le déplace — comme sur la page, où la ligne de
+                        palmarès bouge et non son texte doré. */}
+                    <span class="film__masque film__masque--nombre">
+                      <span data-film-geste="monte" data-film-t={180 + ligne * 220}>
+                        <span class="film__nombre" data-film-or={carton.or ? 900 + ligne * 170 : undefined}>{rang.nombre}</span>
+                      </span>
+                    </span>
+                    <span class="film__masque film__masque--mention">
+                      <span class="film__mention" data-film-geste="monte" data-film-t={260 + ligne * 220}>{rang.mention}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {carton.lignes && (
+              <SectionTitle
+                class="film__titre"
+                lignes={carton.lignes}
+                balise="p"
+                taille="fiche"
+                data-film-titre
+                data-film-t="160"
+                data-film-pas="230"
+              />
+            )}
+          </div>
+        </div>
+        <span class="film__fil" aria-hidden="true" />
       </div>
-    </div>
-  </div>
-
-  {/* ── Progression : cinq segments fins, un par scène ────────────────── */}
-  <div class="film__progression" aria-hidden="true">
-    <span class="film__segment"><span class="film__segment-rempli" data-segment="1"></span></span>
-    <span class="film__segment"><span class="film__segment-rempli" data-segment="2"></span></span>
-    <span class="film__segment"><span class="film__segment-rempli" data-segment="3"></span></span>
-    <span class="film__segment"><span class="film__segment-rempli" data-segment="4"></span></span>
-    <span class="film__segment"><span class="film__segment-rempli" data-segment="5"></span></span>
-  </div>
-</div>
-
-<script is:inline>
-  // Filet de sécurité, volontairement bête : si le module d'animation ne
-  // démarre jamais (fichier non chargé, erreur d'exécution), la couche du
-  // film resterait un écran d'encre posé sur la page. Ces trois gestes la
-  // retirent alors sans lui. Dès que le module a démarré (data-pret), ils ne
-  // font plus rien : c'est lui qui gère la fermeture, en fondu.
-  (function () {
-    var film = document.querySelector('[data-film-ouverture]');
-    if (!film) return;
-    var retirer = function () {
-      if (!film.dataset.pret && film.isConnected) film.remove();
-    };
-    var passer = film.querySelector('[data-passer]');
-    if (passer) passer.addEventListener('click', retirer);
-    window.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') retirer();
-    });
-    window.addEventListener('scroll', retirer, { passive: true });
-  })();
-</script>
-
-<script>
-  // ── Le chef d'orchestre du film ──────────────────────────────────────────
-  // Tout passe par la Web Animations API : chaque élément reçoit sa propre
-  // animation (délai absolu sur une même origine), une animation « maître »
-  // sert d'horloge pour ce qui ne s'anime pas tout seul (fenêtres de
-  // visibilité des scènes, compteurs), et la liste complète se met en pause
-  // d'un bloc quand l'onglet est masqué.
-
-  const film = document.querySelector<HTMLElement>('[data-film-ouverture]');
-  const mediaReduit = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-  if (film && (mediaReduit.matches || !('animate' in Element.prototype))) {
-    // Mouvement réduit (ou navigateur sans WAAPI, où le film serait figé) :
-    // pas de film du tout. La CSS le masque déjà ; on retire la couche et on
-    // libère la page tout de suite.
-    film.remove();
-    window.dispatchEvent(new Event('film-ouverture:fin'));
-  } else if (film) {
-    demarrer(film);
+    ))
   }
 
-  function demarrer(couche: HTMLElement) {
-    // Le module est vivant : le filet de sécurité inline s'efface.
-    couche.dataset.pret = '1';
+  {/* ── 5 · La fin posée ─────────────────────────────────────────────────── */}
+  {/* `inert` tant que le carton est sous les autres : ses deux liens ne
+      doivent pas prendre le focus derrière un carton qui les cache. Le pilote
+      le retire quand le carton se découvre. */}
+  <div class="film__carton film__carton--pile film__carton--fin" style="--rang:1" data-film-carton data-film-fin inert>
+    <div class="film__pile">
+      <p class="film__surtitre film__surtitre--ember">
+        <span class="film__masque"><span data-film-geste="monte" data-film-t="0">Dossier de partenariat</span></span>
+      </p>
+      <SectionTitle
+        class="film__titre film__titre--fin"
+        lignes={[{ texte: 'Devenez' }, { texte: 'partenaire', accent: true }]}
+        balise="p"
+        taille="fiche"
+        centre
+        data-film-titre
+        data-film-t="140"
+        data-film-pas="150"
+      />
+      <span class="film__filet" aria-hidden="true"></span>
+      <p class="film__texte">
+        <span class="film__masque"><span data-film-geste="monte" data-film-t="740">{PHRASE_FIN}</span></span>
+      </p>
+      {/* Les deux boutons de la section « Dossier et contact » de la page :
+          mêmes variantes, mêmes libellés, mêmes adresses. */}
+      <p class="film__actions" data-film-actions>
+        <span class="film__masque film__masque--bouton">
+          <Button
+            variante="pleine"
+            taille="grande"
+            libelle="Discutons-en"
+            href={`mailto:${email}`}
+            class="film__bouton"
+            data-film-geste="monte"
+            data-film-t="880"
+          />
+        </span>
+        <span class="film__masque film__masque--bouton">
+          <Button
+            variante="contour"
+            taille="grande"
+            libelle="Télécharger le dossier (PDF, 1,5 Mo)"
+            href={pdf}
+            telechargement
+            class="film__bouton"
+            data-film-geste="monte"
+            data-film-t="1000"
+          />
+        </span>
+      </p>
+    </div>
 
-    const DUREE_TOTALE = 15400;
-    const E1 = 'cubic-bezier(0.22, 0.61, 0.36, 1)'; // la courbe de sortie maison
-    const E2 = 'cubic-bezier(0.32, 0, 0.24, 1)'; // celle des balayages métalliques
+    {/* L'invite de défilement du hero de l'accueil : elle lève le film. À sa
+        gauche, « Revoir » — même voix, sans chevron — rejoue le générique
+        depuis le début. */}
+    <div class="film__masque film__masque--invite">
+      <button class="film__revoir" type="button" data-film-revoir data-film-geste="monte" data-film-t="1220">
+        <span class="film__invite-texte">Revoir<span class="visuellement-cache"> le film d’ouverture</span></span>
+      </button>
+      <button class="film__invite" type="button" data-film-suite data-film-geste="monte" data-film-t="1220">
+        <span class="film__chevron" aria-hidden="true"><Icon name="chevron-down" /></span>
+        <span class="film__invite-texte">Découvrir la page</span>
+      </button>
+    </div>
 
-    // ── Dessins de mouvement partagés ──
-    // 135 % : assez pour que la ligne soit entièrement sous la fenêtre du
-    // masque avant de monter (la fenêtre déborde de 0,3 em sous l'élément).
-    const LEVER: Keyframe[] = [{ transform: 'translateY(135%)' }, { transform: 'translateY(0%)' }];
-    const POSER: Keyframe[] = [
-      { opacity: 0, transform: 'translateY(18px)' },
-      { opacity: 1, transform: 'translateY(0)' },
-    ];
-    // L'interlettrage qui se resserre : un scaleX qui se pose, jamais de
-    // letter-spacing animé.
-    const POSER_SERRER: Keyframe[] = [
-      { opacity: 0, transform: 'translateY(0.9em) scaleX(1.08)' },
-      { opacity: 1, transform: 'translateY(0) scaleX(1)' },
-    ];
-    const MOT_POSER: Keyframe[] = [
-      { opacity: 0, transform: 'translateY(135%) scale(1.05)' },
-      { opacity: 1, transform: 'translateY(0) scale(1)' },
-    ];
-    const TRACER: Keyframe[] = [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }];
-    const PIVOTER: Keyframe[] = [
-      { opacity: 0, transform: 'rotate(-90deg) scale(0.4)' },
-      { opacity: 1, transform: 'rotate(0deg) scale(1)' },
-    ];
-    const FONDU: Keyframe[] = [{ opacity: 0 }, { opacity: 1 }];
-    // La respiration du trait d'invite : UNE inspiration, puis le repos
-    // (l'état de départ et d'arrivée est celui de la CSS). Finie, jamais en
-    // boucle : la fin du film reste figée au pixel près.
-    const RESPIRER: Keyframe[] = [
-      { opacity: 0.45, transform: 'scaleY(0.6)' },
-      { opacity: 1, transform: 'scaleY(1)', offset: 0.5 },
-      { opacity: 0.45, transform: 'scaleY(0.6)' },
-    ];
-    const ZOOM_POSER: Keyframe[] = [{ transform: 'scale(1.07)' }, { transform: 'scale(1)' }];
-    const SORTIE_SCENE: Keyframe[] = [
-      { opacity: 1, transform: 'translateY(0)' },
-      { opacity: 0, transform: 'translateY(-14px)' },
-    ];
-    // La fenêtre de lumière qui traverse le mot : seule la découpe bouge
-    // (et l'opacité aux extrémités), le texte et son dégradé restent posés.
-    const BALAYAGE: Keyframe[] = [
-      { clipPath: 'inset(0% 76% 0% -8%)', opacity: 0 },
-      { opacity: 0.9, offset: 0.2 },
-      { opacity: 0.9, offset: 0.8 },
-      { clipPath: 'inset(0% -8% 0% 76%)', opacity: 0 },
-    ];
-    const OUVRIR_HAUTEUR: Keyframe[] = [
-      { clipPath: 'inset(50% 0% 50% 0%)' },
-      { clipPath: 'inset(0% 0% 0% 0%)' },
-    ];
-    const OUVRIR_COTE: Keyframe[] = [
-      { clipPath: 'inset(0% 100% 0% 0%)' },
-      { clipPath: 'inset(0% 0% 0% 0%)' },
-    ];
-    const OUVRIR_BAS: Keyframe[] = [
-      { clipPath: 'inset(0% 0% 100% 0%)' },
-      { clipPath: 'inset(0% 0% 0% 0%)' },
-    ];
+    {/* Le fil de ce carton se tend pendant que la fin attend : quand il a
+        traversé l'écran, le film se retire de lui-même. */}
+    <span class="film__fil film__fil--attente" aria-hidden="true" data-film-attente></span>
+  </div>
+</section>
+</template>
 
-    // ── La partition : un élément, un délai absolu, une durée ──
-    interface Spec {
-      sel: string;
-      delai: number;
-      duree: number;
-      images: Keyframe[];
-      easing?: string;
+<script is:inline>
+  /*
+   * Pilote du film d'ouverture. En ligne et sans dépendance : il doit pouvoir
+   * rendre la page quoi qu'il arrive (cf. en-tête du composant).
+   */
+  (function () {
+    'use strict';
+
+    var racine = document.documentElement;
+    var gabarit = document.querySelector('template[data-film-gabarit]');
+    if (!gabarit || !gabarit.content) return;
+
+    // ── Réglages (millisecondes) ──────────────────────────────────────────
+    var LEVEE = 950; // un carton qui se lève
+    var LEVEE_VIVE = 620; // le film qui se retire sur « Passer »
+    var RETARD = 430; // entre le début d'une levée et l'entrée du carton découvert
+    var MONTEE = 760; // une ligne qui sort de son masque
+    var TRACE = 800; // un filet qui s'étire — la durée de `sp-etirer`
+    var ATTENTE_FIN = 3200; // la fin reste posée ce temps-là, puis le film se retire seul ; 0 = seulement au geste
+    var ATTENTE_POLICES = 1500; // plafond d'attente des polices avant le premier carton
+
+    // Les deux courbes du site : apparitions (`.reveal`, `sp-lever`) et
+    // balayages de métal (`logotype-acier`, `sp-or-balayage`).
+    var COURBE_ENTREE = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
+    var COURBE_PASSE = 'cubic-bezier(0.32, 0, 0.24, 1)';
+
+    var reduit = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    /**
+     * Le film ne se joue que là où TOUT ce qu'il emploie existe : sans
+     * `overflow: clip` ses masques ne masquent rien, sans `translate` ni
+     * `inert` la page n'est pas tenue. Un navigateur à qui il manque une pièce
+     * ne voit pas un film bancal : il voit la page, comme avant.
+     */
+    function capable() {
+      return (
+        typeof Element.prototype.animate === 'function' &&
+        typeof Element.prototype.getAnimations === 'function' &&
+        'inert' in HTMLElement.prototype &&
+        !!window.CSS &&
+        typeof window.CSS.supports === 'function' &&
+        window.CSS.supports('overflow', 'clip') &&
+        window.CSS.supports('translate', '0 1px') &&
+        // Les feuilles de style construites écrivent leurs requêtes média en
+        // plages (`width <= 819.98px`) : qui ne sait pas les lire n'aurait
+        // aucune des règles de téléphone du film.
+        window.matchMedia('(width >= 0px)').matches
+      );
     }
 
-    const SPECS: Spec[] = [
-      // Scène 1 — base 0 : le logotype se lève, le filet se trace, la
-      // sur-ligne se pose en se resserrant, puis la lame prend la lumière.
-      { sel: '[data-anime="logo-1"]', delai: 200, duree: 800, images: LEVER },
-      { sel: '[data-anime="logo-2"]', delai: 360, duree: 800, images: LEVER },
-      { sel: '[data-anime="filet-1"]', delai: 900, duree: 700, images: TRACER },
-      { sel: '[data-anime="surligne"]', delai: 1050, duree: 700, images: POSER_SERRER },
-      { sel: '[data-anime="balayage-acier"]', delai: 1600, duree: 1100, images: BALAYAGE, easing: E2 },
-      { sel: '[data-scene="1"]', delai: 2750, duree: 600, images: SORTIE_SCENE },
-
-      // Scène 2 — base 3200 : la photo s'ouvre en hauteur et se pose en
-      // zoom, le losange pivote, le titre monte, les compteurs grimpent.
-      { sel: '[data-cadre="2"]', delai: 3200, duree: 900, images: OUVRIR_HAUTEUR },
-      { sel: '[data-cadre="2"] img', delai: 3200, duree: 2600, images: ZOOM_POSER },
-      { sel: '[data-anime="losange-2"]', delai: 3350, duree: 700, images: PIVOTER },
-      { sel: '[data-anime="titre-2a"]', delai: 3480, duree: 760, images: LEVER },
-      { sel: '[data-anime="titre-2b"]', delai: 3620, duree: 760, images: LEVER },
-      { sel: '[data-anime="chiffre-60"]', delai: 4250, duree: 620, images: POSER },
-      { sel: '[data-anime="chiffre-27"]', delai: 4400, duree: 620, images: POSER },
-      { sel: '[data-scene="2"]', delai: 6050, duree: 600, images: SORTIE_SCENE },
-
-      // Scène 3 — base 6400 : le podium s'ouvre de côté, le filet d'or se
-      // trace, les deux lignes de palmarès montent, l'or prend la lumière.
-      { sel: '[data-cadre="3"]', delai: 6400, duree: 900, images: OUVRIR_COTE },
-      { sel: '[data-cadre="3"] img', delai: 6400, duree: 2600, images: ZOOM_POSER },
-      { sel: '[data-anime="titre-3a"]', delai: 6680, duree: 760, images: LEVER },
-      { sel: '[data-anime="titre-3b"]', delai: 6820, duree: 760, images: LEVER },
-      { sel: '[data-anime="filet-3"]', delai: 7350, duree: 700, images: TRACER },
-      { sel: '[data-anime="or-1"]', delai: 7550, duree: 650, images: POSER },
-      { sel: '[data-anime="or-2"]', delai: 7850, duree: 650, images: POSER },
-      { sel: '[data-anime="balayage-or"]', delai: 8300, duree: 1200, images: BALAYAGE, easing: E2 },
-      { sel: '[data-scene="3"]', delai: 9450, duree: 600, images: SORTIE_SCENE },
-
-      // Scène 4 — base 9800 : l'équipe se découvre par le haut, le titre
-      // monte, les quatre mots-clés se posent en cascade.
-      { sel: '[data-cadre="4"]', delai: 9800, duree: 900, images: OUVRIR_BAS },
-      { sel: '[data-cadre="4"] img', delai: 9800, duree: 2600, images: ZOOM_POSER },
-      // Le titre suit la photo de près et la cascade enchaîne : en desktop,
-      // la colonne de texte ne laisse jamais sa moitié d'écran vide pendant
-      // le fondu croisé 3→4.
-      { sel: '[data-anime="titre-4a"]', delai: 9850, duree: 760, images: LEVER },
-      { sel: '[data-anime="titre-4b"]', delai: 9990, duree: 760, images: LEVER },
-      { sel: '[data-anime="mot-1"]', delai: 10700, duree: 640, images: MOT_POSER },
-      { sel: '[data-anime="mot-2"]', delai: 10940, duree: 640, images: MOT_POSER },
-      { sel: '[data-anime="mot-3"]', delai: 11180, duree: 640, images: MOT_POSER },
-      { sel: '[data-anime="mot-4"]', delai: 11420, duree: 640, images: MOT_POSER },
-      { sel: '[data-scene="4"]', delai: 12450, duree: 600, images: SORTIE_SCENE },
-
-      // Scène 5 — base 12800 : la photo du hero en fondu sous voile fort,
-      // le titre, le filet, les deux boutons, puis l'invite. Pas de sortie :
-      // la scène reste posée jusqu'au geste du visiteur. Le fond et le titre
-      // partent AVEC la sortie de la scène 4 (12450) : un vrai fondu croisé,
-      // sans creux d'écran quasi vide autour de 13 s. Le trait d'invite
-      // respire une seule fois (fini à 16350 ms : fin figée au pixel près).
-      { sel: '[data-anime="fond-5"]', delai: 12450, duree: 1200, images: FONDU },
-      { sel: '[data-anime="titre-5a"]', delai: 12800, duree: 800, images: LEVER },
-      { sel: '[data-anime="titre-5b"]', delai: 12950, duree: 800, images: LEVER },
-      { sel: '[data-anime="filet-5"]', delai: 13800, duree: 700, images: TRACER },
-      { sel: '[data-anime="bouton-1"]', delai: 14050, duree: 620, images: POSER },
-      { sel: '[data-anime="bouton-2"]', delai: 14200, duree: 620, images: POSER },
-      { sel: '[data-anime="coda"]', delai: 14550, duree: 700, images: FONDU },
-      { sel: '[data-anime="invite-trait"]', delai: 14550, duree: 1800, images: RESPIRER, easing: 'ease-in-out' },
-
-      // Progression : chaque segment se remplit linéairement sur sa scène.
-      { sel: '[data-segment="1"]', delai: 0, duree: 3200, images: TRACER, easing: 'linear' },
-      { sel: '[data-segment="2"]', delai: 3200, duree: 3200, images: TRACER, easing: 'linear' },
-      { sel: '[data-segment="3"]', delai: 6400, duree: 3400, images: TRACER, easing: 'linear' },
-      { sel: '[data-segment="4"]', delai: 9800, duree: 3000, images: TRACER, easing: 'linear' },
-      { sel: '[data-segment="5"]', delai: 12800, duree: 1800, images: TRACER, easing: 'linear' },
-    ];
-
-    // Fenêtres de visibilité des scènes (élargies de part et d'autre pour
-    // couvrir les fondus croisés). Hors fenêtre, `visibility: hidden` : la
-    // scène n'est ni peinte, ni focalisable, ni annoncée.
-    const FENETRES: Array<[number, number]> = [
-      [0, 3400],
-      [3150, 6700],
-      [6350, 10100],
-      [9750, 13100],
-      [12400, Number.POSITIVE_INFINITY],
-    ];
-
-    // Compteurs : montée 0 → valeur en 1,2 s (easeOutCubic), pilotée par
-    // l'horloge maître — la pause de l'onglet les fige donc avec le reste.
-    const COMPTEURS = Array.from(couche.querySelectorAll<HTMLElement>('[data-compte]')).map(
-      (el, index) => ({
-        el,
-        fin: Number.parseInt(el.dataset.compte ?? '0', 10),
-        debut: index === 0 ? 4350 : 4500,
-        duree: 1200,
-        courant: -1,
-      }),
+    /**
+     * Le film est composé pour une fenêtre de téléphone, debout ou couché, et
+     * au-delà. Plus petit — fenêtre minuscule, écran partagé, zoom à 400 % —
+     * ses cartons ne tiennent plus : on montre la page, qui, elle, se replie.
+     * Les seuils sont ceux au-dessus desquels chaque carton a été vérifié.
+     */
+    var assezGrand = window.matchMedia(
+      '(min-width: 280px) and (min-height: 454px), (min-width: 480px) and (min-height: 264px)',
     );
 
-    const scenes = Array.from(couche.querySelectorAll<HTMLElement>('[data-scene]'));
-
-    let animations: Animation[] = [];
-    let maitre: Animation | null = null;
-    let enPause: Animation[] = [];
-    let rafId = 0;
-    let ferme = false;
-
-    // ── La page sous le film est gelée (inert) pendant la lecture ──
-    // « Passer » devient ainsi le premier focalisable du document, et aucun
-    // parcours clavier ou lecteur d'écran ne se perd derrière la couche.
-    const geles: HTMLElement[] = [];
-    const contenant = couche.parentElement;
-    for (const el of Array.from(document.body.children)) {
-      if (!(el instanceof HTMLElement) || el.tagName === 'SCRIPT' || el.contains(couche)) continue;
-      el.inert = true;
-      geles.push(el);
-    }
-    if (contenant) {
-      for (const el of Array.from(contenant.children)) {
-        if (!(el instanceof HTMLElement) || el === couche || el.tagName === 'SCRIPT') continue;
-        el.inert = true;
-        geles.push(el);
+    /**
+     * Arrivée par « Précédent », « Suivant » ou par la restauration d'un
+     * onglet : la personne retrouve une page qu'elle a déjà vue, à l'endroit
+     * où elle l'avait laissée — pas le film une seconde fois.
+     */
+    function deRetour() {
+      try {
+        var entree = window.performance.getEntriesByType('navigation')[0];
+        return !!entree && entree.type === 'back_forward';
+      } catch (e) {
+        return false;
       }
     }
-    const degeler = () => {
-      for (const el of geles) el.inert = false;
-      geles.length = 0;
-    };
 
-    // ── L'horloge : visibilité des scènes et compteurs ──
-    const sortieCubique = (t: number) => 1 - Math.pow(1 - t, 3);
+    // Pas de film : un navigateur à qui il manque une pièce, moins d'animations
+    // demandé, une fenêtre trop petite, une ancre dans l'adresse, ou un retour
+    // sur la page. Le gabarit reste fermé : la page est telle quelle.
+    if (
+      !racine.classList.contains('js') ||
+      !capable() ||
+      reduit.matches ||
+      !assezGrand.matches ||
+      window.location.hash.length > 1 ||
+      deRetour()
+    ) {
+      return;
+    }
 
-    const battre = () => {
-      const t = maitre?.currentTime != null ? Number(maitre.currentTime) : 0;
+    // Le film entre dans le document, à la place de son gabarit. Ce script
+    // suit le gabarit et bloque l'analyse : cela se passe avant la première
+    // image, la page n'est jamais vue avant le film.
+    var film = gabarit.content.querySelector('[data-film]');
+    if (!film) return;
+    gabarit.parentNode.replaceChild(film, gabarit);
 
-      scenes.forEach((scene, i) => {
-        const [debut, fin] = FENETRES[i] ?? [0, 0];
-        scene.style.visibility = t >= debut && t < fin ? 'visible' : 'hidden';
-      });
+    // attente → lecture → fin → retrait → termine
+    var etat = 'attente';
+    var animations = []; // tout ce que le film a posé sur l'horloge
+    var attente = null; // le fil qui se tend pendant la fin posée
+    var guet = null; // observe le document en cours de lecture (cf. `installer`)
+    var parti = false;
+    var appui = null;
+    var passer = film.querySelector('[data-film-passer]');
 
-      for (const c of COMPTEURS) {
-        const progression = Math.min(Math.max((t - c.debut) / c.duree, 0), 1);
-        const valeur = Math.round(sortieCubique(progression) * c.fin);
-        if (valeur !== c.courant) {
-          c.courant = valeur;
-          c.el.textContent = String(valeur);
+    // ── Outils ────────────────────────────────────────────────────────────
+    function passerA(nouvelEtat) {
+      etat = nouvelEtat;
+      film.setAttribute('data-film-etat', nouvelEtat);
+    }
+
+    function chaque(liste, fonction) {
+      Array.prototype.forEach.call(liste, fonction);
+    }
+
+    function nombre(el, attribut, repli) {
+      var valeur = parseFloat(el.getAttribute(attribut));
+      return isNaN(valeur) ? repli || 0 : valeur;
+    }
+
+    /** Enveloppe un rappel : s'il échoue, le film se retire et rend la page. */
+    function sur(fonction) {
+      return function () {
+        try {
+          return fonction.apply(null, arguments);
+        } catch (e) {
+          terminer();
         }
-      }
+      };
+    }
 
-      if (maitre?.playState === 'finished') {
-        rafId = 0;
-        return;
-      }
-      rafId = requestAnimationFrame(battre);
-    };
+    function rien() {}
 
-    // ── (Re)jouer le film depuis le début ──
-    const jouer = () => {
-      for (const a of animations) a.cancel();
+    // ── La page derrière le film ──────────────────────────────────────────
+    /**
+     * Tout ce qui n'est pas le film sort du focus et de l'arbre
+     * d'accessibilité — jusqu'à `terminer`, levée du film comprise.
+     */
+    function figer() {
+      if (etat === 'termine') return;
+      chaque(document.body.children, function (el) {
+        if (el === film || el.inert || /^(SCRIPT|STYLE|LINK|TEMPLATE)$/.test(el.tagName)) return;
+        el.inert = true;
+        el.setAttribute('data-film-fige', '');
+      });
+    }
+
+    /** Rend la page au focus et aux lecteurs d'écran. */
+    function liberer() {
+      chaque(document.querySelectorAll('[data-film-fige]'), function (el) {
+        el.inert = false;
+        el.removeAttribute('data-film-fige');
+      });
+    }
+
+    /** Fin de partie, quelle qu'en soit la cause : la page est rendue. */
+    function terminer() {
+      if (etat === 'termine') return;
+      etat = 'termine';
+      var focusDansLeFilm = film.contains(document.activeElement);
+      try {
+        racine.classList.remove('film-verrou', 'film-pause');
+        if (guet) guet.disconnect();
+        liberer();
+        // Plus rien n'écoute pour le film : une fois retiré, il peut être
+        // oublié tout entier, photos comprises.
+        document.removeEventListener('keydown', auClavier, true);
+        document.removeEventListener('wheel', aLaMolette, true);
+        document.removeEventListener('visibilitychange', aLaVisibilite);
+        document.removeEventListener('DOMContentLoaded', aLaLecture);
+        window.removeEventListener('scroll', clouer);
+        window.removeEventListener('pointerup', relacher);
+        window.removeEventListener('pointercancel', relacher);
+        window.removeEventListener('blur', relacher);
+        reduit.removeEventListener('change', auMouvementReduit);
+        assezGrand.removeEventListener('change', aLaTaille);
+      } finally {
+        film.remove();
+      }
+      // Une animation en pause dont on attend encore la fin (`finished`)
+      // garderait le film entier en mémoire, photos comprises : toutes sont
+      // closes. Le film n'est déjà plus dans le document, rien ne se voit.
+      chaque(animations, function (animation) {
+        try {
+          animation.cancel();
+        } catch (e) {
+          /* déjà close */
+        }
+      });
       animations = [];
-      enPause = [];
-      if (rafId) cancelAnimationFrame(rafId);
+      // Le focus ne reste pas sur un nœud disparu : il repart du lien
+      // d'évitement, c'est-à-dire du début de la page.
+      if (focusDansLeFilm) {
+        var evitement = document.querySelector('.lien-evitement');
+        if (evitement) evitement.focus({ preventScroll: true });
+      }
+    }
 
-      maitre = couche.animate([{ opacity: 1 }, { opacity: 1 }], {
-        duration: DUREE_TOTALE,
+    // ── Gestes ────────────────────────────────────────────────────────────
+    function jouer(el, images, options) {
+      var animation = el.animate(images, options);
+      animations.push(animation);
+      return animation;
+    }
+
+    /**
+     * Une ligne sort de son masque. Une seule image clé, l'arrivée : le départ
+     * est l'état que la feuille de style donne à la ligne (`--film-depart`),
+     * il n'est écrit qu'à un endroit.
+     */
+    function monter(el, quand) {
+      jouer(el, [{ transform: 'translateY(0)' }], {
+        delay: quand,
+        duration: MONTEE,
+        easing: COURBE_ENTREE,
         fill: 'forwards',
       });
-      animations.push(maitre);
+    }
 
-      for (const spec of SPECS) {
-        const el = couche.querySelector<HTMLElement>(spec.sel);
-        if (!el) continue;
-        animations.push(
-          el.animate(spec.images, {
-            delay: spec.delai,
-            duration: spec.duree,
-            easing: spec.easing ?? E1,
+    /** Un filet s'étire — même principe : parti de l'état de la feuille de style. */
+    function tracer(el, quand) {
+      jouer(el, [{ transform: 'scaleX(1)' }], {
+        delay: quand,
+        duration: TRACE,
+        easing: COURBE_ENTREE,
+        fill: 'forwards',
+      });
+    }
+
+    /**
+     * Pose tous les gestes d'un carton ; `entree` est son instant zéro.
+     * Renvoie l'instant où le carton est entièrement posé.
+     */
+    function composer(carton, entree) {
+      var pose = entree;
+      var noter = function (quand, duree) {
+        pose = Math.max(pose, quand + duree);
+      };
+
+      chaque(carton.querySelectorAll('[data-film-geste]'), function (el) {
+        var quand = entree + nombre(el, 'data-film-t');
+        var geste = el.getAttribute('data-film-geste');
+        if (geste === 'monte') {
+          monter(el, quand);
+          // Une commande n'existe pour le clavier et le pointeur qu'à partir
+          // de sa montée (cf. feuille de style). Animation à part : celle de
+          // la translation reste entre les mains du compositeur.
+          if (el.matches('a, button')) {
+            jouer(el, [{ visibility: 'visible' }], { delay: quand, duration: MONTEE, fill: 'forwards' });
+          }
+          noter(quand, MONTEE);
+        } else if (geste === 'trace') {
+          tracer(el, quand);
+          noter(quand, TRACE);
+        } else if (geste === 'fondu') {
+          // Réservé aux images : un texte ne change jamais d'opacité.
+          jouer(el, [{ opacity: 0 }, { opacity: 1 }], {
+            delay: quand,
+            duration: 900,
+            easing: COURBE_ENTREE,
             fill: 'both',
+          });
+        }
+      });
+
+      // Le logotype : mot à mot, puis la passe de lumière sur « Acier » — le
+      // dessin exact de `logotype-acier` (Logotype.astro), mais à l'heure du
+      // film : une fois le nom lu, pas pendant qu'il monte.
+      chaque(carton.querySelectorAll('[data-film-logotype]'), function (logo) {
+        var depart = entree + nombre(logo, 'data-film-t');
+        chaque(logo.querySelectorAll('.logotype__mot'), function (mot, i) {
+          monter(mot, depart + i * 95 + (i > 1 ? 70 : 0));
+        });
+        var acier = logo.querySelector('.logotype__mot--acier');
+        if (acier) {
+          jouer(acier, [{ backgroundPosition: '100% 0' }, { backgroundPosition: '50% 0' }], {
+            delay: depart + 760,
+            duration: 1700,
+            easing: COURBE_PASSE,
+            fill: 'both',
+          });
+        }
+      });
+
+      // Un titre : ligne à ligne.
+      chaque(carton.querySelectorAll('[data-film-titre]'), function (titre) {
+        var depart = entree + nombre(titre, 'data-film-t');
+        var pas = nombre(titre, 'data-film-pas', 150);
+        chaque(titre.querySelectorAll('.titre-section__ligne'), function (ligne, i) {
+          chaque(ligne.children, function (fragment) {
+            monter(fragment, depart + i * pas);
+          });
+          noter(depart + i * pas, MONTEE);
+        });
+      });
+
+      // Le filet sous un titre centré : il s'étire quand le titre est monté.
+      chaque(carton.querySelectorAll('.film__filet'), function (filet) {
+        tracer(filet, entree + (carton.hasAttribute('data-film-fin') ? 620 : 1150));
+      });
+
+      // L'or : une passe par chiffre, celle de `sp-or-balayage`.
+      chaque(carton.querySelectorAll('[data-film-or]'), function (el) {
+        jouer(el, [{ backgroundPosition: '100% 0' }, { backgroundPosition: '0 0' }], {
+          delay: entree + nombre(el, 'data-film-or'),
+          duration: 1500,
+          easing: COURBE_PASSE,
+          fill: 'both',
+        });
+      });
+
+      return pose;
+    }
+
+    // ── Le film ───────────────────────────────────────────────────────────
+    function demarrer() {
+      if (etat !== 'attente') return;
+      passerA('lecture');
+
+      var cartons = film.querySelectorAll('[data-film-carton]');
+      var decouverte = 0; // instant où le carton courant se découvre
+      var finPosee = 0;
+
+      chaque(cartons, function (carton, rang) {
+        var entree = rang === 0 ? 120 : decouverte + RETARD;
+        var pose = composer(carton, entree);
+        var duree = nombre(carton, 'data-film-duree');
+
+        // Le plan : un mouvement lent tant que le carton est à l'écran, et la
+        // photo qui finit de monter pendant que le carton du dessus se lève.
+        var plan = carton.querySelector('[data-film-plan]');
+        if (plan) {
+          var travelling = plan.getAttribute('data-film-plan') === 'travelling';
+          jouer(
+            plan,
+            travelling
+              ? [{ transform: 'translateX(2.4%)' }, { transform: 'translateX(-2.4%)' }]
+              : [{ transform: 'scale(1)' }, { transform: 'scale(1.07)' }],
+            { delay: decouverte, duration: duree + LEVEE + 200, easing: 'linear', fill: 'both' },
+          );
+        }
+        var photo = carton.querySelector('[data-film-photo]');
+        if (photo) {
+          jouer(photo, [{ transform: 'translateY(5%)' }, { transform: 'translateY(0)' }], {
+            delay: decouverte,
+            duration: LEVEE + 250,
+            easing: COURBE_PASSE,
+            fill: 'both',
+          });
+        }
+
+        if (rang === cartons.length - 1) {
+          finPosee = pose;
+          return;
+        }
+
+        var levee = jouer(carton, [{ transform: 'translateY(0)' }, { transform: 'translateY(-100%)' }], {
+          delay: decouverte + duree,
+          duration: LEVEE,
+          easing: COURBE_PASSE,
+          fill: 'forwards',
+        });
+        decouverte += duree;
+
+        // Le dernier carton redevient atteignable quand celui qui le couvrait
+        // a fini de se lever.
+        if (rang === cartons.length - 2) {
+          levee.finished.then(function () {
+            if (etat === 'lecture' || etat === 'fin') cartons[cartons.length - 1].inert = false;
+          }, rien);
+        }
+      });
+
+      // La fin posée. Le fil du bas se tend pendant qu'elle attend, puis le
+      // film se retire de lui-même — sauf si la personne s'y est arrêtée.
+      jouer(film, [], { delay: finPosee, duration: 1 }).finished.then(sur(poser), rien);
+
+      // L'onglet est passé à l'arrière-plan pendant l'attente des polices :
+      // le film est prêt, mais il ne part pas sans spectateur.
+      if (document.hidden) aLaVisibilite();
+    }
+
+    /**
+     * La personne est-elle déjà arrêtée sur le film ? Le focus y est entré
+     * (au clavier, donc — bouton « Passer » compris : qui navigue ainsi, ou
+     * avec un lecteur d'écran, lit à son rythme), la souris est sur l'un des
+     * deux boutons, ou un doigt est posé.
+     */
+    function arretee() {
+      if (appui || film.contains(document.activeElement)) return true;
+      return !!film.querySelector('[data-film-actions] a:hover, [data-film-actions] button:hover');
+    }
+
+    function poser() {
+      if (etat !== 'lecture') return;
+      passerA('fin');
+      // Le carton de fin est atteignable, quel que soit l'ordre dans lequel le
+      // navigateur a clos les animations de cette image.
+      var fin = film.querySelector('[data-film-fin]');
+      if (fin) fin.inert = false;
+      var fil = film.querySelector('[data-film-attente]');
+      // Pas de compte à rebours pour qui est déjà là : les boutons ont pu
+      // monter sous sa souris, ou le focus entrer dans le film avant que la
+      // fin ne soit posée. Le film attendra son geste.
+      if (!ATTENTE_FIN || !fil || arretee()) return;
+      attente = jouer(fil, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], {
+        duration: ATTENTE_FIN,
+        easing: 'linear',
+        fill: 'forwards',
+      });
+      attente.finished.then(
+        sur(function () {
+          if (etat === 'fin' && attente) lever(false);
+        }),
+        rien,
+      );
+    }
+
+    // ── Retrait ───────────────────────────────────────────────────────────
+    /** La personne s'arrête sur la fin : le film ne se retirera plus seul. */
+    function retenir() {
+      if (!attente) return;
+      var fil = film.querySelector('[data-film-attente]');
+      var progression = attente.effect.getComputedTiming().progress || 0;
+      var ancienne = attente;
+      attente = null;
+      ancienne.cancel();
+      if (fil) {
+        fil.animate([{ transform: 'scaleX(' + progression + ')' }, { transform: 'scaleX(0)' }], {
+          duration: 420,
+          easing: COURBE_ENTREE,
+          fill: 'forwards',
+        });
+      }
+    }
+
+    /**
+     * « Revoir » : le générique se rejoue depuis le début. Clore tout ce que
+     * le film a posé sur l'horloge rend chaque ligne à son masque et chaque
+     * carton à sa place — l'état écrit dans la feuille de style, celui
+     * d'avant le premier départ — puis le film repart par le chemin normal
+     * (`demarrer`). Les photos, déjà chargées, sont toujours prêtes.
+     */
+    function rejouer() {
+      if (etat !== 'fin') return;
+      var focusDansLeFilm = film.contains(document.activeElement);
+      attente = null;
+      chaque(animations, function (animation) {
+        try {
+          animation.cancel();
+        } catch (e) {
+          /* déjà close */
+        }
+      });
+      animations = [];
+      // Le fil d'attente a pu être repris par `retenir`, hors registre : clos
+      // aussi, il retourne à son départ (tendu à zéro).
+      var fil = film.querySelector('[data-film-attente]');
+      if (fil) {
+        chaque(fil.getAnimations(), function (animation) {
+          animation.cancel();
+        });
+      }
+      // La fin redescend sous les cartons qui vont la recouvrir : hors
+      // d'atteinte, comme au premier départ. Le focus ne reste pas sur une
+      // commande devenue inerte : il repart sur « Passer » — qui, au clavier,
+      // garde le film entre les mains de la personne jusqu'au bout.
+      var fin = film.querySelector('[data-film-fin]');
+      if (fin) fin.inert = true;
+      if (focusDansLeFilm && passer) passer.focus({ preventScroll: true });
+      passerA('attente');
+      demarrer();
+    }
+
+    /**
+     * Tant que le film se lève, la page reste à son début. La molette et le
+     * clavier sont déjà retenus ; reste le navigateur lui-même : après un
+     * rechargement, il attend que le document soit de nouveau défilable pour
+     * le ramener « là où il était » — c'est-à-dire l'instant où le verrou
+     * tombe. Le film ne touche pas pour autant à `history.scrollRestoration` :
+     * ce réglage survit à la page, il n'a pas à porter la trace du film.
+     */
+    function clouer() {
+      if (etat === 'retrait' && (window.scrollX || window.scrollY)) {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      }
+    }
+
+    /** Le film se lève comme un dernier carton, et découvre la page. */
+    function lever(vif) {
+      if (etat === 'retrait' || etat === 'termine') return;
+      passerA('retrait');
+      attente = null;
+      chaque(animations, function (animation) {
+        if (animation.playState === 'running') animation.pause();
+      });
+      window.addEventListener('scroll', clouer);
+
+      // La page reprend sa place et sa barre de défilement avant d'être
+      // découverte : sa mise en page ne bouge plus ensuite, et ses apparitions
+      // comme ses compteurs se déclenchent maintenant, sous le rideau qui
+      // monte. Elle reste hors d'atteinte jusqu'au bout (`terminer` la
+      // libère) : un second appui, donné par habitude là où l'on vient de
+      // toucher « Découvrir la page », ne doit pas tomber sur la barre
+      // d'onglets qui paraît juste dessous.
+      racine.classList.remove('film-verrou');
+
+      // Le fil de la fin est l'ourlet du rideau : s'il n'avait pas fini de se
+      // tendre (levée au geste, ou attente suspendue), il se tend d'un trait.
+      var fil = film.querySelector('[data-film-attente]');
+      if (fil) {
+        fil.animate([{ transform: 'scaleX(1)' }], { duration: 240, easing: COURBE_ENTREE, fill: 'forwards' });
+      }
+
+      // Ses animations d'ouverture partent quand le rideau a dégagé le bas de
+      // l'écran : la séquence du hero se joue à vue, pas derrière le film.
+      var duree = vif ? LEVEE_VIVE : LEVEE;
+      film.animate([], { duration: duree * 0.42 }).finished.then(function () {
+        racine.classList.remove('film-pause');
+      }, rien);
+
+      film
+        .animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-100%)' }], {
+          duration: duree,
+          easing: COURBE_PASSE,
+          fill: 'forwards',
+        })
+        .finished.then(terminer, terminer);
+    }
+
+    // ── Commandes ─────────────────────────────────────────────────────────
+    /** Un geste de défilement pendant le film : on montre où est la sortie. */
+    function signaler() {
+      if (!passer || etat !== 'lecture' || passer.getAnimations().length) return;
+      passer.animate(
+        [
+          { borderColor: 'var(--btn-border)', backgroundColor: 'transparent' },
+          { borderColor: 'var(--ember-hot)', backgroundColor: 'var(--ember-tint-8)', offset: 0.3 },
+          { borderColor: 'var(--btn-border)', backgroundColor: 'transparent' },
+        ],
+        { duration: 900, easing: 'ease-out' },
+      );
+    }
+
+    /** « Plus bas » : sur la fin posée ce geste lève le film, avant il rappelle « Passer ». */
+    function avancer() {
+      if (etat === 'fin') lever(false);
+      else signaler();
+    }
+
+    var auClavier = sur(function (evenement) {
+      if (etat === 'termine') return;
+      var retrait = etat === 'retrait';
+      if (evenement.key === 'Escape') {
+        if (retrait) return;
+        evenement.preventDefault();
+        lever(true);
+        return;
+      }
+      var cible = evenement.target;
+      var surCommande = cible && cible.closest && cible.closest('a, button');
+      var defile =
+        evenement.key === 'ArrowDown' ||
+        evenement.key === 'PageDown' ||
+        evenement.key === 'End' ||
+        (evenement.key === ' ' && !surCommande);
+      if (!defile) return;
+      // Retenue aussi pendant que le film se lève : une touche gardée enfoncée
+      // ferait défiler la page sous le rideau, et elle se découvrirait en
+      // cours de route au lieu de son début.
+      evenement.preventDefault();
+      if (!retrait) avancer();
+    });
+
+    /**
+     * La molette ne fait pas défiler la page sous le film, ni pendant qu'il se
+     * lève — où que soit le pointeur : l'élan d'un pavé tactile dure plus
+     * longtemps que la levée, et la page se découvrirait en cours de route.
+     * Deux gestes restent au navigateur : le zoom (Ctrl + molette, pincement
+     * sur un pavé tactile) et le balayage horizontal (page précédente).
+     */
+    var aLaMolette = sur(function (evenement) {
+      if (etat === 'termine') return;
+      if (evenement.ctrlKey || Math.abs(evenement.deltaX) > Math.abs(evenement.deltaY)) return;
+      if (evenement.cancelable) evenement.preventDefault();
+      if (evenement.deltaY > 4) avancer();
+    });
+
+    /** Fin d'un appui — écoutée sur la fenêtre : on peut relâcher ailleurs que sur le film. */
+    function relacher() {
+      appui = null;
+    }
+
+    /** Le document est entièrement lu : tout ce qu'il contient est tenu, le guet peut cesser. */
+    function aLaLecture() {
+      figer();
+      if (guet) guet.disconnect();
+    }
+
+    /** Moins d'animations demandé en cours de route : la page, tout de suite. */
+    function auMouvementReduit() {
+      if (reduit.matches) terminer();
+    }
+
+    /** La fenêtre devient trop petite pour le film (écran partagé, zoom) : il se retire. */
+    var aLaTaille = sur(function () {
+      if (!assezGrand.matches) lever(true);
+    });
+
+    /** Onglet à l'arrière-plan : le film attend. */
+    var aLaVisibilite = sur(function () {
+      if (etat === 'attente') {
+        if (!document.hidden) preparer();
+        return;
+      }
+      if (etat !== 'lecture' && etat !== 'fin') return;
+      chaque(animations, function (animation) {
+        if (document.hidden) {
+          if (animation.playState === 'running') animation.pause();
+        } else if (animation.playState === 'paused') {
+          animation.play();
+        }
+      });
+    });
+
+    /** Départ : quand les polices sont là, ou au plafond d'attente. */
+    function preparer() {
+      if (parti || document.hidden) return;
+      parti = true;
+      var polices = [];
+      if (document.fonts && document.fonts.load) {
+        polices = [
+          document.fonts.load('500 62px "Cormorant Garamond Variable"'),
+          document.fonts.load('italic 300 62px "Cormorant Garamond Variable"'),
+          document.fonts.load('600 11px "Inter Variable"'),
+        ];
+      }
+      var pretes = Promise.all(polices).catch(rien);
+      // Le plafond est une animation vide, pas une minuterie : comme tout le
+      // reste, il vit sur l'horloge du document. Il est retiré dès que le
+      // départ est donné.
+      var plafond = film.animate([], { duration: ATTENTE_POLICES });
+      Promise.race([pretes, plafond.finished])
+        .then(function () {
+          plafond.cancel();
+        })
+        .then(sur(demarrer), terminer);
+    }
+
+    // ── Mise en place ─────────────────────────────────────────────────────
+    function installer() {
+      // `film-verrou` : le document ne défile pas et la page attend hors du
+      // cadre. `film-pause` : ses animations CSS attendent (cf. feuille
+      // globale ci-dessous).
+      racine.classList.add('film-verrou', 'film-pause');
+      passerA('attente');
+
+      // La page est mise hors d'atteinte à mesure que le document est lu : ce
+      // qui précède le film tout de suite, ce qui le suit dès que cela existe
+      // — pas une fois le chargement fini, une touche Tab plus tard.
+      figer();
+      if (typeof MutationObserver === 'function') {
+        guet = new MutationObserver(sur(figer));
+        guet.observe(document.body, { childList: true });
+      }
+      document.addEventListener('DOMContentLoaded', aLaLecture);
+
+      // Les photos n'étaient pas demandées tant que le film dormait dans son
+      // gabarit : elles le sont maintenant. Chacune ne se montre qu'une fois
+      // chargée ET décodée — jamais une image à moitié arrivée ; un carton
+      // dont la photo tarde, ou n'arrive pas, se lit sur l'encre.
+      chaque(film.querySelectorAll('[data-film-photo]'), function (cadre, rang) {
+        var img = cadre.querySelector('img');
+        if (!img) return;
+        var montrer = function () {
+          if (img.naturalWidth > 0) cadre.classList.add('est-prete');
+        };
+        var arrivee = function () {
+          if (typeof img.decode === 'function') img.decode().then(montrer, montrer);
+          else montrer();
+        };
+        // `load` peut revenir : un téléphone que l'on tourne change de variante
+        // (`<picture>`), et la nouvelle photo se décode à son tour.
+        img.addEventListener('load', arrivee);
+        img.addEventListener('error', function () {
+          cadre.classList.remove('est-prete');
+        });
+        // La première photo paraît à trois secondes : elle passe devant les
+        // suivantes, qui ont le temps.
+        img.fetchPriority = rang === 0 ? 'high' : 'low';
+        img.loading = 'eager';
+        if (img.complete && img.naturalWidth > 0) arrivee();
+      });
+
+      if (passer) {
+        passer.addEventListener(
+          'click',
+          sur(function () {
+            lever(true);
           }),
         );
       }
 
-      for (const c of COMPTEURS) c.courant = -1;
-      battre();
-    };
-
-    // ── Fermer : fondu court, puis la page reprend ses droits ──
-    const fermer = (versTitre = false) => {
-      if (ferme || !couche.isConnected) return;
-      ferme = true;
-      degeler();
-      window.removeEventListener('scroll', surDefilement);
-      window.removeEventListener('keydown', surClavier);
-      document.removeEventListener('visibilitychange', surVisibilite);
-      // La page peut lancer ses propres apparitions dès maintenant, pendant
-      // que la couche s'efface.
-      window.dispatchEvent(new Event('film-ouverture:fin'));
-      couche.style.pointerEvents = 'none';
-      const fondu = couche.animate([{ opacity: 1 }, { opacity: 0 }], {
-        duration: 420,
-        easing: 'ease-out',
-        fill: 'forwards',
-      });
-      fondu.onfinish = () => {
-        if (rafId) cancelAnimationFrame(rafId);
-        for (const a of animations) a.cancel();
-        couche.remove();
-        if (versTitre) {
-          // Fermeture au clavier (Passer, Échap) : le focus se pose sur le
-          // H1 du hero, là où la lecture reprend. Sans défilement : on y est.
-          const titre = document.getElementById('sp-hero-titre');
-          if (titre) {
-            titre.setAttribute('tabindex', '-1');
-            titre.focus({ preventScroll: true });
-          }
-        }
-      };
-    };
-
-    // ── Les gestes ──
-    // Défiler = passer. La position de départ est mémorisée : si le
-    // navigateur restaure un défilement au chargement, ce n'est pas un geste.
-    const y0 = window.scrollY;
-    const surDefilement = () => {
-      if (Math.abs(window.scrollY - y0) > 2) fermer();
-    };
-    const surClavier = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') fermer(true);
-    };
-    // Onglet masqué : tout en pause ; au retour, seules les animations que la
-    // pause a suspendues repartent (rejouer une animation finie la relancerait).
-    const surVisibilite = () => {
-      if (!couche.isConnected) return;
-      if (document.hidden) {
-        enPause = animations.filter((a) => a.playState === 'running');
-        for (const a of enPause) a.pause();
-      } else {
-        for (const a of enPause) if (a.playState === 'paused') a.play();
-        enPause = [];
+      var suite = film.querySelector('[data-film-suite]');
+      if (suite) {
+        suite.addEventListener(
+          'click',
+          sur(function () {
+            lever(false);
+          }),
+        );
       }
-    };
 
-    window.addEventListener('scroll', surDefilement, { passive: true });
-    window.addEventListener('keydown', surClavier);
-    document.addEventListener('visibilitychange', surVisibilite);
+      var revoir = film.querySelector('[data-film-revoir]');
+      if (revoir) {
+        revoir.addEventListener('click', sur(rejouer));
+      }
 
-    couche.querySelector('[data-passer]')?.addEventListener('click', () => fermer(true));
-    couche.querySelector('[data-revoir]')?.addEventListener('click', () => jouer());
+      // Glissé du doigt vers le haut (`touch-action: pinch-zoom` : pas de
+      // défilement au doigt, c'est le pilote qui lit le geste).
+      film.addEventListener(
+        'pointerdown',
+        sur(function (evenement) {
+          // Un clic droit n'est pas un geste sur le film.
+          if (evenement.pointerType === 'mouse' && evenement.button !== 0) return;
+          // Un second doigt : c'est un pincement, pas un glissé.
+          if (appui && appui.id !== evenement.pointerId) {
+            appui.servi = true;
+            return;
+          }
+          appui = { id: evenement.pointerId, y: evenement.clientY, servi: false };
+          if (etat === 'fin') retenir();
+        }),
+      );
+      film.addEventListener(
+        'pointermove',
+        sur(function (evenement) {
+          if (!appui || appui.id !== evenement.pointerId || appui.servi) return;
+          if (evenement.pointerType === 'mouse') return;
+          if (appui.y - evenement.clientY > 36) {
+            appui.servi = true;
+            avancer();
+          }
+        }),
+      );
+      window.addEventListener('pointerup', relacher);
+      window.addEventListener('pointercancel', relacher);
+      window.addEventListener('blur', relacher);
 
-    // Film terminé : un clic sur le fond (hors liens et boutons) fait entrer
-    // dans la page, en plus du défilement.
-    couche.addEventListener('click', (e) => {
-      if (maitre?.playState !== 'finished') return;
-      if (e.target instanceof Element && e.target.closest('a, button')) return;
-      fermer();
-    });
+      // La personne s'arrête sur la fin posée — le focus entre dans le film,
+      // la souris vient sur l'un des deux boutons : le film ne lui retire pas
+      // le carton des mains. (Qui y était déjà avant que la fin ne soit
+      // posée : `poser`.)
+      film.addEventListener(
+        'focusin',
+        sur(function () {
+          if (etat === 'fin') retenir();
+        }),
+      );
+      var actions = film.querySelector('[data-film-actions]');
+      if (actions) {
+        actions.addEventListener(
+          'pointerover',
+          sur(function (evenement) {
+            var cible = evenement.target;
+            if (etat === 'fin' && cible && cible.closest && cible.closest('a, button')) retenir();
+          }),
+        );
+      }
 
-    // Si la personne réduit les animations pendant la lecture, on coupe.
-    mediaReduit.addEventListener('change', (e) => {
-      if (e.matches) fermer();
-    });
+      document.addEventListener('keydown', auClavier, true);
+      document.addEventListener('wheel', aLaMolette, { capture: true, passive: false });
+      document.addEventListener('visibilitychange', aLaVisibilite);
 
-    jouer();
-  }
+      reduit.addEventListener('change', auMouvementReduit);
+      assezGrand.addEventListener('change', aLaTaille);
+
+      preparer();
+    }
+
+    try {
+      installer();
+    } catch (e) {
+      terminer();
+    }
+  })();
 </script>
 
-<style>
+<style is:global>
   /*
-   * La couche n'existe que si le JavaScript est passé ET que le mouvement
-   * n'est pas réduit : dans tous les autres cas, `display: none` et la page
-   * s'ouvre sur son hero. Le z-index passe au-dessus de tout le chrome du
-   * site (nav 50, menu mobile 90, lien d'évitement 100).
+   * Pendant le film. Ces deux classes sont posées par le pilote : elles
+   * n'existent ni sans JavaScript, ni en mouvement réduit. À elles deux, elles
+   * **tiennent la page** : rien de ce qu'elle joue à l'ouverture ne se joue
+   * derrière le film, tout part quand le rideau se lève.
+   *
+   *   - `film-verrou` : le document ne défile pas, et la page attend sous le
+   *     bord bas de la fenêtre. Elle tombe au moment où le film commence à se
+   *     lever : la barre de défilement est revenue — et la page à sa largeur
+   *     définitive — avant d'être découverte ;
+   *   - `film-pause` : les animations CSS de la page attendent. La séquence
+   *     d'ouverture du hero part un peu plus tard, quand le rideau a dégagé
+   *     le haut de l'écran.
+   *
+   * Rien de tout cela à l'impression : le film n'y existe pas (plus bas), la
+   * page s'imprime comme si elle venait d'être chargée sans lui.
    */
+  @media not print {
+    /* `height` : le corps fixé (règle suivante) ne donne plus de hauteur à la
+       racine. Elle garde celle de la fenêtre — un outil d'audit qui juge de
+       la visibilité d'un texte à la boîte de ses ancêtres (axe) continue de
+       voir celui du film. */
+    html.film-verrou {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /*
+     * Le corps du document tient dans la fenêtre : il n'y a plus rien à faire
+     * défiler, pour personne. `overflow: hidden` seul arrête la molette et le
+     * doigt, pas le navigateur lui-même — à un rechargement, il ramène la page
+     * « là où elle était » en se repérant sur un élément, que la règle
+     * suivante a déplacé d'une fenêtre et demie : la page se découvrait alors
+     * décalée d'autant. Ici, quoi qu'il tente, la page se découvre par son
+     * début.
+     */
+    html.film-verrou body {
+      position: fixed;
+      inset: 0;
+    }
+
+    /*
+     * La page sous le bord bas de la fenêtre : ses observateurs de défilement
+     * (apparitions, compteurs du bandeau de chiffres) ne voient rien entrer
+     * tant que le film la couvre — sans cela ils se déclenchaient au
+     * chargement, et les compteurs du premier écran avaient fini de monter
+     * quinze secondes avant d'être vus. Quand la classe tombe, la page est à
+     * sa place d'un seul coup, encore couverte, et tout se déclenche comme à
+     * un chargement normal.
+     *
+     * `translate` et non `transform` : la propriété ne remplace aucune
+     * transformation de la page et n'éveille aucune de ses transitions (le
+     * lien d'évitement en a une sur `transform`).
+     */
+    html.film-verrou body > :not([data-film]) {
+      translate: 0 150vh;
+    }
+
+    html.film-pause body > :not([data-film]),
+    html.film-pause body > :not([data-film]) *,
+    html.film-pause body > :not([data-film]) *::before,
+    html.film-pause body > :not([data-film]) *::after {
+      animation-play-state: paused !important;
+    }
+  }
+</style>
+
+<style>
+  /* ═══ Qui voit le film ══════════════════════════════════════════════════ */
+  /* Par défaut : personne. Le film n'existe que sous `html.js` et hors
+     mouvement réduit — la règle des états masqués de la page, retournée. */
   .film {
     display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 120;
-    overflow: hidden;
-    background: var(--ink);
-
-    /* Rampes propres au film, interpolées 390 → 1440 comme les jetons. Le
-       plafond du titre (64 px) garde chaque ligne entière dans sa colonne
-       desktop : une ligne de masque qui se replie casserait la montée. */
-    --film-titre-fs: clamp(36px, 25.6px + 2.6667vw, 64px);
-    --film-nombre-fs: clamp(46px, 31.89px + 3.619vw, 84px);
-    --film-motcle-fs: clamp(26px, 20.8px + 1.3333vw, 40px);
-    --film-or-fs: clamp(15px, 13.14px + 0.4762vw, 20px);
   }
 
   @media (prefers-reduced-motion: no-preference) {
     :global(html.js) .film {
-      display: grid;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1000; /* au-dessus de tout le site — son plus haut plan est le lien d'évitement (100) */
+      display: block;
+      /* `100vw` et non `right: 0` : la largeur du film ne dépend pas de la
+         barre de défilement, qui revient pendant qu'il se lève. */
+      width: 100vw;
+      height: 100%;
+      /* `clip` et non `hidden`, ici comme sur les cartons et les masques : une
+         boîte `hidden` reste défilable par programme, et le navigateur la fait
+         défiler pour montrer un bouton qui prend le focus sous son masque. Le
+         pilote ne lance le film que là où `clip` existe. */
+      overflow: clip;
+      background: var(--ink);
+      color: var(--parch);
+      /* Le doigt ne fait pas défiler la page à travers le film ; le glissé
+         vers le haut est lu par le pilote. Le zoom à deux doigts reste
+         permis : on ne retire à personne le moyen de grossir un texte. */
+      touch-action: pinch-zoom;
+      -webkit-tap-highlight-color: transparent;
     }
   }
 
-  /* ═══ Les scènes : empilées sur la même cellule, une seule visible ══════ */
+  @media print {
+    .film {
+      display: none !important;
+    }
+  }
 
-  .film__scene {
-    grid-area: 1 / 1;
-    position: relative;
+  /* ═══ Cartons ═══════════════════════════════════════════════════════════ */
+
+  .film__carton {
+    position: absolute;
+    inset: 0;
+    z-index: var(--rang, 1);
     display: grid;
-    place-items: center;
-    visibility: hidden;
-    overflow: hidden;
-    padding: calc(env(safe-area-inset-top, 0px) + 76px) var(--gouttiere)
-      calc(env(safe-area-inset-bottom, 0px) + 72px);
+    overflow: clip;
+    background: var(--ink);
   }
 
-  .film__compo {
-    width: 100%;
-    max-width: 1160px;
-  }
-
-  /* ── Révélations sous masque ──
-     Le parent porte une fenêtre de clip fixe (les marges négatives absorbent
-     ascendantes, descendantes et débord italique — au repos il ne rogne
-     rien), l'enfant monte dessous en translateY. Même mécanique que le hero
-     de la page. */
-  /* ⚠️ Pas de `.film__masque > *` générique : avec le scopage Astro, il
-     l'emporterait sur les display propres des enfants (flex du logotype…).
-     Chaque coulisseau déclare le sien : .film__ligne, .film__logoligne,
-     .film__motcle. */
-  .film__masque {
-    display: block;
-    clip-path: inset(-0.4em -0.35em -0.3em);
-  }
-
-  .film__ligne {
-    display: inline-block;
-  }
-
-  /* ═══ Scène 1 : le logotype ═════════════════════════════════════════════ */
-
-  .film__compo--marque {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  /* La pile centrée : celle du hero de l'accueil et de la section contact. */
+  .film__carton--pile {
+    grid-template-rows: minmax(0, 1fr) auto;
+    justify-items: center;
     text-align: center;
   }
 
-  /* Le dessin du sur-titre de hero (parchemin adouci, interlettrage large). */
-  .film__surligne {
-    max-width: 30ch;
-    margin: 0 0 clamp(20px, 17px + 0.76vw, 28px);
-    font-family: var(--font-eyebrow);
-    font-size: clamp(9.5px, 8.757px + 0.1905vw, 11.5px);
-    font-weight: 600;
-    line-height: 2;
-    letter-spacing: var(--ls-eyebrow-wide);
-    text-transform: uppercase;
-    text-wrap: balance;
-    color: var(--parch-soft);
-    transform-origin: 50% 50%;
+  /* Le carton à photo : la composition du hero de la page et des heros de
+     fiche — photo voilée, assise, contenu ancré en bas à gauche. */
+  .film__carton--photo {
+    align-content: end;
   }
 
-  @media (min-width: 820px) {
-    .film__surligne {
-      max-width: none;
-    }
-  }
-
-  /* La structure du logotype du site : deux lignes empilées, interligne 0,9,
-     gouttières internes identiques à Logotype.astro. */
-  .film__logotype {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: clamp(6px, 5.257px + 0.1905vw, 8px);
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--fs-display-hero);
-    line-height: var(--lh-display-tight);
-    text-wrap: nowrap;
-  }
-
-  .film__logoligne {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: clamp(15px, 11.657px + 0.8571vw, 24px);
-  }
-
-  .film__masque--logo:last-child .film__logoligne {
-    gap: clamp(8px, 7.257px + 0.1905vw, 10px);
-  }
-
-  .film__mot--parch {
-    color: var(--parch);
-    font-weight: 500;
-  }
-
-  .film__mot--feu {
-    color: var(--feu);
-    font-weight: 500;
-  }
-
-  .film__mot--connecteur {
-    color: var(--parch);
-    font-weight: 300;
-    font-style: italic;
-  }
-
-  /* « Acier » : l'acier plein en repli, le métal au repos (lueur posée au
-     milieu du mot, comme toutes les occurrences du logotype hors hero). */
-  .film__mot--acier {
-    position: relative;
-    color: var(--acier);
-    font-weight: 500;
-  }
-
-  @supports ((background-clip: text) or (-webkit-background-clip: text)) {
-    .film__mot--acier {
-      background-image: linear-gradient(
-        100deg,
-        var(--acier) 0%,
-        var(--acier) 36%,
-        var(--acier-clair) 50%,
-        var(--acier) 64%,
-        var(--acier) 100%
-      );
-      background-repeat: no-repeat;
-      background-size: 400% 100%;
-      background-position: 50% 0;
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      -webkit-text-fill-color: transparent;
-    }
-  }
-
-  /* Le double de balayage : même texte posé au même endroit, en clair, dont
-     seule la fenêtre de clip-path traverse (aucun dégradé animé). Invisible
-     au repos. */
-  .film__balayage {
+  /* Le fil : le bord bas du carton, que l'on voit monter quand il se lève. */
+  .film__fil {
     position: absolute;
-    inset: 0;
-    opacity: 0;
-    background: none;
-    -webkit-background-clip: border-box;
-    background-clip: border-box;
-  }
-
-  .film__balayage--acier {
-    color: var(--acier-clair);
-    -webkit-text-fill-color: var(--acier-clair);
-  }
-
-  .film__balayage--or {
-    color: var(--or-eclat);
-    -webkit-text-fill-color: var(--or-eclat);
-  }
-
-  /* ═══ Filets braise (et le filet d'or de la scène 3) ════════════════════ */
-
-  .film__filet {
-    display: block;
-    width: clamp(44px, 38.057px + 1.5238vw, 60px);
+    inset: auto 0 0 0;
+    z-index: 3;
     height: 1px;
-    margin-block-start: clamp(22px, 19px + 0.76vw, 30px);
+    background: var(--line-logo);
+  }
+
+  /* Sur le dernier carton, il se tend de gauche à droite pendant l'attente. */
+  .film__fil--attente {
     background: var(--ember);
+    transform: scaleX(0);
     transform-origin: left center;
   }
 
-  .film__filet--or {
-    background: var(--or);
-    margin-block-start: clamp(18px, 15px + 0.76vw, 24px);
+  /* ═══ Photo, voile, assises ═════════════════════════════════════════════ */
+
+  /* Déborde en haut et en bas : la photo finit de monter pendant que le
+     carton du dessus se lève. */
+  .film__photo {
+    position: absolute;
+    inset: -5% 0;
+    opacity: 0;
+    transition: opacity 900ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
-  /* ═══ Scènes à panneau photo (2, 3, 4) ══════════════════════════════════ */
-
-  /*
-   * Portrait d'abord : une vraie colonne — photo en panneau sur toute la
-   * largeur, texte dessous, composition calée au centre de l'écran. Le
-   * panneau reste en retrait du bord (jamais pleine largeur de fenêtre) :
-   * c'est le cadre qui donne le ton « générique », et le zoom de pose
-   * (scale ≤ 1,07) ne sort jamais du viewport.
-   */
-  .film__compo--panneau {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: clamp(24px, 4svh, 40px);
-    align-items: center;
+  .film__photo.est-prete {
+    opacity: 1;
   }
 
-  .film__cadre {
-    position: relative;
-    width: 100%;
-    height: clamp(180px, 32svh, 320px);
-    overflow: hidden;
-    border-radius: var(--radius-2);
-    background: var(--char);
+  /* `max-width: none` : global.css plafonne `picture` à 100 %, ce qui
+     annulerait la marge du travelling. */
+  .film__plan {
+    position: absolute;
+    inset: 0;
+    display: block;
+    max-width: none;
   }
 
-  .film__cadre--palmares {
-    height: clamp(200px, 36svh, 360px);
+  .film__plan[data-film-plan='travelling'] {
+    inset: 0 -5%;
   }
 
-  .film__cadre--couleurs {
-    height: clamp(170px, 30svh, 300px);
-  }
-
-  .film__cadre :global(picture),
-  .film__cadre :global(img) {
+  .film__plan img {
+    display: block;
     width: 100%;
     height: 100%;
-  }
-
-  .film__cadre :global(img) {
+    max-width: none;
     object-fit: cover;
-    object-position: 50% 32%;
+    object-position: var(--cadre-paysage, 50% 50%);
   }
 
-  .film__cadre--palmares :global(img) {
-    object-position: 50% 26%;
+  /* Même critère que `MEDIA_PORTRAIT` (frontmatter), qui fait foi. */
+  @media (orientation: portrait) {
+    .film__plan img {
+      object-position: var(--cadre-portrait, 50% 50%);
+    }
   }
 
-  /* Le voile d'encre des photos du site : jamais une photo nue — et assez
-     d'encre pour que le panneau reste une image du film, pas un projecteur. */
+  /* Voile d'encre uniforme : celui du hero de la page. */
   .film__voile {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, var(--veil-ink-85), var(--veil-ink-65) 60%, var(--veil-ink-50));
+    background: var(--veil-ink-45);
   }
 
-  .film__bloc {
+  /* Assise haute : le bouton « Passer » reste lisible sur une photo claire. */
+  .film__assise-haute {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 24%;
+    background: linear-gradient(to bottom, var(--veil-ink-65), transparent);
+  }
+
+  /*
+   * L'assise : la bande sombre ancrée en bas, sur laquelle le contenu se pose.
+   * Elle est le **fond du bloc de contenu** et non une couche à hauteur fixe :
+   * quelle que soit la hauteur du texte (deux rangs ou cinq lignes, téléphone
+   * ou écran large), il repose sur 80 à 85 % d'encre, et le fondu commence
+   * au-dessus de lui.
+   */
+  .film__assise {
+    --film-fondu: clamp(72px, 15vh, 170px);
+    position: relative;
+    z-index: 1;
+    padding-top: var(--film-fondu);
+    background: linear-gradient(
+      to bottom,
+      transparent 0,
+      var(--veil-ink-80) var(--film-fondu),
+      var(--veil-ink-85) 100%
+    );
+  }
+
+  .film__contenu {
+    padding-block: 0 calc(clamp(34px, 5.4vh, 72px) + env(safe-area-inset-bottom));
+  }
+
+  /* ═══ Bouton « Passer » ═════════════════════════════════════════════════ */
+
+  .film :global(.film__passer) {
+    position: absolute;
+    top: max(14px, env(safe-area-inset-top));
+    right: var(--gouttiere);
+    z-index: 20;
+  }
+
+  /* ═══ Masques ═══════════════════════════════════════════════════════════ */
+  /* Une ligne entre en montant derrière son masque. La marge interne laisse
+     passer jambages, accents et italiques ; la marge négative la rend à la
+     mise en page. */
+  .film__masque {
+    display: block;
+    overflow: clip;
+    padding: 0.24em 0.14em;
+    margin: -0.24em -0.14em;
+  }
+
+  .film__masque > span {
+    display: block;
+  }
+
+  /*
+   * États de départ : ce que le pilote anime. Ils n'existent que là où le
+   * film est rendu, et ils font foi — le pilote ne connaît que l'arrivée
+   * (`translateY(0)`), le départ est lu ici.
+   *
+   * `--film-depart` doit emmener la ligne **entièrement** sous son masque,
+   * marge interne comprise : une ligne qui attend son tour ne doit rien
+   * laisser dépasser, pas même la pointe d'une hampe.
+   */
+  .film :global([data-film-geste='monte']),
+  .film :global(.film__logotype .logotype__mot),
+  .film :global(.film__titre .titre-section__ligne > *) {
+    transform: translateY(var(--film-depart, 125%));
+  }
+
+  /* Les titres sont composés serré (interligne 0,9) sous un masque à grande
+     marge basse : à 125 %, les hampes et les accents des italiques restaient
+     visibles au bas du masque, en pointillé, avant que la ligne ne monte. */
+  .film :global(.film__titre .titre-section__ligne > *) {
+    --film-depart: calc(100% + 0.6em);
+  }
+
+  .film :global([data-film-geste='trace']),
+  .film__filet {
+    transform: scaleX(0);
+  }
+
+  /* Une commande n'existe pour le clavier et le pointeur qu'à partir du moment
+     où elle monte : sous son masque, un bouton que l'on ne voit pas prendrait
+     quand même le focus. Le pilote la rend visible à l'instant de son geste. */
+  .film :global(a[data-film-geste='monte']),
+  .film :global(button[data-film-geste='monte']) {
+    visibility: hidden;
+  }
+
+  .film [data-film-geste='fondu'] {
+    opacity: 0;
+  }
+
+  /* ═══ Cartons 1 et 5 : la pile ══════════════════════════════════════════ */
+
+  /* Un peu plus de marge en bas qu'en haut : le centre optique est au-dessus
+     du centre géométrique. */
+  .film__pile {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    width: 100%;
+    max-width: var(--largeur-max);
+    padding: clamp(60px, 10vh, 110px) var(--gouttiere) clamp(60px, 14vh, 150px);
   }
 
-  .film__losange {
-    margin: 0 0 clamp(12px, 10px + 0.5vw, 18px);
-    font-size: clamp(11px, 10px + 0.25vw, 14px);
-    line-height: 1;
+  /* Centrée par deux ressorts plutôt que par `justify-content` : tant qu'il y
+     a de la place, le résultat est le même. Quand il n'y en a plus — fenêtre
+     minuscule, texte grossi, zoom à 400 % —, la pile ne déborde que vers le
+     bas : jamais elle ne remonte sous le bouton « Passer ». */
+  .film__pile::before,
+  .film__pile::after {
+    content: '';
+    flex: 1 1 0%;
+  }
+
+  .film__carton--fin .film__pile {
+    padding-bottom: clamp(16px, 4vh, 48px);
+  }
+
+  .film__blason {
+    margin-bottom: clamp(20px, 3.2vh, 30px);
+  }
+
+  .film__blason :global(img) {
+    width: auto;
+    height: clamp(56px, 44.114px + 3.0476vw, 88px);
+  }
+
+  /* Le sur-titre du hero de l'accueil, au caractère près. */
+  .film__surtitre {
+    margin: 0 0 clamp(18px, 17.257px + 0.1905vw, 20px);
+    font-family: var(--font-eyebrow);
+    font-size: clamp(9.5px, 8.757px + 0.1905vw, 11.5px);
+    font-weight: 600;
+    line-height: var(--lh-body-tight);
+    letter-spacing: var(--ls-eyebrow-wide);
+    text-transform: uppercase;
+    text-indent: var(--ls-eyebrow-wide);
+    color: var(--parch-soft);
+  }
+
+  /* Celui de la section « Dossier et contact » de la page. */
+  .film__surtitre--ember {
     color: var(--ember);
   }
 
-  .film__titre {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+  .film :global(.film__logotype) {
+    margin-bottom: clamp(22px, 19.771px + 0.5714vw, 28px);
+  }
+
+  /* Chaque ligne du logotype est son propre masque. */
+  .film :global(.film__logotype .logotype__ligne) {
+    overflow: clip;
+    padding: 0.16em 0.08em 0.12em;
+    margin: -0.16em -0.08em -0.12em;
+  }
+
+  .film :global(.film__logotype .logotype__mot) {
+    display: block;
+  }
+
+  /*
+   * Le filet sous un titre centré : le trait de 60 × 1 px du hero de l'accueil
+   * (`Filet.astro`, ton « logo »), au pixel près — mais dessiné ici, sans le
+   * composant. La page importe `Filet` elle-même ; l'importer aussi depuis le
+   * film changeait le rang de sa feuille de style dans la page, et avec lui
+   * l'ordre des feuilles de `/sponsors/`. Le film ne déplace rien de la page,
+   * pas même cela.
+   */
+  .film__filet {
+    display: block;
+    flex: none;
+    width: clamp(44px, 38.057px + 1.5238vw, 60px);
+    max-width: 100%;
+    height: 1px;
+    margin-bottom: clamp(20px, 18.514px + 0.381vw, 24px);
+    background: var(--line-logo);
+    transform-origin: center;
+  }
+
+  /* « à Clermont-Ferrand » : le `hero__lieu` de l'accueil. */
+  .film__lieu {
     margin: 0;
     font-family: var(--font-display);
-    font-size: var(--film-titre-fs);
-    font-weight: 400;
-    line-height: var(--lh-display);
+    font-size: clamp(21px, 16.171px + 1.2381vw, 34px);
+    font-style: italic;
+    font-weight: 500;
+    line-height: 1.15;
     color: var(--parch);
   }
 
-  .film__titre--centre {
-    align-items: center;
-    text-align: center;
-  }
+  /* ═══ Cartons 2 à 4 : le contenu ════════════════════════════════════════ */
 
-  /* La ligne accentuée des titres du site : ember, italique, graisse 300. */
-  .film__ligne--accent {
-    color: var(--ember);
-    font-style: italic;
-    font-weight: 300;
-  }
-
-  /* ── Scène 2 : les compteurs ── */
-
-  .film__chiffres {
+  .film__entete {
     display: flex;
-    gap: clamp(28px, 22px + 1.5vw, 56px);
-    margin-block-start: clamp(26px, 4svh, 44px);
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--esp-item);
+    margin-bottom: clamp(2px, 0.6vh, 8px);
   }
 
-  .film__chiffre {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  .film__masque--label {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* Le crédit photo des galeries du site (`.galerie-corps__credit`), posé au
+     bout de la ligne du label. Sa boîte de ligne est celle du label, pour
+     que les deux textes se tiennent à la même hauteur. */
+  .film__credit {
+    flex: none;
     margin: 0;
-    padding-inline-start: clamp(14px, 3vw, 24px);
-    border-left: var(--filet);
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 500;
+    letter-spacing: var(--ls-eyebrow-s);
+    line-height: calc(var(--fs-eyebrow) * var(--lh-body-tight));
+    color: var(--parch-soft);
+  }
+
+  /* Un crédit ne paraît qu'avec sa photo — même critère que `MEDIA_PORTRAIT`. */
+  .film__credit--portrait {
+    display: none;
+  }
+
+  @media (orientation: portrait) {
+    .film__credit--portrait {
+      display: block;
+    }
+
+    .film__credit--paysage {
+      display: none;
+    }
+  }
+
+  /*
+   * Le registre : un filet, un chiffre, ce qu'il compte. Le bandeau de
+   * chiffres de la page et sa table de palmarès, en un seul dessin. Il ne
+   * s'étale pas sur toute la largeur d'un grand écran : ses filets
+   * barreraient la photo.
+   */
+  .film__registre {
+    --film-nombre: clamp(72px, 59.371px + 3.2381vw, 106px);
+    display: grid;
+    max-width: 660px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .film__rang {
+    position: relative;
+    display: grid;
+    grid-template-columns: calc(var(--film-nombre) * 1.5) minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: clamp(12px, 8.286px + 0.9524vw, 22px);
+    padding-block: clamp(10px, 1.5vh, 18px);
+  }
+
+  .film__rang-filet {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: var(--line-strong);
+    transform-origin: left center;
+  }
+
+  /*
+   * La marge d'un masque se compte en `em` : chaque masque du registre porte
+   * donc le **corps de ce qu'il masque**, et son contenu en hérite. Mesurée
+   * dans le corps du texte courant, elle ne laissait que 3 px sous un chiffre
+   * de 72 — or les chiffres du Cormorant sont elzéviriens : le 3 et le 7
+   * descendent sous la ligne de base, et leur queue était rognée.
+   *
+   * La marge basse du chiffre reste sous l'espacement du rang (10 px au
+   * moins) : le chiffre sort de son propre rang, pas de sous le filet du
+   * suivant.
+   */
+  .film__masque--nombre {
+    padding: 0.1em 0.06em 0.14em;
+    margin: -0.1em -0.06em -0.14em;
+    font-size: var(--film-nombre);
+  }
+
+  .film__masque--mention {
+    font-size: clamp(23px, 18.914px + 1.0476vw, 34px);
   }
 
   .film__nombre {
-    display: inline-block;
+    display: block;
     font-family: var(--font-display);
-    font-size: var(--film-nombre-fs);
     font-weight: 500;
     line-height: 1;
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: 'tnum';
+    white-space: nowrap;
     color: var(--parch);
   }
 
-  .film__libelle {
-    /* 20ch : « nouveaux cette rentrée » se replie en deux lignes, jamais
-       trois (l'interlettrage large compte dans la chasse). */
-    max-width: 20ch;
-    font-family: var(--font-eyebrow);
-    font-size: var(--fs-eyebrow-s);
-    font-weight: 600;
-    letter-spacing: var(--ls-eyebrow-s);
-    line-height: var(--lh-body-tight);
-    text-transform: uppercase;
-    color: var(--parch-mute);
+  /* La voix du `hero__lieu` : Cormorant italique, graisse 500. */
+  .film__mention {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 500;
+    line-height: 1.12;
+    color: var(--parch);
+    text-wrap: balance;
   }
 
-  /* ── Scène 3 : les lignes d'or ── */
-
-  .film__or-rang {
-    margin: clamp(18px, 15px + 0.76vw, 26px) 0 0;
-    font-size: var(--film-or-fs);
-    font-weight: 600;
-    line-height: var(--lh-body-tight);
-  }
-
-  /* L'or plein en repli ; le dégradé au repos est la lueur posée au centre,
-     exactement la section palmarès de la page en mouvement réduit. */
-  .film__or {
-    position: relative;
-    display: inline-block;
+  /* L'or du palmarès : mêmes bornes, même fenêtre que `.sp-palmares__or`.
+     Au repos la fenêtre est un or plein ; le pilote y fait passer la lueur. */
+  .film__registre--or .film__nombre {
     color: var(--or);
   }
 
   @supports ((background-clip: text) or (-webkit-background-clip: text)) {
-    .film__or {
+    /* Un fond découpé sur le texte n'est peint que dans la boîte de
+       l'élément : sans marge interne, ce qui dépasse de la ligne (la queue du
+       3 elzévirien) n'aurait pas d'or du tout. La boîte s'étend donc
+       jusqu'aux bords du masque. */
+    .film__registre--or .film__nombre {
+      padding: 0.1em 0.06em 0.14em;
+      margin: -0.1em -0.06em -0.14em;
       background-image: linear-gradient(
         100deg,
         var(--or) 0%,
@@ -1028,7 +1930,7 @@ const photoFinale = resoudrePhoto('/src/assets/photos/commun/tournois-en-garde.j
       );
       background-repeat: no-repeat;
       background-size: 400% 100%;
-      background-position: 50% 0;
+      background-position: 100% 0;
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
@@ -1036,93 +1938,69 @@ const photoFinale = resoudrePhoto('/src/assets/photos/commun/tournois-en-garde.j
     }
   }
 
-  .film__or-titres {
-    margin: clamp(10px, 8px + 0.5vw, 16px) 0 0;
-    font-size: var(--fs-body-s);
+  /* Les titres du film prennent la rampe du H1 de fiche arme (42 → 90) : six
+     pixels de plus que `fiche` en mobile, là où le film a tout l'écran. */
+  .film :global(.titre-section.film__titre) {
+    --titre-fs: var(--fs-display-fiche-arme);
+  }
+
+  /* Chaque ligne d'un titre est son masque. */
+  .film :global(.film__titre .titre-section__ligne) {
+    display: block;
+    overflow: clip;
+    padding: 0.2em 0.14em 0.28em;
+    margin: -0.2em -0.14em -0.28em;
+  }
+
+  .film :global(.film__titre .titre-section__ligne > *) {
+    display: inline-block;
+  }
+
+  /* ═══ Carton 5 : la fin posée ═══════════════════════════════════════════ */
+
+  .film :global(.film__titre--fin) {
+    margin-bottom: clamp(20px, 17px + 0.76vw, 28px);
+  }
+
+  .film__texte {
+    max-width: 30ch;
+    margin: 0;
+    font-size: var(--fs-body-lede);
     line-height: 1.6;
-    color: var(--or);
-  }
-
-  /* ── Scène 4 : la cascade de mots-clés ── */
-
-  .film__mots {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: clamp(10px, 1.6svh, 16px);
-    margin: clamp(24px, 3.4svh, 40px) 0 0;
-  }
-
-  .film__masque--mot {
-    clip-path: inset(-0.3em -0.35em -0.25em);
-  }
-
-  .film__motcle {
-    display: inline-flex;
-    align-items: baseline;
-    gap: clamp(12px, 10px + 0.5vw, 18px);
-    font-family: var(--font-display);
-    font-size: var(--film-motcle-fs);
-    font-weight: 400;
-    line-height: 1.1;
-    color: var(--parch);
-    transform-origin: left center;
-  }
-
-  .film__motcle-losange {
-    font-size: 0.4em;
-    color: var(--ember);
-  }
-
-  /* ═══ Scène 5 : la finale ═══════════════════════════════════════════════ */
-
-  .film__fond {
-    position: absolute;
-    inset: 0;
-  }
-
-  .film__fond :global(picture),
-  .film__fond :global(img) {
-    width: 100%;
-    height: 100%;
-  }
-
-  .film__fond :global(img) {
-    object-fit: cover;
-    object-position: 50% 32%;
-  }
-
-  /* Voile fort : les boutons se posent sur de l'encre, pas sur la photo. */
-  .film__voile--fort {
-    background: linear-gradient(to top, var(--veil-ink-85), var(--veil-ink-85) 40%, var(--veil-ink-65));
-  }
-
-  .film__compo--finale {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+    color: var(--parch-soft);
+    text-wrap: balance;
   }
 
   .film__actions {
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 14px;
     width: 100%;
-    margin: clamp(28px, 4svh, 44px) 0 0;
+    margin: clamp(26px, 4vh, 40px) 0 0;
   }
 
-  .film__actions :global(.film__bouton) {
-    width: min(100%, 400px);
+  /* Le masque d'un bouton laisse la place de son contour de focus. En
+     grille : le bouton prend toute la hauteur de son masque — côte à côte,
+     deux boutons dont l'un replie son libellé gardent la même hauteur, et
+     aucun ne laisse dépasser son bord haut avant d'entrer. */
+  .film__masque--bouton {
+    display: grid;
+    padding: 6px;
+    margin: -6px;
   }
 
-  /* Le libellé long du téléchargement a le droit de se replier sur un écran
-     de 390 px — même règle que les CTA de la page. */
+  /* Sur mobile, les deux boutons prennent toute la largeur et s'empilent, et
+     le libellé long du téléchargement a le droit de se replier — la règle de
+     la section contact de la page. */
   @media (max-width: 819.98px) {
+    .film__masque--bouton {
+      flex: 1 1 100%;
+    }
+
     .film__actions :global(.film__bouton) {
       display: flex;
+      width: 100%;
       height: auto;
       min-height: 52px;
       padding-block: 14px;
@@ -1133,170 +2011,166 @@ const photoFinale = resoudrePhoto('/src/assets/photos/commun/tournois-en-garde.j
     }
   }
 
-  .film__coda {
+  /* L'invite de défilement du hero de l'accueil — et « Revoir » à sa gauche.
+     Alignées par le pied : les deux libellés reposent sur la même ligne. */
+  .film__masque--invite {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    margin-block-start: clamp(26px, 4svh, 48px);
-  }
-
-  /* L'invite : un trait braise vertical. Il respire UNE fois, par la
-     partition WAAPI (dessin RESPIRER), puis repose dans l'état ci-dessous :
-     la fin du film est figée au pixel près, rien ne boucle à l'écran. */
-  .film__invite-trait {
-    display: block;
-    width: 1px;
-    height: 20px;
-    background: var(--ember);
-    transform-origin: top center;
-    opacity: 0.45;
-    transform: scaleY(0.6);
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    column-gap: clamp(8px, 5.029px + 0.7619vw, 16px);
+    margin: 0 0 calc(clamp(14px, 3vh, 34px) + env(safe-area-inset-bottom));
+    padding: 6px 10px;
   }
 
   .film__invite {
-    margin: 0;
-    font-family: var(--font-eyebrow);
-    font-size: var(--fs-eyebrow-s);
-    font-weight: 600;
-    letter-spacing: var(--ls-eyebrow-s);
-    text-transform: uppercase;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(6px, 5.257px + 0.1905vw, 8px);
+    min-width: 44px;
+    min-height: 44px;
+    padding: 4px 12px;
     color: var(--parch-mute);
+    transition: color var(--transition);
   }
 
+  .film__invite:hover,
+  .film__invite:focus-visible {
+    color: var(--parch);
+  }
+
+  /* « Revoir » : la voix de l'invite, sans le chevron. Le texte est posé au
+     pied du bouton pour partager la ligne de celui de l'invite. */
   .film__revoir {
-    padding: 6px 10px;
-    font-family: var(--font-eyebrow);
-    font-size: var(--fs-eyebrow-s);
-    font-weight: 600;
-    letter-spacing: var(--ls-eyebrow-s);
-    text-transform: uppercase;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 4px 12px;
     color: var(--parch-mute);
-    text-decoration: underline;
-    text-decoration-color: var(--parch-line);
-    text-underline-offset: 0.3em;
     transition: color var(--transition);
   }
 
   .film__revoir:hover,
   .film__revoir:focus-visible {
-    color: var(--ember-hot);
-    text-decoration-color: currentColor;
-  }
-
-  /* ═══ Contrôles : Passer et la progression ══════════════════════════════ */
-
-  .film__passer {
-    position: absolute;
-    top: calc(env(safe-area-inset-top, 0px) + 16px);
-    right: var(--gouttiere);
-    z-index: 2;
-    min-height: 40px;
-    padding: 10px 18px;
-    border: 1px solid var(--btn-border);
-    border-radius: var(--radius-1);
-    font-family: var(--font-eyebrow);
-    font-size: var(--fs-button);
-    font-weight: 500;
-    letter-spacing: 0.157em;
-    text-transform: uppercase;
-    color: var(--parch-soft);
-    background: var(--veil-ink-50);
-    transition:
-      color var(--transition),
-      border-color var(--transition);
-  }
-
-  .film__passer:hover,
-  .film__passer:focus-visible {
     color: var(--parch);
-    border-color: var(--ember-hot);
   }
 
-  .film__progression {
-    position: absolute;
-    inset-inline: 0;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
-    z-index: 2;
-    display: flex;
-    justify-content: center;
-    gap: 8px;
+  .film__chevron {
+    display: inline-flex;
+    --icone-cote: clamp(18px, 16.514px + 0.381vw, 22px);
   }
 
-  .film__segment {
-    display: block;
-    width: clamp(30px, 8vw, 52px);
-    height: 2px;
-    overflow: hidden;
-    background: var(--parch-line);
+  .film__invite-texte {
+    font-family: var(--font-eyebrow);
+    font-size: var(--fs-eyebrow-s);
+    font-weight: 500;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    text-indent: 0.3em;
   }
 
-  .film__segment-rempli {
-    display: block;
-    width: 100%;
-    height: 100%;
-    background: var(--ember);
-    transform: scaleX(0);
-    transform-origin: left center;
-  }
-
-  /* ═══ Desktop (≥ 820 px) : plus d'air, photo et texte côte à côte ═══════ */
-
-  @media (min-width: 820px) {
-    .film__scene {
-      padding-inline: clamp(22px, 9.371px + 3.2381vw, 96px);
+  /* ═══ Fenêtres basses ═══════════════════════════════════════════════════ */
+  /* Téléphone tenu couché, fenêtre réduite, navigateur intégré d'une
+     application : le film garde ses cinq cartons et ce qu'ils disent ; il
+     compacte. */
+  @media (max-height: 520px) {
+    .film__registre {
+      --film-nombre: min(72px, 15vh);
     }
 
-    .film__compo--panneau {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: clamp(40px, 6vw, 88px);
+    .film__rang {
+      padding-block: 1.4vh;
     }
 
-    .film__cadre {
-      height: auto;
-      aspect-ratio: 4 / 3;
-      max-height: 62svh;
-      border-radius: var(--radius-1);
+    .film__masque--mention {
+      font-size: min(23px, 6vh);
     }
 
-    /* Scène 3 : texte à gauche, le podium en panneau portrait à droite. */
-    .film__compo--palmares {
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    .film :global(.titre-section.film__titre) {
+      --titre-fs: min(var(--fs-display-fiche-arme), 11vh);
     }
 
-    .film__compo--palmares .film__cadre {
-      order: 2;
-      aspect-ratio: 3 / 4;
+    .film__assise {
+      --film-fondu: 12vh;
     }
 
-    .film__compo--palmares .film__bloc {
-      order: 1;
+    /* La pile commence sous le bouton « Passer » (14 + 44 px, et un peu
+       d'air) : centrée dans une fenêtre aussi basse, elle viendrait le
+       frôler. */
+    .film__pile {
+      padding-block: max(9vh, 66px) 6vh;
     }
 
-    /* Scène 4 : la cascade reste une colonne, même en desktop — quatre mots
-       en ligne déborderaient la demi-colonne, et la lecture de haut en bas
-       est ce qui fait la cascade. */
+    .film__blason {
+      display: none;
+    }
 
-    /* Scène 5 : les deux boutons côte à côte, comme la fin de page. */
+    .film :global(.film__logotype) {
+      --logo-fs: min(var(--fs-display-hero), 17vh);
+    }
+
+    .film :global(.titre-section.film__titre--fin) {
+      margin-bottom: 3vh;
+    }
+
+    /* Seul le filet, purement décoratif, cède sa place. */
+    .film__carton--fin .film__filet {
+      display: none;
+    }
+
     .film__actions {
+      margin-top: 2vh;
+    }
+
+    .film__masque--invite {
+      margin-bottom: 1vh;
+    }
+  }
+
+  /* Couchée, la fin tient sur une ligne de titre et une rangée de boutons.
+     Debout, une fenêtre aussi basse est trop étroite pour cela : le titre y
+     garde ses deux lignes, les boutons restent empilés. */
+  @media (max-height: 520px) and (orientation: landscape) {
+    .film :global(.titre-section.film__titre--fin) {
       flex-direction: row;
       justify-content: center;
+      gap: 0.24em;
     }
 
-    .film__actions :global(.film__bouton) {
-      width: auto;
+    .film__texte {
+      max-width: none;
+    }
+
+    .film__actions {
+      flex-wrap: nowrap;
+    }
+
+    /* Le premier bouton garde sa largeur ; le second prend ce qui reste, et
+       son libellé long se replie s'il le faut. */
+    .film__masque--bouton {
+      flex: 0 1 auto;
+    }
+
+    .film__masque--bouton:first-child {
+      flex: none;
+    }
+
+    .film__actions :global(.bouton--pleine) {
+      white-space: nowrap;
     }
   }
 
-  /*
-   * Ceinture et bretelles : la règle globale de global.css fige déjà toutes
-   * les animations CSS en mouvement réduit, et le script retire la couche —
-   * mais si une CSS arrive avant le script, autant que la couche n'existe
-   * jamais à l'écran.
-   */
-  @media (prefers-reduced-motion: reduce) {
-    .film {
-      display: none !important;
+  /* Plus bas encore — un petit téléphone couché, barre du navigateur
+     comprise : là seulement, ce qui n'est pas indispensable cède sa place.
+     Le nom, la ville, le titre et les deux boutons restent. */
+  @media (max-height: 290px) {
+    .film__filet,
+    .film__texte {
+      display: none;
     }
   }
 </style>

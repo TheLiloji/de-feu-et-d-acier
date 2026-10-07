@@ -21,28 +21,19 @@
  * ici leur balayage métallique —, les contreparties, les partenaires actuels
  * (section de l'accueil réutilisée), puis le dossier PDF et le contact.
  *
- * Animations : d'abord le FILM D'OUVERTURE (components/sponsors/
- * FilmOuverture.astro) — une couche plein écran qui résume la page en cinq
- * scènes (~15 s) puis s'efface sur le hero ; son découpage et sa mécanique
- * (Passer, Échap, défilement, Revoir, pause d'onglet) sont documentés dans le
- * composant. Puis la séquence du hero (une seule fois, au chargement, ~1,4 s
- * — fondu de la photo avec un zoom qui se pose, lignes de texte révélées par
- * masque, filet braise qui se trace ; le découpage exact est commenté sur le
- * bloc « Séquence d'ouverture » de la CSS), les apparitions au défilement et
- * les compteurs pour le reste de la page. Le hero joue derrière le film et
- * sert d'état de repli : quand le film n'existe pas (sans JavaScript, en
- * mouvement réduit), la page s'ouvre dessus comme avant. Les apparitions au
- * défilement et les compteurs, eux, attendent la fin du film (évènement
- * `film-ouverture:fin`) pour ne pas se jouer derrière la couche. Tous les
- * états initiaux masqués n'existent que sous `html.js` (classe posée par le
- * script inline du <head>) : sans JavaScript, tout est visible d'emblée.
- * `prefers-reduced-motion: reduce` neutralise tout — pas de film, hero posé,
- * compteurs à leur valeur finale, balayage doré figé sur son reflet central,
- * comme sur les fiches prof.
+ * Animations : une séquence d'ouverture sur le hero (une seule fois, au
+ * chargement, ~1,4 s — fondu de la photo avec un zoom qui se pose, lignes de
+ * texte révélées par masque, filet braise qui se trace ; le découpage exact
+ * est commenté sur le bloc « Séquence d'ouverture » de la CSS), puis des
+ * apparitions au défilement et des compteurs pour le reste de la page. Tous
+ * les états initiaux masqués n'existent que sous `html.js` (classe posée par
+ * le script inline du <head>) : sans JavaScript, tout est visible d'emblée.
+ * `prefers-reduced-motion: reduce` neutralise tout — hero posé, compteurs à
+ * leur valeur finale, balayage doré figé sur son reflet central, comme sur
+ * les fiches prof.
  */
 import { Picture } from 'astro:assets';
 import Base from '../layouts/Base.astro';
-import FilmOuverture from '../components/sponsors/FilmOuverture.astro';
 import Footer from '../components/sections/Footer.astro';
 import Nav from '../components/sections/Nav.astro';
 import Partenaires from '../components/sections/Partenaires.astro';
@@ -53,6 +44,9 @@ import SectionLabel from '../components/ui/SectionLabel.astro';
 import SectionTitle from '../components/ui/SectionTitle.astro';
 import TabBar from '../components/ui/TabBar.astro';
 import { estNomIcone } from '../components/ui/icones';
+// En dernier, à dessein : chez Astro, le rang des imports fixe l'ordre des
+// feuilles de style de la page. Placé ici, le film ne déplace aucune des leurs.
+import FilmOuverture from '../components/sponsors/FilmOuverture.astro';
 import {
   lireDisciplines,
   lireHero,
@@ -232,6 +226,21 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
     document.documentElement.classList.add('js');
   </script>
 
+  {/* Film d'ouverture : un générique plein écran qui résume la page, puis se
+      lève. N'existe que sous `html.js` et hors mouvement réduit — sinon la
+      page est posée d'emblée. Il lit les chiffres et le palmarès ci-dessus. */}
+  <FilmOuverture
+    slot="bandeau"
+    ecole={ecole}
+    identite={identite}
+    hero={hero}
+    ctx={ctx}
+    chiffres={CHIFFRES}
+    palmares={PALMARES}
+    pdf={PDF}
+    email={EMAIL}
+  />
+
   <Nav
     slot="entete"
     ecole={ecole}
@@ -240,12 +249,6 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
     identite={identite}
     fond="solide"
   />
-
-  {/* ── Film d'ouverture : couche fixe au-dessus de la page ──────────────────
-      Il se retire tout seul (Passer, Échap, défilement, ou le geste du
-      visiteur en fin de film) et n'existe ni sans JavaScript ni en mouvement
-      réduit — la page en dessous reste complète dans tous les cas. */}
-  <FilmOuverture />
 
   {/* ── Hero : photo pleine largeur voilée d'encre ───────────────────────── */}
   <header class="sp-hero" aria-labelledby="sp-hero-titre">
@@ -529,82 +532,56 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
   // et les compteurs gardent leur valeur finale (déjà dans le HTML).
   const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  function initialiserAnimations() {
-    // ── Apparitions au défilement (une seule fois, seuil bas) ──
-    const cibles = document.querySelectorAll<HTMLElement>('.sp-reveal');
-    if (reduit || !('IntersectionObserver' in window)) {
-      cibles.forEach((el) => el.classList.add('est-visible'));
-    } else {
-      const observateur = new IntersectionObserver(
-        (entrees) => {
-          for (const entree of entrees) {
-            if (!entree.isIntersecting) continue;
-            entree.target.classList.add('est-visible');
-            observateur.unobserve(entree.target);
-          }
-        },
-        { threshold: 0.1, rootMargin: '0px 0px -60px 0px' },
-      );
-      cibles.forEach((el) => observateur.observe(el));
-    }
-
-    // ── Compteurs du bandeau de chiffres ──
-    // Montée 0 → valeur en ~1,2 s (easeOutCubic), déclenchée à l'entrée dans le
-    // viewport. Les chiffres sont tabulaires et la chasse finale est réservée
-    // (`min-inline-size`) : aucune mise en page ne bouge pendant la montée.
-    const compteurs = document.querySelectorAll<HTMLElement>('[data-compteur]');
-    if (!reduit && 'IntersectionObserver' in window) {
-      const sortieCubique = (t: number) => 1 - Math.pow(1 - t, 3);
-      const DUREE = 1200;
-
-      const observateurCompteurs = new IntersectionObserver(
-        (entrees) => {
-          for (const entree of entrees) {
-            if (!entree.isIntersecting) continue;
-            observateurCompteurs.unobserve(entree.target);
-
-            const el = entree.target as HTMLElement;
-            const fin = Number.parseInt(el.dataset.compteur ?? '0', 10);
-            if (!Number.isFinite(fin)) continue;
-
-            const depart = performance.now();
-            const pas = (instant: number) => {
-              const progression = Math.min((instant - depart) / DUREE, 1);
-              el.textContent = String(Math.round(sortieCubique(progression) * fin));
-              if (progression < 1) requestAnimationFrame(pas);
-            };
-            el.textContent = '0';
-            requestAnimationFrame(pas);
-          }
-        },
-        { threshold: 0.4 },
-      );
-      compteurs.forEach((el) => observateurCompteurs.observe(el));
-    }
+  // ── Apparitions au défilement (une seule fois, seuil bas) ──
+  const cibles = document.querySelectorAll<HTMLElement>('.sp-reveal');
+  if (reduit || !('IntersectionObserver' in window)) {
+    cibles.forEach((el) => el.classList.add('est-visible'));
+  } else {
+    const observateur = new IntersectionObserver(
+      (entrees) => {
+        for (const entree of entrees) {
+          if (!entree.isIntersecting) continue;
+          entree.target.classList.add('est-visible');
+          observateur.unobserve(entree.target);
+        }
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -60px 0px' },
+    );
+    cibles.forEach((el) => observateur.observe(el));
   }
 
-  // ── Pendant le film d'ouverture, les observateurs attendent ──
-  // Le bandeau de chiffres affleure au premier écran : armé au chargement, il
-  // jouerait ses compteurs derrière la couche du film, et le visiteur
-  // arriverait sur une page déjà « consommée ». Le film signale sa fermeture
-  // (`film-ouverture:fin`) et tout s'arme à ce moment-là. Si le module du
-  // film ne démarre jamais (son attribut `data-pret` reste absent), on ne
-  // bloque rien : au bout de 1,5 s, la page reprend le comportement
-  // d'aujourd'hui.
-  const film = document.querySelector<HTMLElement>('[data-film-ouverture]');
-  if (!film || reduit) {
-    initialiserAnimations();
-  } else {
-    let lance = false;
-    const lancer = () => {
-      if (lance) return;
-      lance = true;
-      initialiserAnimations();
-    };
-    window.addEventListener('film-ouverture:fin', lancer, { once: true });
-    window.setTimeout(() => {
-      if (!film.isConnected || film.dataset.pret !== '1') lancer();
-    }, 1500);
+  // ── Compteurs du bandeau de chiffres ──
+  // Montée 0 → valeur en ~1,2 s (easeOutCubic), déclenchée à l'entrée dans le
+  // viewport. Les chiffres sont tabulaires et la chasse finale est réservée
+  // (`min-inline-size`) : aucune mise en page ne bouge pendant la montée.
+  const compteurs = document.querySelectorAll<HTMLElement>('[data-compteur]');
+  if (!reduit && 'IntersectionObserver' in window) {
+    const sortieCubique = (t: number) => 1 - Math.pow(1 - t, 3);
+    const DUREE = 1200;
+
+    const observateurCompteurs = new IntersectionObserver(
+      (entrees) => {
+        for (const entree of entrees) {
+          if (!entree.isIntersecting) continue;
+          observateurCompteurs.unobserve(entree.target);
+
+          const el = entree.target as HTMLElement;
+          const fin = Number.parseInt(el.dataset.compteur ?? '0', 10);
+          if (!Number.isFinite(fin)) continue;
+
+          const depart = performance.now();
+          const pas = (instant: number) => {
+            const progression = Math.min((instant - depart) / DUREE, 1);
+            el.textContent = String(Math.round(sortieCubique(progression) * fin));
+            if (progression < 1) requestAnimationFrame(pas);
+          };
+          el.textContent = '0';
+          requestAnimationFrame(pas);
+        }
+      },
+      { threshold: 0.4 },
+    );
+    compteurs.forEach((el) => observateurCompteurs.observe(el));
   }
 </script>
 
