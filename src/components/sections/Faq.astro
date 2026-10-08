@@ -44,6 +44,7 @@ import SectionTitle from '../ui/SectionTitle.astro';
 import Accordion from '../ui/Accordion.astro';
 import Reveal from '../ui/Reveal.astro';
 import type { Ecole } from '../../lib/ecoles';
+import { lien } from '../../lib/liens';
 import { rendreMarkdoc } from '../../lib/markdoc';
 import { contexteDe, resoudre, type ContexteRaccourcis } from '../../lib/raccourcis';
 import { typographieFr } from '../../lib/typographie';
@@ -245,6 +246,15 @@ const classes = ['section', 'section--ink', 'faq', classe].filter(Boolean).join(
         </Reveal>
 
         <Accordion items={items} nom="faq" />
+
+        {/* Renvoi discret vers la rubrique des questions d'armes : la FAQ
+            répond au pratique, les questions d'armes au reste. */}
+        <Reveal>
+          <p class="faq__renvoi">
+            D’autres questions ? <a href={lien(ecole, '/questions/')}>Les questions d’armes</a> y
+            répondent.
+          </p>
+        </Reveal>
       </div>
     </section>
   )
@@ -284,6 +294,26 @@ const classes = ['section', 'section--ink', 'faq', classe].filter(Boolean).join(
 
   .faq__lede a:hover,
   .faq__lede a:focus-visible {
+    color: var(--ember-hot);
+  }
+
+  /* Le renvoi vers les questions d'armes : une note de bas de section, pas un
+     appel — même encre que le texte tertiaire, lien souligné comme le chapô. */
+  .faq__renvoi {
+    margin: clamp(18px, 14px + 1vw, 28px) 0 0;
+    font-size: var(--fs-body-xs);
+    color: var(--parch-mute);
+  }
+
+  .faq__renvoi a {
+    color: var(--parch-soft);
+    text-decoration: underline;
+    text-decoration-color: var(--ember);
+    transition: color var(--transition);
+  }
+
+  .faq__renvoi a:hover,
+  .faq__renvoi a:focus-visible {
     color: var(--ember-hot);
   }
 

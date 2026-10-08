@@ -2,17 +2,11 @@
 /**
  * Page vitrine de partenariat — `/sponsors/`.
  *
- * ⚠️ **Page volontairement ORPHELINE et noindex.** Elle reprend le fond du
- * dossier de partenariat PDF (public/documents/) dans la charte du site, pour
- * être montrée à des entreprises démarchées : personne n'y arrive sans l'URL.
- * Aucun lien ne doit pointer vers elle depuis le site — ni menu, ni pied de
- * page, ni sitemap.
- *
- * Pour l'officialiser un jour :
- *   1. retirer `noIndex` sur <Base> ci-dessous ;
- *   2. l'ajouter à `src/pages/sitemap.xml.ts` ;
- *   3. la retirer de `PAGES_HORS_SITEMAP` dans `scripts/recette.mjs` ;
- *   4. la lier depuis le site (menu, pied de page ou section partenaires).
+ * Page OFFICIELLE depuis le 08/10/2026 (elle a vécu orpheline et noindex le
+ * temps de sa mise au point) : indexée, au sitemap, liée depuis l'accueil par
+ * le bouton « Devenir partenaire » de la section partenaires. Elle reprend le
+ * fond du dossier de partenariat PDF (public/documents/) dans la charte du
+ * site, pour les entreprises démarchées.
  *
  * Composition : hero photographique voilé d'encre (comme les heros de fiche),
  * bandeau de chiffres à compteurs animés, le club, les trois armes, le
@@ -259,7 +253,6 @@ const onglets = (menus.barreMobile ?? []).map((onglet) => ({
   identite={identite}
   titre="Devenir partenaire"
   description="Dossier de partenariat du club AMHE De Feu et d'Acier à Clermont-Ferrand : palmarès, visibilité, contreparties et contact."
-  noIndex
 >
   {/* La classe `js` conditionne tous les états initiaux masqués de la page :
       posée avant le premier rendu, jamais après. */}

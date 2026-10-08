@@ -61,9 +61,8 @@ const VIEWPORT_DEFAUT = { width: 1440, height: 900 };
 //
 // 50 pages connues (toutes attendues à 200) + 1 adresse volontairement
 // inconnue (attendue à 404). Les 49 pages du cahier des charges, plus la
-// page de partenariat /sponsors/ — orpheline et noindex, donc hors sitemap
-// (cf. PAGES_HORS_SITEMAP ci-dessous), mais servie et contrôlée comme les
-// autres.
+// page de partenariat /sponsors/ (officielle et au sitemap depuis le
+// 08/10/2026).
 
 const ROUTES_CONNUES = [
   '/',
@@ -120,13 +119,13 @@ const ROUTES_CONNUES = [
 
 /**
  * Pages construites en HTML mais volontairement absentes du sitemap
- * (chemins relatifs à dist/client/). Aujourd'hui : la page de partenariat,
- * orpheline et noindex — montrée aux entreprises démarchées, jamais liée
- * depuis le site. Le contrôle 4bis les soustrait du comptage ; le jour où une
- * de ces pages est officialisée, la retirer d'ici ET l'ajouter à
- * src/pages/sitemap.xml.ts (cf. le commentaire d'en-tête de sponsors.astro).
+ * (chemins relatifs à dist/client/) : le mécanisme des pages « orphelines »,
+ * mises au point en ligne sans lien entrant ni indexation avant leur
+ * officialisation. Vide aujourd'hui — /sponsors/ y a vécu jusqu'au
+ * 08/10/2026. Le contrôle 4bis soustrait ces pages de son comptage ; une page
+ * qui s'officialise sort d'ici ET entre dans src/pages/sitemap.xml.ts.
  */
-const PAGES_HORS_SITEMAP = ['sponsors/index.html'];
+const PAGES_HORS_SITEMAP = [];
 
 /** Ne correspond à aucune page : sert uniquement à vérifier le 404. */
 const ROUTE_INCONNUE = '/cette-page-n-existe-pas--recette-qa/';

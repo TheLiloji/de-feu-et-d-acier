@@ -34,6 +34,7 @@
 import SectionLabel from '../ui/SectionLabel.astro';
 import SectionTitle from '../ui/SectionTitle.astro';
 import PartnerRow from '../ui/PartnerRow.astro';
+import Button from '../ui/Button.astro';
 import Reveal from '../ui/Reveal.astro';
 import type { Ecole } from '../../lib/ecoles';
 import { resoudrePhoto } from '../../lib/images';
@@ -219,6 +220,19 @@ const classes = ['section', 'section--coal', 'partenaires', classe].filter(Boole
             </Reveal>
           ))}
         </ul>
+
+        {/* L'appel aux entreprises : le dossier complet vit sur /sponsors/
+            (film d'ouverture, palmarès, contreparties, PDF, contact). */}
+        <Reveal>
+          <div class="partenaires__devenir">
+            <Button
+              variante="pleine"
+              taille="grande"
+              libelle="Devenir partenaire"
+              href={lien(ecole, '/sponsors/')}
+            />
+          </div>
+        </Reveal>
       </div>
     </section>
   )
@@ -230,6 +244,14 @@ const classes = ['section', 'section--coal', 'partenaires', classe].filter(Boole
    * haut, 48 → 110 en bas (design-spec §2.1 et §4.9). Le double sélecteur
    * l'emporte sur `.section` de global.css quel que soit l'ordre d'injection.
    */
+  /* Le bouton « Devenir partenaire » : centré sous les rangées, l'appel le
+     plus direct de la section — la page /sponsors/ fait le reste. */
+  .partenaires__devenir {
+    display: flex;
+    justify-content: center;
+    margin-top: clamp(34px, 24px + 2.5vw, 60px);
+  }
+
   .section.partenaires {
     padding-block: clamp(44px, 15.771px + 7.2381vw, 120px)
       clamp(48px, 24.971px + 5.9048vw, 110px);

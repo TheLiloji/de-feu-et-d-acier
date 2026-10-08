@@ -21,12 +21,10 @@
  * Volontairement absents : `/keystatic` et `/api/keystatic/*` (jamais
  * pré-rendus, donc aucune URL à publier) et la page 404.
  *
- * Volontairement absente aussi : `/sponsors/`, la page de partenariat —
- * orpheline et noindex, montrée aux entreprises démarchées, jamais liée
- * depuis le site. Elle est recensée dans `PAGES_HORS_SITEMAP`
- * (scripts/recette.mjs), que le contrôle « sitemap vs pages HTML » soustrait
- * de son comptage. Pour l'officialiser un jour, suivre le commentaire
- * d'en-tête de `src/pages/sponsors.astro`.
+ * `/sponsors/` (page de partenariat) est entrée au sitemap le 08/10/2026, en
+ * fin de période orpheline — le mécanisme `PAGES_HORS_SITEMAP` de
+ * scripts/recette.mjs reste en place (vide) pour la prochaine page à mettre
+ * au point à l'abri des regards.
  */
 import type { APIRoute } from 'astro';
 import {
@@ -127,6 +125,7 @@ export const GET: APIRoute = async ({ site }) => {
 
   // Pages légales : elles appartiennent à l'association, pas à une implantation
   // (content-model.md §3), donc une seule entrée, jamais préfixée.
+  entrees.push({ chemin: '/sponsors/', priorite: '0.5' });
   entrees.push({ chemin: '/mentions-legales/', priorite: '0.2' });
   entrees.push({ chemin: '/confidentialite/', priorite: '0.2' });
 
