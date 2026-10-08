@@ -360,10 +360,11 @@ const FOND_PALMARES = fond(tournoiPaysage, tournoiPortrait, {
  * Deux partitions de temps (relatives à l'entrée du carton) :
  *   - `entree` (data-film-t) : la cascade du triptyque, à partir de 820 px —
  *     les trois panneaux se révèlent l'un après l'autre, à 280 ms d'écart ;
- *   - `entreeTelephone` (data-film-tp) : le défilé, sous 820 px — un seul
- *     cadre où les trois se succèdent, la banderole en dernier parce que
- *     c'est elle qui montre la case « VOTRE LOGO » le plus grand : elle
- *     reste posée jusqu'à la levée du carton.
+ *   - `entreeTelephone` (data-film-tp) : la même cascade, sous 820 px, dans
+ *     une mini-grille debout — la banderole ENTIÈRE en 3:2 au-dessus (une
+ *     photo paysage rognée dans un cadre debout coupait le blason en deux,
+ *     retour client du 08/10), les deux portraits côte à côte dessous. Les
+ *     trois restent posés ensemble jusqu'à la levée du carton.
  */
 interface Panneau {
   id: 'banderole' | 'tshirt' | 'kakemono';
@@ -373,7 +374,7 @@ interface Panneau {
   tailles: string;
   /** `object-position` du triptyque (à partir de 820 px). */
   cadre: string;
-  /** `object-position` du défilé téléphone (sous 820 px). */
+  /** `object-position` de la mini-grille téléphone (sous 820 px). */
   cadreTelephone: string;
   entree: number;
   entreeTelephone: number;
@@ -392,11 +393,10 @@ const PANNEAUX: Panneau[] = [
     // Paysage 3:2 dans un cadre 21:9 : plein cadre sur la banderole
     // (rangée + case comprises), les tireurs en amorce au-dessus.
     cadre: '50% 76%',
-    // Téléphone : le cadre debout retient la moitié droite — Faits d'Armes,
-    // Black Armoury et la case « VOTRE LOGO », bien grande.
-    cadreTelephone: '90% 50%',
+    // Téléphone : cadre 3:2 natif, l'image entière — rien n'est rogné.
+    cadreTelephone: '50% 50%',
     entree: 260,
-    entreeTelephone: 2200,
+    entreeTelephone: 150,
   }),
   ...panneau(tshirt, {
     id: 'tshirt',
@@ -405,7 +405,7 @@ const PANNEAUX: Panneau[] = [
     cadre: '50% 24%',
     cadreTelephone: '50% 28%',
     entree: 540,
-    entreeTelephone: 150,
+    entreeTelephone: 430,
   }),
   ...panneau(kakemono, {
     id: 'kakemono',
@@ -414,7 +414,7 @@ const PANNEAUX: Panneau[] = [
     cadre: '50% 34%',
     cadreTelephone: '50% 38%',
     entree: 820,
-    entreeTelephone: 1250,
+    entreeTelephone: 710,
   }),
 ];
 
@@ -595,7 +595,7 @@ const CARTONS_PHOTO: {
       (banderole en large, t-shirt et roll-up dessous), révélé en cascade ;
       à partir de 820 px en portrait (tablette), texte en haut et triptyque
       dessous ; sous 820 px, un seul cadre où les trois défilent — les temps
-      du défilé sont `data-film-tp`, lus par le pilote sous 820 px. */}
+      de la mini-grille téléphone sont `data-film-tp`, lus sous 820 px. */}
   <div class="film__carton film__carton--montage" style="--rang:2" data-film-carton data-film-duree="4000">
     <div class="film__scene gouttiere">
       <div class="film__scene-texte">
@@ -750,8 +750,8 @@ const CARTONS_PHOTO: {
 
     var reduit = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-    // Sous 820 px, le carton du partenariat ne joue pas sa cascade mais son
-    // défilé : les gestes qui portent un `data-film-tp` lisent alors ce
+    // Sous 820 px, le carton du partenariat joue la partition de sa
+    // mini-grille téléphone : les gestes à `data-film-tp` lisent alors ce
     // temps-là au lieu de `data-film-t` — même grammaire, autre partition.
     // Le seuil est celui de la feuille de style du montage (819.98 px).
     var telephone = window.matchMedia('(max-width: 819.98px)');
@@ -2209,36 +2209,23 @@ const CARTONS_PHOTO: {
     }
   }
 
-  /* Sous 820 px : le défilé. Un seul cadre — les trois panneaux empilés sur
-     la même cellule — où t-shirt, roll-up puis banderole se succèdent
-     (partition `data-film-tp`). La banderole, au-dessus de la pile, ferme le
-     défilé et reste posée : c'est son cadrage qui montre la case
-     « VOTRE LOGO » le plus grand. */
+  /* Sous 820 px : la mini-grille debout — la banderole ENTIÈRE en 3:2 sur la
+     rangée haute (le défilé d'avant la rognait dans un cadre debout : blason
+     coupé en deux, retour client du 08/10), les deux portraits côte à côte
+     dessous. Même cascade que le triptyque desktop (partition
+     `data-film-tp`), les trois posés ensemble. Le plafond retient la grille
+     (≈ 1,3 × sa largeur) dans la place restante sous le texte. */
   @media (max-width: 819.98px) {
     .film__montage {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .film__panneau {
-      grid-area: 1 / 1;
-      width: 100%;
-      aspect-ratio: 8 / 11;
-      max-height: 56vh;
-      /* Empilés, les panneaux se voient à travers : le fond opaque du panneau
-         du dessus cacherait le défilé des panneaux du dessous. */
-      background: transparent;
-    }
-
-    .film__panneau--tshirt {
-      z-index: 1;
-    }
-
-    .film__panneau--kakemono {
-      z-index: 2;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      max-width: min(100%, calc((100svh - 410px) * 0.77));
+      justify-self: center;
     }
 
     .film__panneau--banderole {
-      z-index: 3;
+      grid-column: 1 / -1;
+      aspect-ratio: 3 / 2;
     }
 
     .film__panneau-cadre img {
