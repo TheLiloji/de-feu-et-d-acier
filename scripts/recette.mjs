@@ -73,7 +73,7 @@ const ROUTES_CONNUES = [
   '/armes/combat-viking/',
   '/armes/rapiere/',
   '/profs/gabriel-tardio/',
-  '/profs/marie-poignant/',
+  '/profs/valentin-arrois/',
   '/profs/ludwig-fort/',
   '/sources/',
   '/sources/talhoffer-1467/',
@@ -147,7 +147,7 @@ const SLUGS_TRAITES = ROUTES_CONNUES.filter((r) => r.startsWith('/sources/') && 
 const PAGES_DEBORDEMENT = [
   '/',
   '/armes/epee-longue/',
-  '/profs/marie-poignant/',
+  '/profs/valentin-arrois/',
   '/actualites/',
   '/sources/',
   '/sources/talhoffer-1467/',
