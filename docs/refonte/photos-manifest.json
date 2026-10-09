@@ -15,15 +15,15 @@
   },
   "credits": {
     "© Alexandre Vergne — L'IMAGINARIUM": [
-      "src/assets/photos/commun/arme-epee-longue.jpg",
-      "src/assets/photos/commun/arme-rapiere.jpg",
+      "src/assets/photos/commun/epee-longue/photo/fichier.jpg",
+      "src/assets/photos/commun/rapiere/photo/fichier.jpg",
       "src/assets/photos/commun/club-demo-montferrand.jpg",
-      "src/assets/photos/clermont/galerie-medievale-montferrand.jpg",
-      "src/assets/photos/clermont/galerie-sous-les-remparts.jpg",
-      "src/assets/photos/clermont/article-couverture-montferrand.jpg"
+      "src/assets/photos/clermont/vie-de-salle/photos/1/fichier.jpg",
+      "src/assets/photos/clermont/vie-de-salle/photos/4/fichier.jpg",
+      "src/assets/photos/clermont/le-site-fait-peau-neuve/couverture/fichier.jpg"
     ],
     "Enzo Cirillo": [
-      "src/assets/photos/clermont/galerie-au-contact.jpg"
+      "src/assets/photos/clermont/vie-de-salle/photos/2/fichier.jpg"
     ],
     "aIdentifier": "Les dérivés à crédit null issus de _MG_5965.jpg (hero, open graph) et de la série IMG_* (tournois, galerie 1/4/6) n'ont aucun EXIF d'auteur. Le client doit identifier les photographes avant mise en ligne — le hero est l'image la plus exposée du site."
   },
@@ -38,7 +38,7 @@
     {
       "emplacement": "Section 08 · Galerie, tuile 5",
       "remplace": "nouvelles_photos/MedievelMontferrand2026-80.jpg",
-      "par": "src/assets/photos/clermont/galerie-sous-les-remparts.jpg (MedievelMontferrand2026-70.jpg)",
+      "par": "src/assets/photos/clermont/vie-de-salle/photos/4/fichier.jpg (MedievelMontferrand2026-70.jpg)",
       "motif": "Pratiquants d'apparence adolescente et enfants nets à l'arrière-plan, sans autorisation parentale.",
       "reversible": "Oui, via le CMS, si les autorisations sont obtenues et les enfants floutés."
     }
@@ -61,7 +61,7 @@
   },
   "fichiers": [
     {
-      "fichier": "src/assets/photos/commun/arme-epee-longue.jpg",
+      "fichier": "src/assets/photos/commun/epee-longue/photo/fichier.jpg",
       "source": "nouvelles_photos/ARMES/épée double.jpg",
       "usage": "Carte discipline « Épée longue » (accueil, section 02 · Disciplines, 360×620) et hero de la fiche arme (588×660).",
       "section": "disciplines",
@@ -74,7 +74,7 @@
       "poidsOctets": 235057
     },
     {
-      "fichier": "src/assets/photos/commun/arme-rapiere.jpg",
+      "fichier": "src/assets/photos/commun/rapiere/photo/fichier.jpg",
       "source": "nouvelles_photos/ARMES/Rapière.jpg",
       "usage": "Carte discipline « Rapière » (accueil, section 02 · Disciplines, 360×620) et hero de la fiche arme.",
       "section": "disciplines",
@@ -87,7 +87,7 @@
       "poidsOctets": 272409
     },
     {
-      "fichier": "src/assets/photos/commun/arme-messer.jpg",
+      "fichier": "src/assets/photos/commun/messer/photo/fichier.jpg",
       "source": "nouvelles_photos/ARMES/Messer.png",
       "usage": "Carte discipline « Messer » (accueil, section 02 · Disciplines, 360×620) et hero de la fiche arme.",
       "section": "disciplines",
@@ -101,7 +101,7 @@
       "note": "Source déjà réduite à 842 px (le master manque au lot). Couvre la carte 360×620 en 1×, tout juste en 2×, insuffisant pour le hero de fiche arme 588×660 en 2×. Master à redemander à Alexandre Vergne. La photo appartient visiblement à la même série que l'épée longue et la rapière mais ne porte AUCUN EXIF de crédit : crédit laissé à null, à confirmer avec le photographe."
     },
     {
-      "fichier": "src/assets/photos/commun/arme-combat-viking.jpg",
+      "fichier": "src/assets/photos/commun/combat-viking/photo/fichier.jpg",
       "source": "nouvelles_photos/ARMES/Viking.webp",
       "usage": "Carte discipline « Combat viking » (accueil, section 02 · Disciplines, 360×620).",
       "section": "disciplines",
@@ -115,7 +115,7 @@
       "note": "SOURCE MÉDIOCRE ASSUMÉE (cf. ARCHITECTURE §6). Original 393×698, photo de téléphone, décor de jardin privé. Aucun upscale : recadrage seul, 40 px retirés à gauche (manche rouge d'une tenue non-AMHE) et 78 px en bas (vêtement sombre au bord) → 353×620, soit 2 % en dessous de la taille 1× de la carte et aucun 2×. Reshoot nature morte à demander au client."
     },
     {
-      "fichier": "src/assets/photos/commun/arme-epee-bocle.jpg",
+      "fichier": "src/assets/photos/commun/epee-bocle/photo/fichier.jpg",
       "source": "docs/refonte/recuperes/Epee-bocle.png",
       "usage": "Catalogue disciplines — fiche « Épée-bocle », discipline masquée (affichee: false) : sélectionnable dans les créneaux du jeudi et dans les armes de Ludwig Fort, sans carte dans la grille.",
       "section": "disciplines",
@@ -184,7 +184,7 @@
       "poidsOctets": 12581
     },
     {
-      "fichier": "src/assets/photos/commun/logo-ffamhe.png",
+      "fichier": "src/assets/photos/commun/ffamhe/logo.png",
       "source": "docs/refonte/recuperes/logo_FFAMHE.png",
       "usage": "Réserve — logo FFAMHE en version carrée (non utilisé par la maquette, utile en pied de page ou en mention d'affiliation).",
       "section": "partenaires",
@@ -210,7 +210,7 @@
       "poidsOctets": 23530
     },
     {
-      "fichier": "src/assets/photos/commun/logo-faits-d-armes.png",
+      "fichier": "src/assets/photos/commun/faits-d-armes/logo.png",
       "source": "docs/refonte/recuperes/Fait-d'arme-logo.png",
       "usage": "Section 10 · Partenaires — logo Faits d'Armes, affiché en 240×120 avec object-fit: contain.",
       "section": "partenaires",
@@ -224,7 +224,7 @@
       "note": "Copié octet pour octet (2,2 Ko, déjà optimal). Le nom du fichier source contenait une apostrophe et un singulier fautif (« Fait-d'arme ») : corrigé en logo-faits-d-armes.png. Ce PNG n'a pas de canal alpha."
     },
     {
-      "fichier": "src/assets/photos/commun/logo-black-armoury.png",
+      "fichier": "src/assets/photos/commun/black-armoury/logo.png",
       "source": "docs/refonte/recuperes/black-armoury-logo.jpg",
       "usage": "Section 10 · Partenaires — logo Black Armoury, affiché en 240×120 avec object-fit: contain.",
       "section": "partenaires",
@@ -321,7 +321,7 @@
       "poidsOctets": 430698
     },
     {
-      "fichier": "src/assets/photos/clermont/galerie-a-l-assaut.jpg",
+      "fichier": "src/assets/photos/clermont/vie-de-salle/photos/0/fichier.jpg",
       "source": "nouvelles_photos/IMG_3013.jpg",
       "usage": "Section 08 · Galerie — tuile 1, la grande (770×504). Légende maquette : « À l'assaut ».",
       "section": "galerie",
@@ -335,7 +335,7 @@
       "note": "Source ISO 12800, la plus bruitée du lot : débruitage de chrominance appliqué avant réduction. Reste le fichier le plus lourd de la galerie (858 Ko) — normal, le grain coûte cher en JPEG ; l'AVIF généré par astro:assets fera la différence."
     },
     {
-      "fichier": "src/assets/photos/clermont/galerie-medievale-montferrand.jpg",
+      "fichier": "src/assets/photos/clermont/vie-de-salle/photos/1/fichier.jpg",
       "source": "nouvelles_photos/MedievelMontferrand2026-53.jpg",
       "usage": "Section 08 · Galerie — tuile 2 (546×332). Légende maquette : « Médiévale de Montferrand ».",
       "section": "galerie",
@@ -349,7 +349,7 @@
       "note": "Une personne en t-shirt jaune apparaît nette à l'arrière-plan (cf. photos.md §4.2, risque faible à moyen) : vérifier qu'il s'agit d'un membre, sinon flouter."
     },
     {
-      "fichier": "src/assets/photos/clermont/galerie-au-contact.jpg",
+      "fichier": "src/assets/photos/clermont/vie-de-salle/photos/2/fichier.jpg",
       "source": "nouvelles_photos/_ASC0652.jpg",
       "usage": "Section 08 · Galerie — tuile 3 (546×332). Légende maquette : « Au contact ».",
       "section": "galerie",
@@ -363,7 +363,7 @@
       "note": "Filigrane « Enzo Cirillo » incrusté en bas à droite, conservé tel quel (décision ARCHITECTURE §6). Un visage partiellement visible entre deux masques, reconnaissable pour un proche : à vérifier auprès du membre."
     },
     {
-      "fichier": "src/assets/photos/clermont/galerie-en-garde.jpg",
+      "fichier": "src/assets/photos/clermont/vie-de-salle/photos/3/fichier.jpg",
       "source": "nouvelles_photos/IMG_2609.jpg",
       "usage": "Section 08 · Galerie — tuile 4, portrait (435×504). Légende maquette : « En garde ».",
       "section": "galerie",
@@ -377,7 +377,7 @@
       "note": "Source ISO 10000, débruitage de chrominance appliqué. Cadrage « haut » : le sujet et la lame occupent le tiers supérieur."
     },
     {
-      "fichier": "src/assets/photos/clermont/galerie-sous-les-remparts.jpg",
+      "fichier": "src/assets/photos/clermont/vie-de-salle/photos/4/fichier.jpg",
       "source": "nouvelles_photos/MedievelMontferrand2026-70.jpg",
       "usage": "Section 08 · Galerie — tuile 5, portrait (435×504). SWAP VALIDÉ : remplace MedievelMontferrand2026-80.jpg (mineurs non autorisés).",
       "section": "galerie",
@@ -391,7 +391,7 @@
       "note": "SWAP validé (ARCHITECTURE §1). Recadré en portrait 3452×4000 depuis l'original paysage : le recadrage exclut l'homme en t-shirt noir au visage net signalé par photos.md §4.2. LÉGENDE À CORRIGER : la maquette écrit « Combat viking » sur cette tuile, ce qui n'a jamais correspondu à la photo. Proposer « Sous les remparts » ou « Médiévale de Montferrand »."
     },
     {
-      "fichier": "src/assets/photos/clermont/galerie-le-duel.jpg",
+      "fichier": "src/assets/photos/clermont/vie-de-salle/photos/5/fichier.jpg",
       "source": "nouvelles_photos/IMG_3607.jpg",
       "usage": "Section 08 · Galerie — tuile 6, portrait (435×504). Légende maquette : « Le duel ».",
       "section": "galerie",
@@ -405,7 +405,7 @@
       "note": "Source ISO 8000, débruitage de chrominance appliqué."
     },
     {
-      "fichier": "src/assets/photos/clermont/prof-marie-poignant.jpg",
+      "fichier": "src/assets/photos/clermont/marie-poignant/portrait/fichier.jpg",
       "source": "docs/refonte/recuperes/Marie.png",
       "usage": "Section 03 · Profs — vignette de la grille (427×427) et portrait de la fiche prof (500×600) de Marie Poignant.",
       "section": "profs",
@@ -419,7 +419,7 @@
       "note": "SOUS-DIMENSIONNÉ : 227×227 pour une vignette de 427×427 (et 500×600 en fiche prof). Aucun upscale n'a été fait. Photo en niveaux de gris, alors que les deux autres portraits sont en couleur — la grille des trois profs ne sera pas homogène. Séance portraits à programmer (manque bloquant, photos.md §6)."
     },
     {
-      "fichier": "src/assets/photos/clermont/prof-gabriel-tardio.jpg",
+      "fichier": "src/assets/photos/clermont/gabriel-tardio/portrait/fichier.jpg",
       "source": "docs/refonte/recuperes/Gabriel.jpg",
       "usage": "Section 03 · Profs — vignette de la grille (427×427, carte mise en avant) et portrait de la fiche prof (500×600) de Gabriel Tardio.",
       "section": "profs",
@@ -433,7 +433,7 @@
       "note": "Le seul portrait exploitable du lot : 1365×1365, couvre la grille et la fiche en 2×. Fond extérieur, à contre-emploi avec les deux autres (studio / mur clair)."
     },
     {
-      "fichier": "src/assets/photos/clermont/prof-ludwig-fort.jpg",
+      "fichier": "src/assets/photos/clermont/ludwig-fort/portrait/fichier.jpg",
       "source": "docs/refonte/recuperes/Ludwig.jpeg",
       "usage": "Section 03 · Profs — vignette de la grille (427×427) et portrait de la fiche prof (500×600) de Ludwig Fort.",
       "section": "profs",
@@ -447,7 +447,7 @@
       "note": "CRITIQUE : 128×128 seulement, soit trois fois moins que la vignette de grille et quatre fois moins que le portrait de fiche. Aucun upscale n'a été fait, le fichier sera visiblement flou. Reshoot indispensable avant mise en ligne."
     },
     {
-      "fichier": "src/assets/photos/clermont/article-couverture-montferrand.jpg",
+      "fichier": "src/assets/photos/clermont/le-site-fait-peau-neuve/couverture/fichier.jpg",
       "source": "nouvelles_photos/MedievelMontferrand2026-105.jpg",
       "usage": "Couverture du premier article (/actualites/<slug>/) et bandeau de la liste des actualités. Réutilisable pour tout article sans photo propre.",
       "section": "articles",

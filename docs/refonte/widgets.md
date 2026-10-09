@@ -465,7 +465,7 @@ galerie: block({
 ```
 {% galerie
    mode="grille"
-   photos=[{image: "/src/assets/photos/clermont/galerie-en-garde.jpg", description: "Deux tireurs en garde, masques baissés, au centre de la salle.", cadrage: "centre", credit: "Alexandre Vergne — L’IMAGINARIUM"}, {image: "/src/assets/photos/clermont/galerie-au-contact.jpg", description: "Les lames se croisent au premier plan.", cadrage: "haut", credit: ""}] /%}
+   photos=[{image: "/src/assets/photos/clermont/vie-de-salle/photos/3/fichier.jpg", description: "Deux tireurs en garde, masques baissés, au centre de la salle.", cadrage: "centre", credit: "Alexandre Vergne — L’IMAGINARIUM"}, {image: "/src/assets/photos/clermont/vie-de-salle/photos/2/fichier.jpg", description: "Les lames se croisent au premier plan.", cadrage: "haut", credit: ""}] /%}
 ```
 
 **Rendu.** Nouveau composant `src/components/corps/GalerieCorps.astro`.
@@ -532,7 +532,7 @@ video: block({
    titre="La leçon de garde"
    url="/videos/lecon-01.mp4"
    duree="04:12"
-   vignette="/src/assets/photos/commun/arme-epee-longue.jpg"
+   vignette="/src/assets/photos/commun/epee-longue/photo/fichier.jpg"
    sousTitres="/videos/lecon-01.fr.vtt"
    affiche="" /%}
 ```
@@ -892,7 +892,7 @@ planche: block({
 
 ```
 {% planche
-   image="/src/assets/photos/commun/sources/talhoffer-1467-8r.jpg"
+   image="/src/assets/photos/commun/sources/talhoffer-1467/planches/2/image.jpg"
    alt="Deux escrimeurs à l’épée longue, lames croisées au-dessus de leurs têtes."
    legende="Le croisement haut, dit « Ochs »."
    credit="Hans Talhoffer, Fechtbuch, 1467, f. 8r. Source gallica.bnf.fr / Bibliothèque nationale de France." /%}

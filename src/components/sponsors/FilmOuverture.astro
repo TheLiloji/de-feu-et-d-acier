@@ -306,9 +306,9 @@ function fond(
  * et panneaux (AVIF) sont demandés en priorité basse sauf le premier.
  */
 const [gymnase, tournoiPortrait, tournoiPaysage, banderole, tshirt, kakemono] = await Promise.all([
-  derives('/src/assets/photos/clermont/article-rentree-gymnase.jpg', [780, 1176, 1600, 2400]),
-  derives('/src/assets/photos/clermont/prof-gabriel-tardio-tournoi.jpg', [540, 810, 1200]),
-  derives('/src/assets/photos/clermont/gabriel-tournoi-video-vignette.jpg', [960, 1280, 1600, 2400]),
+  derives('/src/assets/photos/clermont/les-inscriptions-sont-ouvertes/couverture/fichier.jpg', [780, 1176, 1600, 2400]),
+  derives('/src/assets/photos/clermont/gabriel-tardio/prof-gabriel-tardio-tournoi.jpg', [540, 810, 1200]),
+  derives('/src/assets/photos/clermont/gabriel-tardio/video/vignette.jpg', [960, 1280, 1600, 2400]),
   // Les trois maquettes générées pour le carton partenariat (masters 1536 et
   // 1024 px : on ne suréchantillonne jamais, les dérivés s'arrêtent au master).
   derives('/src/assets/photos/commun/maquette-banderole-partenaires.jpg', [768, 1152, 1536]),

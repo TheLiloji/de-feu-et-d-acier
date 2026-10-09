@@ -13,7 +13,7 @@ lien:
   libelle: Parcourir les sources du club
   url: /sources/
 planche:
-  fichier: /src/assets/photos/commun/sources/noble-science-1538-f01r.jpg
+  fichier: /src/assets/photos/commun/sources/noble-science-1538/planches/0/image.jpg
   alt: >-
     Page de titre imprimée : bandeau rouge et gravure de deux joueurs d'épée
     à deux mains.
@@ -30,7 +30,7 @@ manifesteMobile:
   citation: « Le geste juste, avant le costume. »
   sousTitre: Traités historiques · pratique moderne & sécurisée
   photo:
-    fichier: /src/assets/photos/commun/sources/noble-science-1538-f01r.jpg
+    fichier: /src/assets/photos/commun/sources/noble-science-1538/planches/0/image.jpg
     alt: >-
       Page de titre de « La noble science des joueurs d'espée », 1538 : deux
       joueurs d'épée à deux mains.
