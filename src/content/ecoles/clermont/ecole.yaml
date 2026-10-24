@@ -52,6 +52,7 @@ creneaux:
     heureFin: '22:00'
     armes:
       - epee-longue
+      - rapiere
     niveau: tous
     encadre: true
 reseaux:
