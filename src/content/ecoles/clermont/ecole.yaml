@@ -43,6 +43,13 @@ creneaux:
   - jour: jeudi
     heureDebut: '18:00'
     heureFin: '20:00'
+    armes:
+      - rapiere
+    niveau: tous
+    encadre: true
+  - jour: jeudi
+    heureDebut: '18:00'
+    heureFin: '20:00'
     armes: []
     intitule: Pratique libre
     niveau: libre
