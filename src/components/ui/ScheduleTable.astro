@@ -52,6 +52,18 @@ const {
 } = Astro.props;
 
 const aNiveau = creneaux.some((c) => Boolean(c.niveau));
+
+// Convention d'horaire : un même jour ne s'annonce qu'une fois, et deux
+// créneaux simultanés (cours de rapière et pratique libre du jeudi 18h-20h)
+// partagent leur horaire à l'écran. Le texte reste dans l'arbre
+// d'accessibilité (voir le CSS) : seules les répétitions CONSÉCUTIVES sont
+// masquées, l'ordre de saisie du CMS fait donc foi.
+const lignes = creneaux.map((creneau, index) => {
+  const precedent = creneaux[index - 1];
+  const jourRepete = Boolean(precedent && precedent.jour === creneau.jour);
+  const horaireRepete = jourRepete && precedent.horaire === creneau.horaire;
+  return { ...creneau, jourRepete, horaireRepete };
+});
 ---
 
 <div class:list={['creneaux', classe]}>
@@ -96,13 +108,25 @@ const aNiveau = creneaux.some((c) => Boolean(c.niveau));
 
         <tbody role="rowgroup">
           {
-            creneaux.map((creneau) => (
+            lignes.map((creneau) => (
               <tr role="row">
-                <th role="rowheader" scope="row" class="creneaux__jour" data-libelle={entetes[0]}>
-                  {creneau.jour}
+                <th
+                  role="rowheader"
+                  scope="row"
+                  class:list={['creneaux__jour', creneau.jourRepete && 'creneaux__jour--repete']}
+                  data-libelle={entetes[0]}
+                >
+                  <span>{creneau.jour}</span>
                 </th>
-                <td role="cell" class="creneaux__horaire" data-libelle={entetes[1]}>
-                  {creneau.horaire}
+                <td
+                  role="cell"
+                  class:list={[
+                    'creneaux__horaire',
+                    creneau.horaireRepete && 'creneaux__horaire--repete',
+                  ]}
+                  data-libelle={entetes[1]}
+                >
+                  <span>{creneau.horaire}</span>
                 </td>
                 <td role="cell" class="creneaux__discipline" data-libelle={entetes[2]}>
                   {creneau.discipline}
@@ -226,6 +250,23 @@ const aNiveau = creneaux.some((c) => Boolean(c.niveau));
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--parch-mute);
+  }
+
+  /* Les répétitions consécutives (jour, horaire partagé) ne s'affichent qu'une
+     fois à l'écran — convention d'horaire — mais restent lues par les lecteurs
+     d'écran : le texte est caché visuellement, jamais retiré. Desktop
+     seulement : sous 820 px, chaque créneau est un bloc autonome qui a besoin
+     de son jour et de son heure. */
+  @media (min-width: 820px) {
+    .creneaux__jour--repete > span,
+    .creneaux__horaire--repete > span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
 
   .creneaux__vide {
